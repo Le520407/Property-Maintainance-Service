@@ -178,7 +178,7 @@ const ProductDetailPage = () => {
                   ))}
                 </div>
                 <span className="text-gray-600 ml-2">
-                  {product.rating} ({product.reviews} 条评价)
+                  {product.rating} ({product.reviews.length} 条评价)
                 </span>
               </div>
 
