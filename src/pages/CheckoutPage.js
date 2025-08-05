@@ -66,7 +66,7 @@ const CheckoutPage = () => {
               </p>
               <button
                 onClick={() => navigate('/products')}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                className="bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors"
               >
                 Continue Shopping
               </button>
@@ -112,7 +112,7 @@ const CheckoutPage = () => {
                         value={formData.recipientName}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       />
                     </div>
                     
@@ -126,7 +126,7 @@ const CheckoutPage = () => {
                         value={formData.phone}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -141,7 +141,7 @@ const CheckoutPage = () => {
                       value={formData.email}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     />
                   </div>
 
@@ -155,7 +155,7 @@ const CheckoutPage = () => {
                       onChange={handleInputChange}
                       required
                       rows="3"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     />
                   </div>
 
@@ -170,7 +170,7 @@ const CheckoutPage = () => {
                         value={formData.city}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       />
                     </div>
                     
@@ -184,7 +184,7 @@ const CheckoutPage = () => {
                         value={formData.postalCode}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -208,7 +208,7 @@ const CheckoutPage = () => {
                       value="credit-card"
                       checked={formData.paymentMethod === 'credit-card'}
                       onChange={handleInputChange}
-                      className="text-blue-600 focus:ring-blue-500"
+                      className="text-orange-600 focus:ring-orange-500"
                     />
                     <CreditCard className="w-5 h-5 text-gray-600" />
                     <span className="text-gray-700">Credit Card</span>
@@ -221,7 +221,7 @@ const CheckoutPage = () => {
                       value="paypal"
                       checked={formData.paymentMethod === 'paypal'}
                       onChange={handleInputChange}
-                      className="text-blue-600 focus:ring-blue-500"
+                      className="text-orange-600 focus:ring-orange-500"
                     />
                     <span className="text-gray-700">PayPal</span>
                   </label>
@@ -267,7 +267,7 @@ const CheckoutPage = () => {
                   <div className="border-t pt-3">
                     <div className="flex justify-between">
                       <span className="text-lg font-semibold">Total</span>
-                      <span className="text-lg font-bold text-blue-600">SGD {total.toFixed(2)}</span>
+                      <span className="text-lg font-bold text-orange-600">SGD {total.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -279,7 +279,7 @@ const CheckoutPage = () => {
                   className={`w-full mt-6 py-3 px-6 rounded-lg font-semibold transition-colors ${
                     isSubmitting
                       ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-orange-600 text-white hover:bg-orange-700'
                   }`}
                 >
                   {isSubmitting ? 'Processing...' : 'Place Order'}

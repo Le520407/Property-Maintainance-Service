@@ -62,9 +62,9 @@ const SubscriptionPage = () => {
         '最多同时处理20个工作',
         '无团队管理功能'
       ],
-      color: 'border-blue-500',
-      bgColor: 'bg-blue-50',
-      buttonColor: 'bg-blue-600 hover:bg-blue-700',
+      color: 'border-orange-500',
+      bgColor: 'bg-orange-50',
+      buttonColor: 'bg-orange-600 hover:bg-orange-700',
       popular: true
     },
     {
@@ -148,7 +148,7 @@ const SubscriptionPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-purple-700 text-white py-20">
+      <section className="bg-gradient-to-r from-orange-600 to-purple-700 text-white py-20">
         <div className="container mx-auto px-4 text-center">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
@@ -161,7 +161,7 @@ const SubscriptionPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-xl text-blue-100 max-w-2xl mx-auto"
+            className="text-xl text-orange-100 max-w-2xl mx-auto"
           >
             从基础工具到企业级解决方案，我们为每个阶段的技术员提供支持
           </motion.p>
@@ -179,12 +179,12 @@ const SubscriptionPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className={`relative ${plan.bgColor} border-2 ${plan.color} rounded-lg p-8 ${
-                  plan.popular ? 'ring-4 ring-blue-200' : ''
+                  plan.popular ? 'ring-4 ring-orange-200' : ''
                 }`}
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <span className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium">
+                    <span className="bg-orange-600 text-white px-4 py-2 rounded-full text-sm font-medium">
                       最受欢迎
                     </span>
                   </div>
@@ -255,8 +255,8 @@ const SubscriptionPage = () => {
                 transition={{ delay: index * 0.1 }}
                 className="text-center"
               >
-                <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <benefit.icon className="w-8 h-8 text-blue-600" />
+                <div className="bg-orange-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <benefit.icon className="w-8 h-8 text-orange-600" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">{benefit.title}</h3>
                 <p className="text-gray-600">{benefit.description}</p>
@@ -299,7 +299,7 @@ const SubscriptionPage = () => {
                   <p>时长: {course.duration}</p>
                   <p>级别: {course.level}</p>
                 </div>
-                <button className="w-full mt-4 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition-colors">
+                <button className="w-full mt-4 bg-orange-600 text-white py-2 px-4 rounded hover:bg-orange-700 transition-colors">
                   开始学习
                 </button>
               </motion.div>
@@ -309,7 +309,7 @@ const SubscriptionPage = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-blue-600">
+      <section className="py-16 bg-orange-600">
         <div className="container mx-auto px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -318,19 +318,19 @@ const SubscriptionPage = () => {
             <h2 className="text-3xl font-bold text-white mb-4">
               准备好开始您的成功之旅了吗？
             </h2>
-            <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
+            <p className="text-orange-100 mb-8 max-w-2xl mx-auto">
               加入东南亚最受信任的维护服务网络，与我们一起成长
             </p>
             <div className="space-x-4">
               <Link
                 to="/register"
-                className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+                className="bg-white text-orange-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
               >
                 立即注册
               </Link>
               <Link
                 to="/contact"
-                className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors"
+                className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-orange-600 transition-colors"
               >
                 联系我们
               </Link>

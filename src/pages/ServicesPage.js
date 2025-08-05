@@ -103,7 +103,7 @@ const ServicesPage = () => {
     <div className="min-h-screen bg-gray-50">
       
       {/* ✅ Hero Section - full width like homepage */}
-      <section className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20">
+      <section className="relative bg-gradient-to-r from-orange-600 to-orange-800 text-white py-20">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
             <motion.h1
@@ -118,7 +118,7 @@ const ServicesPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
-              className="text-xl text-blue-100 max-w-2xl mx-auto"
+              className="text-xl text-orange-100 max-w-2xl mx-auto"
             >
               Professional property maintenance services tailored to your needs
             </motion.p>
@@ -140,7 +140,7 @@ const ServicesPage = () => {
                 placeholder="Search services..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
             </div>
 
@@ -150,7 +150,7 @@ const ServicesPage = () => {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none"
               >
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -175,7 +175,7 @@ const ServicesPage = () => {
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <h3 className="text-xl font-semibold text-gray-900">{service.name}</h3>
-                  <span className="text-2xl font-bold text-blue-600">{service.price}</span>
+                  <span className="text-2xl font-bold text-orange-600">{service.price}</span>
                 </div>
 
                 <p className="text-gray-600 mb-4">{service.description}</p>
@@ -203,7 +203,7 @@ const ServicesPage = () => {
                   <ul className="space-y-1">
                     {service.features.map((feature, idx) => (
                       <li key={idx} className="text-sm text-gray-600 flex items-center">
-                        <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2"></span>
+                        <span className="w-1.5 h-1.5 bg-orange-600 rounded-full mr-2"></span>
                         {feature}
                       </li>
                     ))}
@@ -212,7 +212,7 @@ const ServicesPage = () => {
 
                 <Link
                   to={`/services/${service.id}`}
-                  className="block w-full bg-blue-600 text-white text-center py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="block w-full bg-orange-600 text-white text-center py-2 rounded-lg hover:bg-orange-700 transition-colors"
                 >
                   View Details
                 </Link>
@@ -238,15 +238,15 @@ const ServicesPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="mt-12 bg-blue-600 rounded-lg p-8 text-center text-white"
+          className="mt-12 bg-orange-600 rounded-lg p-8 text-center text-white"
         >
           <h3 className="text-2xl font-bold mb-4">Need a Custom Service?</h3>
-          <p className="text-blue-100 mb-6">
+          <p className="text-orange-100 mb-6">
             Can't find what you're looking for? Contact us for custom solutions tailored to your specific needs.
           </p>
           <Link
             to="/contact"
-            className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            className="bg-white text-orange-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
           >
             Contact Us
           </Link>

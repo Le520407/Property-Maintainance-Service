@@ -46,7 +46,7 @@ const LoginPage = () => {
           {/* Header */}
           <div className="text-center">
             <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center">
+              <div className="w-16 h-16 bg-orange-600 rounded-xl flex items-center justify-center">
                 <span className="text-white font-bold text-2xl">S</span>
               </div>
             </div>
@@ -74,7 +74,7 @@ const LoginPage = () => {
                     })}
                     type="email"
                     id="email"
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                     placeholder="Enter your email address"
                   />
                 </div>
@@ -100,7 +100,7 @@ const LoginPage = () => {
                     })}
                     type={showPassword ? 'text' : 'password'}
                     id="password"
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
                     placeholder="Enter your password"
                   />
                   <button
@@ -123,7 +123,7 @@ const LoginPage = () => {
                     id="remember-me"
                     name="remember-me"
                     type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
                   />
                   <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
                     Remember me
@@ -131,7 +131,7 @@ const LoginPage = () => {
                 </div>
                 <Link
                   to="/forgot-password"
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-sm text-orange-600 hover:text-orange-700 font-medium"
                 >
                   Forgot password?
                 </Link>
@@ -141,7 +141,7 @@ const LoginPage = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full bg-orange-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </button>
@@ -179,23 +179,23 @@ const LoginPage = () => {
           <div className="text-center mt-6">
             <p className="text-gray-600">
               Don't have an account?{' '}
-              <Link to="/register" className="text-blue-600 hover:text-blue-700 font-medium">
+              <Link to="/register" className="text-orange-600 hover:text-orange-700 font-medium">
                 Sign up now
               </Link>
             </p>
           </div>
 
           {/* Vendor Registration */}
-          <div className="mt-8 bg-blue-50 rounded-xl p-6">
+          <div className="mt-8 bg-orange-50 rounded-xl p-6">
             <div className="text-center">
-              <User size={32} className="mx-auto mb-3 text-blue-600" />
+              <User size={32} className="mx-auto mb-3 text-orange-600" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Are you a vendor?</h3>
               <p className="text-gray-600 mb-4">
                 Register as our vendor and start accepting job orders
               </p>
               <Link
                 to="/vendor-register"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-flex items-center"
+                className="bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-orange-700 transition-colors inline-flex items-center"
               >
                 Vendor Registration
                 <Phone size={16} className="ml-2" />

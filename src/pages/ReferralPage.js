@@ -20,7 +20,7 @@ const ReferralPage = () => {
   const referralLink = `https://swiftfixpro.com/ref/${referralCode}`;
   
   const stats = [
-    { title: 'Referred Users', value: '12', icon: Users, color: 'bg-blue-500' },
+    { title: 'Referred Users', value: '12', icon: Users, color: 'bg-orange-500' },
     { title: 'Total Rewards', value: '¥240', icon: Gift, color: 'bg-green-500' },
     { title: 'Pending Confirmation', value: '3', icon: CheckCircle, color: 'bg-yellow-500' },
     { title: 'Cumulative Earnings', value: '¥480', icon: DollarSign, color: 'bg-purple-500' }
@@ -109,7 +109,7 @@ const ReferralPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
+      <section className="bg-gradient-to-r from-orange-600 to-purple-600 text-white py-16">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -175,7 +175,7 @@ const ReferralPage = () => {
                         navigator.clipboard.writeText(referralCode);
                         toast.success('Referral code copied');
                       }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700"
+                      className="px-4 py-2 bg-orange-600 text-white rounded-r-lg hover:bg-orange-700"
                     >
                       <Copy size={16} />
                     </button>
@@ -195,7 +195,7 @@ const ReferralPage = () => {
                     />
                     <button
                       onClick={handleCopyLink}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700"
+                      className="px-4 py-2 bg-orange-600 text-white rounded-r-lg hover:bg-orange-700"
                     >
                       {copied ? <CheckCircle size={16} /> : <Copy size={16} />}
                     </button>
@@ -220,7 +220,7 @@ const ReferralPage = () => {
               
               <div className="space-y-6">
                 <div className="flex items-start">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mr-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center mr-4">
                     1
                   </div>
                   <div>
@@ -230,7 +230,7 @@ const ReferralPage = () => {
                 </div>
 
                 <div className="flex items-start">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mr-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center mr-4">
                     2
                   </div>
                   <div>
@@ -240,7 +240,7 @@ const ReferralPage = () => {
                 </div>
 
                 <div className="flex items-start">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mr-4">
+                  <div className="flex-shrink-0 w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center mr-4">
                     3
                   </div>
                   <div>
@@ -275,12 +275,12 @@ const ReferralPage = () => {
                   <div className="text-2xl font-bold text-green-600">¥20</div>
                 </div>
 
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
                   <div>
-                    <div className="font-semibold text-blue-800">Bonus Rewards</div>
-                    <div className="text-sm text-blue-600">Reach levels to unlock extra cash</div>
+                    <div className="font-semibold text-orange-800">Bonus Rewards</div>
+                    <div className="text-sm text-orange-600">Reach levels to unlock extra cash</div>
                   </div>
-                  <div className="text-2xl font-bold text-blue-600">¥50-200</div>
+                  <div className="text-2xl font-bold text-orange-600">¥50-200</div>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
@@ -362,7 +362,7 @@ const ReferralPage = () => {
                     onClick={() => setSelectedTab(tab.id)}
                     className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                       selectedTab === tab.id
-                        ? 'border-blue-500 text-blue-600'
+                        ? 'border-orange-500 text-orange-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
                   >

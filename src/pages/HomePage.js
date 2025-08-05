@@ -44,7 +44,7 @@ const HomePage = () => {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20">
+      <section className="relative bg-gradient-to-r from-orange-600 to-orange-800 text-white py-20">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
             <motion.h1 
@@ -58,7 +58,7 @@ const HomePage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-xl mb-8 text-blue-100"
+              className="text-xl mb-8 text-orange-100"
             >
               Trusted maintenance services for your property. Fast, reliable, and professional solutions.
             </motion.p>
@@ -70,14 +70,14 @@ const HomePage = () => {
             >
               <Link
                 to="/services"
-                className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center"
+                className="bg-white text-orange-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center"
               >
                 View Services
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Link>
               <Link
                 to="/booking"
-                className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors"
+                className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-orange-600 transition-colors"
               >
                 Book Now
               </Link>
@@ -98,7 +98,7 @@ const HomePage = () => {
                 transition={{ delay: index * 0.1 }}
                 className="text-center"
               >
-                <div className="text-3xl md:text-4xl font-bold text-blue-600 mb-2">
+                <div className="text-3xl md:text-4xl font-bold text-orange-600 mb-2">
                   {stat.number}
                 </div>
                 <div className="text-gray-600">{stat.label}</div>
@@ -128,11 +128,11 @@ const HomePage = () => {
                 className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"
               >
                 <div className="flex items-center mb-4">
-                  <service.icon className="w-8 h-8 text-blue-600 mr-3" />
+                  <service.icon className="w-8 h-8 text-orange-600 mr-3" />
                   <h3 className="text-xl font-semibold">{service.name}</h3>
                 </div>
                 <p className="text-gray-600 mb-4">{service.description}</p>
-                <div className="text-2xl font-bold text-blue-600 mb-4">From {service.price}</div>
+                <div className="text-2xl font-bold text-orange-600 mb-4">From {service.price}</div>
                 <ul className="space-y-2 mb-6">
                   {service.features.map((feature, idx) => (
                     <li key={idx} className="flex items-center text-sm text-gray-600">
@@ -143,7 +143,7 @@ const HomePage = () => {
                 </ul>
                 <Link
                   to={`/services/${service.id}`}
-                  className="block w-full bg-blue-600 text-white text-center py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="block w-full bg-orange-600 text-white text-center py-2 rounded-lg hover:bg-orange-700 transition-colors"
                 >
                   Learn More
                 </Link>
@@ -154,7 +154,7 @@ const HomePage = () => {
       </section>
 
       {/* Referral Program Section */}
-      <section className="py-20 bg-blue-50">
+      <section className="py-20 bg-orange-50">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
             <motion.div
@@ -176,15 +176,15 @@ const HomePage = () => {
               className="grid md:grid-cols-3 gap-8 mb-8"
             >
               <div className="bg-white rounded-lg p-6 shadow-md">
-                <div className="text-3xl font-bold text-blue-600 mb-2">SGD 10</div>
+                <div className="text-3xl font-bold text-orange-600 mb-2">SGD 10</div>
                 <div className="text-gray-600">Credit per referral</div>
               </div>
               <div className="bg-white rounded-lg p-6 shadow-md">
-                <div className="text-3xl font-bold text-blue-600 mb-2">Unlimited</div>
+                <div className="text-3xl font-bold text-orange-600 mb-2">Unlimited</div>
                 <div className="text-gray-600">Referrals allowed</div>
               </div>
               <div className="bg-white rounded-lg p-6 shadow-md">
-                <div className="text-3xl font-bold text-blue-600 mb-2">Instant</div>
+                <div className="text-3xl font-bold text-orange-600 mb-2">Instant</div>
                 <div className="text-gray-600">Reward delivery</div>
               </div>
             </motion.div>
@@ -196,7 +196,7 @@ const HomePage = () => {
             >
               <Link
                 to="/referral"
-                className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-flex items-center"
+                className="bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors inline-flex items-center"
               >
                 Join Referral Program
                 <ArrowRight className="ml-2 w-5 h-5" />

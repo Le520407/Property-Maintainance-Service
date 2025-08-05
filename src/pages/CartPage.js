@@ -37,7 +37,7 @@ const CartPage = () => {
               </p>
               <Link
                 to="/products"
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-flex items-center"
+                className="bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors inline-flex items-center"
               >
                 Start Shopping
                 <ArrowRight className="ml-2 w-5 h-5" />
@@ -90,7 +90,7 @@ const CartPage = () => {
                         <h3 className="text-lg font-semibold text-gray-900">{item.name}</h3>
                         <p className="text-sm text-gray-600 capitalize">{item.type}</p>
                         <div className="flex items-center mt-2">
-                          <span className="text-lg font-bold text-blue-600">
+                          <span className="text-lg font-bold text-orange-600">
                             SGD {item.price.toFixed(2)}
                           </span>
                         </div>
@@ -165,7 +165,7 @@ const CartPage = () => {
                   <div className="border-t pt-4">
                     <div className="flex justify-between">
                       <span className="text-lg font-semibold">Total</span>
-                      <span className="text-lg font-bold text-blue-600">
+                      <span className="text-lg font-bold text-orange-600">
                         SGD {total.toFixed(2)}
                       </span>
                     </div>
@@ -174,7 +174,7 @@ const CartPage = () => {
 
                 <Link
                   to="/checkout"
-                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-flex items-center justify-center"
+                  className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-orange-700 transition-colors inline-flex items-center justify-center"
                 >
                   Proceed to Checkout
                   <ArrowRight className="ml-2 w-5 h-5" />
@@ -183,7 +183,7 @@ const CartPage = () => {
                 <div className="mt-4 text-center">
                   <Link
                     to="/products"
-                    className="text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-orange-600 hover:text-orange-700 font-medium"
                   >
                     Continue Shopping
                   </Link>
