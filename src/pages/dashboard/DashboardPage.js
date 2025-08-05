@@ -14,7 +14,8 @@ import {
   TrendingUp,
   FileText,
   MessageSquare,
-  Building
+  Building,
+  CheckCircle
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -104,24 +105,58 @@ const CustomerDashboard = () => {
 
 const VendorDashboard = () => {
   const stats = [
-    { title: '总收入', value: '¥15,680', icon: DollarSign, color: 'bg-green-500' },
+    { title: '总收入', value: 'SGD 8,450', icon: DollarSign, color: 'bg-green-500' },
     { title: '本月订单', value: '28', icon: Package, color: 'bg-blue-500' },
     { title: '客户评分', value: '4.8', icon: Star, color: 'bg-yellow-500' },
-    { title: '活跃客户', value: '45', icon: Users, color: 'bg-purple-500' }
+    { title: '活跃客户', value: '45', icon: Users, color: 'bg-purple-500' },
+    { title: '本月佣金', value: 'SGD 1,267', icon: TrendingUp, color: 'bg-indigo-500' },
+    { title: '完成率', value: '94%', icon: CheckCircle, color: 'bg-emerald-500' }
   ];
 
+  const subscriptionInfo = {
+    plan: '专业版',
+    status: '活跃',
+    nextBilling: '2024-02-15',
+    features: ['高级CRM', '详细分析', '自定义报价模板', '优先支持']
+  };
+
   const recentJobs = [
-    { id: 1, customer: '张先生', service: '管道维修', status: '进行中', amount: '¥350' },
-    { id: 2, customer: '李女士', service: '电气检查', status: '已完成', amount: '¥200' },
-    { id: 3, customer: '王先生', service: '清洁服务', status: '待确认', amount: '¥150' }
+    { id: 1, customer: '张先生', service: '管道维修', status: '进行中', amount: 'SGD 350', commission: 'SGD 52.50' },
+    { id: 2, customer: '李女士', service: '电气检查', status: '已完成', amount: 'SGD 200', commission: 'SGD 30.00' },
+    { id: 3, customer: '王先生', service: '清洁服务', status: '待确认', amount: 'SGD 150', commission: 'SGD 22.50' }
+  ];
+
+  const upcomingTraining = [
+    { title: '客户服务技巧', date: '2024-01-25', duration: '2小时', type: '在线课程' },
+    { title: '财务管理基础', date: '2024-01-30', duration: '3小时', type: '在线课程' }
   ];
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">供应商仪表盘</h1>
       
+      {/* Subscription Status */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-lg shadow-md"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold mb-2">订阅状态</h2>
+            <p className="text-blue-100">当前计划: {subscriptionInfo.plan}</p>
+            <p className="text-blue-100">下次账单: {subscriptionInfo.nextBilling}</p>
+          </div>
+          <div className="text-right">
+            <span className="bg-green-400 text-green-900 px-3 py-1 rounded-full text-sm font-medium">
+              {subscriptionInfo.status}
+            </span>
+          </div>
+        </div>
+      </motion.div>
+      
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {stats.map((stat, index) => (
           <motion.div
             key={index}
@@ -143,42 +178,94 @@ const VendorDashboard = () => {
         ))}
       </div>
 
-      {/* Recent Jobs */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold mb-4">最近工作</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-3">客户</th>
-                <th className="text-left py-3">服务</th>
-                <th className="text-left py-3">状态</th>
-                <th className="text-left py-3">金额</th>
-                <th className="text-left py-3">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentJobs.map((job) => (
-                <tr key={job.id} className="border-b hover:bg-gray-50">
-                  <td className="py-3">{job.customer}</td>
-                  <td className="py-3">{job.service}</td>
-                  <td className="py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      job.status === '已完成' ? 'bg-green-100 text-green-800' :
-                      job.status === '进行中' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {job.status}
-                    </span>
-                  </td>
-                  <td className="py-3">{job.amount}</td>
-                  <td className="py-3">
-                    <button className="text-blue-600 hover:underline">查看详情</button>
-                  </td>
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Recent Jobs */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-4">最近工作</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3">客户</th>
+                  <th className="text-left py-3">服务</th>
+                  <th className="text-left py-3">状态</th>
+                  <th className="text-left py-3">金额</th>
+                  <th className="text-left py-3">佣金</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recentJobs.map((job) => (
+                  <tr key={job.id} className="border-b hover:bg-gray-50">
+                    <td className="py-3">{job.customer}</td>
+                    <td className="py-3">{job.service}</td>
+                    <td className="py-3">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        job.status === '已完成' ? 'bg-green-100 text-green-800' :
+                        job.status === '进行中' ? 'bg-blue-100 text-blue-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {job.status}
+                      </span>
+                    </td>
+                    <td className="py-3 font-medium">{job.amount}</td>
+                    <td className="py-3 text-green-600 font-medium">{job.commission}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Upcoming Training */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-4">即将到来的培训</h2>
+          <div className="space-y-4">
+            {upcomingTraining.map((training, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{training.title}</h3>
+                    <p className="text-sm text-gray-600">{training.date} • {training.duration}</p>
+                    <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mt-2">
+                      {training.type}
+                    </span>
+                  </div>
+                  <button className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors">
+                    加入
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold mb-4">快速操作</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <Calendar className="w-8 h-8 text-blue-600 mb-2" />
+            <span className="text-sm font-medium">安排工作</span>
+          </button>
+          <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <FileText className="w-8 h-8 text-green-600 mb-2" />
+            <span className="text-sm font-medium">创建报价</span>
+          </button>
+          <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <MessageSquare className="w-8 h-8 text-purple-600 mb-2" />
+            <span className="text-sm font-medium">客户沟通</span>
+          </button>
+          <button className="flex flex-col items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <TrendingUp className="w-8 h-8 text-orange-600 mb-2" />
+            <span className="text-sm font-medium">查看报告</span>
+          </button>
         </div>
       </div>
     </div>

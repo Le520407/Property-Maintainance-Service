@@ -43,8 +43,12 @@ const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="text-2xl font-bold text-blue-600">
-            Swift Fix Pro
+          <Link to="/" className="flex items-center">
+            <img 
+              src="/logo.png" 
+              alt="Swift Fix Pro" 
+              className="h-10 w-auto"
+            />
           </Link>
 
           {/* Desktop Navigation */}
