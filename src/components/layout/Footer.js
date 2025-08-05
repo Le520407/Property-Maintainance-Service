@@ -54,7 +54,7 @@ const Footer = () => {
           {/* Company Info */}
           <div className="lg:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-xl">S</span>
               </div>
               <div>
@@ -69,19 +69,19 @@ const Footer = () => {
             {/* Contact Info */}
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
-                <Phone size={16} className="text-blue-400" />
+                <Phone size={16} className="text-orange-400" />
                 <span className="text-sm">+65 9123 4567</span>
               </div>
               <div className="flex items-center space-x-3">
-                <Mail size={16} className="text-blue-400" />
+                <Mail size={16} className="text-orange-400" />
                 <span className="text-sm">info@swiftfixpro.sg</span>
               </div>
               <div className="flex items-start space-x-3">
-                <MapPin size={16} className="text-blue-400 mt-1" />
+                <MapPin size={16} className="text-orange-400 mt-1" />
                 <span className="text-sm">Marina Bay Financial Centre, Singapore</span>
               </div>
               <div className="flex items-center space-x-3">
-                <Clock size={16} className="text-blue-400" />
+                <Clock size={16} className="text-orange-400" />
                 <span className="text-sm">Monday to Sunday 8:00 - 20:00</span>
               </div>
             </div>
@@ -147,9 +147,9 @@ const Footer = () => {
                 <input
                   type="email"
                   placeholder="Enter your email"
-                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-l-lg text-sm focus:outline-none focus:border-blue-500"
+                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-l-lg text-sm focus:outline-none focus:border-orange-500"
                 />
-                <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-r-lg transition-colors">
+                <button className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-r-lg transition-colors">
                   Subscribe
                 </button>
               </div>

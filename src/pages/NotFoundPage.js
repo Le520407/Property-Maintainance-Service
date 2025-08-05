@@ -14,8 +14,8 @@ const NotFoundPage = () => {
         >
           {/* 404 Icon */}
           <div className="mb-8">
-            <div className="w-32 h-32 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Search size={64} className="text-blue-600" />
+            <div className="w-32 h-32 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Search size={64} className="text-orange-600" />
             </div>
           </div>
 
@@ -30,7 +30,7 @@ const NotFoundPage = () => {
           <div className="space-y-4">
             <Link
               to="/"
-              className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-flex items-center mx-auto"
+              className="bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors inline-flex items-center mx-auto"
             >
               <Home size={20} className="mr-2" />
               Back to Home
@@ -51,25 +51,25 @@ const NotFoundPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Link
                 to="/services"
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-orange-600 hover:text-orange-700 font-medium"
               >
                 Our Services
               </Link>
               <Link
                 to="/products"
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-orange-600 hover:text-orange-700 font-medium"
               >
                 Product Store
               </Link>
               <Link
                 to="/about"
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-orange-600 hover:text-orange-700 font-medium"
               >
                 About Us
               </Link>
               <Link
                 to="/contact"
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-orange-600 hover:text-orange-700 font-medium"
               >
                 Contact Us
               </Link>

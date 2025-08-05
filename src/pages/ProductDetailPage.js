@@ -109,7 +109,7 @@ const ProductDetailPage = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-6"
         >
-          <Link to="/products" className="flex items-center text-gray-600 hover:text-blue-600">
+          <Link to="/products" className="flex items-center text-gray-600 hover:text-orange-600">
             <ArrowLeft size={16} className="mr-2" />
             返回产品列表
           </Link>
@@ -138,7 +138,7 @@ const ProductDetailPage = () => {
                     key={index}
                     onClick={() => setSelectedImage(index)}
                     className={`border-2 rounded-lg overflow-hidden ${
-                      selectedImage === index ? 'border-blue-500' : 'border-gray-200'
+                      selectedImage === index ? 'border-orange-500' : 'border-gray-200'
                     }`}
                   >
                     <img
@@ -185,7 +185,7 @@ const ProductDetailPage = () => {
               {/* Price */}
               <div className="mb-6">
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl font-bold text-blue-600">
+                  <span className="text-3xl font-bold text-orange-600">
                     ¥{product.price.toFixed(2)}
                   </span>
                   {product.originalPrice > product.price && (
@@ -228,7 +228,7 @@ const ProductDetailPage = () => {
               <div className="space-y-3">
                 <button
                   onClick={handleAddToCart}
-                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
                 >
                   <ShoppingCart size={20} />
                   加入购物车
@@ -252,7 +252,7 @@ const ProductDetailPage = () => {
                 <ul className="space-y-2">
                   {product.features.map((feature, index) => (
                     <li key={index} className="flex items-center text-sm text-gray-600">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                      <div className="w-2 h-2 bg-orange-500 rounded-full mr-3"></div>
                       {feature}
                     </li>
                   ))}
@@ -269,7 +269,7 @@ const ProductDetailPage = () => {
                   <span className="text-sm text-gray-600">免费配送（满¥99）</span>
                 </div>
                 <div className="flex items-center">
-                  <Shield className="text-blue-500 mr-3" size={20} />
+                  <Shield className="text-orange-500 mr-3" size={20} />
                   <span className="text-sm text-gray-600">7天无理由退换</span>
                 </div>
               </div>
@@ -294,7 +294,7 @@ const ProductDetailPage = () => {
                     onClick={() => setSelectedTab(tab.id)}
                     className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                       selectedTab === tab.id
-                        ? 'border-blue-500 text-blue-600'
+                        ? 'border-orange-500 text-orange-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
                   >

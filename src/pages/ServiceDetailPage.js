@@ -459,7 +459,7 @@ const ServiceDetailPage = () => {
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">服务不存在</h1>
           <p className="text-gray-600 mb-6">抱歉，您查找的服务不存在。</p>
-          <Link to="/services" className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+          <Link to="/services" className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors">
             返回服务列表
           </Link>
         </div>
@@ -488,7 +488,7 @@ const ServiceDetailPage = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-6"
         >
-          <Link to="/services" className="flex items-center text-gray-600 hover:text-blue-600">
+          <Link to="/services" className="flex items-center text-gray-600 hover:text-orange-600">
             <ArrowLeft size={16} className="mr-2" />
             Back to Services
           </Link>
@@ -526,7 +526,7 @@ const ServiceDetailPage = () => {
                 </div>
                 
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-blue-600">
+                  <div className="text-3xl font-bold text-orange-600">
                     SGD {service.price}
                   </div>
                   <div className="text-sm text-gray-500">Starting price</div>
@@ -537,11 +537,11 @@ const ServiceDetailPage = () => {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="flex items-center">
-                  <Clock className="text-blue-500 mr-3" size={20} />
+                  <Clock className="text-orange-500 mr-3" size={20} />
                   <span className="text-gray-600">Duration: {service.duration}</span>
                 </div>
                 <div className="flex items-center">
-                  <MapPin className="text-blue-500 mr-3" size={20} />
+                  <MapPin className="text-orange-500 mr-3" size={20} />
                   <span className="text-gray-600">Service Area: Singapore</span>
                 </div>
               </div>
@@ -581,7 +581,7 @@ const ServiceDetailPage = () => {
                       onClick={() => setSelectedTab(tab.id)}
                       className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
                         selectedTab === tab.id
-                          ? 'border-blue-500 text-blue-600'
+                          ? 'border-orange-500 text-orange-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700'
                       }`}
                     >
@@ -619,7 +619,7 @@ const ServiceDetailPage = () => {
                     <div className="space-y-6">
                       {service.process.map((step) => (
                         <div key={step.step} className="flex items-start">
-                          <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center mr-4">
+                          <div className="flex-shrink-0 w-8 h-8 bg-orange-600 text-white rounded-full flex items-center justify-center mr-4">
                             {step.step}
                           </div>
                           <div>
@@ -660,11 +660,11 @@ const ServiceDetailPage = () => {
                       
                       <div className="grid md:grid-cols-2 gap-4">
                         <div className="flex items-center">
-                          <User className="text-blue-500 mr-3" size={20} />
+                          <User className="text-orange-500 mr-3" size={20} />
                           <span className="text-gray-600">Experience: {service.vendor.experience}</span>
                         </div>
                         <div className="flex items-center">
-                          <MapPin className="text-blue-500 mr-3" size={20} />
+                          <MapPin className="text-orange-500 mr-3" size={20} />
                           <span className="text-gray-600">{service.vendor.location}</span>
                         </div>
                       </div>
@@ -672,7 +672,7 @@ const ServiceDetailPage = () => {
                       <p className="text-gray-600">{service.vendor.description}</p>
                       
                       <div className="flex items-center">
-                        <Phone className="text-blue-500 mr-3" size={20} />
+                        <Phone className="text-orange-500 mr-3" size={20} />
                         <span className="text-gray-600">{service.vendor.phone}</span>
                       </div>
                     </div>
@@ -740,14 +740,14 @@ const ServiceDetailPage = () => {
 
               <button
                 onClick={handleBooking}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2"
               >
                 <Calendar size={20} />
                 Book Now
               </button>
 
               <div className="mt-4 text-center">
-                <Link to="/contact" className="text-blue-600 hover:underline text-sm">
+                <Link to="/contact" className="text-orange-600 hover:underline text-sm">
                   Need consultation? Contact Us
                 </Link>
               </div>
@@ -782,7 +782,7 @@ const ServiceDetailPage = () => {
             {/* Contact Info */}
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <Phone className="mr-2 text-blue-500" />
+                <Phone className="mr-2 text-orange-500" />
                 Contact Information
               </h3>
               <div className="space-y-3">

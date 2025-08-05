@@ -133,7 +133,7 @@ const ProductsPage = () => {
   return (
       <div className="min-h-screen bg-gray-50 py-8">
     {/* 🛠️ Hero Section: Moved OUTSIDE of container for full-width */}
-    <section className="relative bg-gradient-to-r from-blue-600 to-blue-800 text-white py-20">
+    <section className="relative bg-gradient-to-r from-orange-600 to-orange-800 text-white py-20">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto text-center">
           <motion.h1
@@ -148,7 +148,7 @@ const ProductsPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="text-xl mb-8 text-blue-100 max-w-2xl mx-auto"
+            className="text-xl mb-8 text-orange-100 max-w-2xl mx-auto"
           >
             Quality products for all your property maintenance needs. Durable, affordable, and fast delivery.
           </motion.p>
@@ -160,14 +160,14 @@ const ProductsPage = () => {
           >
             <Link
               to="/products"
-              className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center"
+              className="bg-white text-orange-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center"
             >
               Browse Products
               <ArrowRight className="ml-2 w-5 h-5" />
             </Link>
             <Link
               to="/cart"
-              className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors"
+              className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-orange-600 transition-colors"
             >
               View Cart
             </Link>
@@ -190,7 +190,7 @@ const ProductsPage = () => {
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
             </div>
 
@@ -200,7 +200,7 @@ const ProductsPage = () => {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none"
               >
                 {categories.map(category => (
                   <option key={category.id} value={category.id}>
@@ -215,7 +215,7 @@ const ProductsPage = () => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none"
               >
                 <option value="name">Sort by Name</option>
                 <option value="price-low">Price: Low to High</option>
@@ -255,7 +255,7 @@ const ProductsPage = () => {
 
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
-                    <span className="text-2xl font-bold text-blue-600">SGD {product.price.toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-orange-600">SGD {product.price.toFixed(2)}</span>
                     {product.originalPrice > product.price && (
                       <span className="text-sm text-gray-500 line-through">SGD {product.originalPrice.toFixed(2)}</span>
                     )}
@@ -267,7 +267,7 @@ const ProductsPage = () => {
                   onClick={() => handleAddToCart(product)}
                   disabled={!product.inStock}
                   className={`w-full py-2 px-4 rounded-lg font-medium transition-colors ${product.inStock
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'bg-orange-600 text-white hover:bg-orange-700'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
                 >
@@ -295,15 +295,15 @@ const ProductsPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="mt-12 bg-blue-600 rounded-lg p-8 text-center text-white"
+          className="mt-12 bg-orange-600 rounded-lg p-8 text-center text-white"
         >
           <h3 className="text-2xl font-bold mb-4">Need Professional Services?</h3>
-          <p className="text-blue-100 mb-6">
+          <p className="text-orange-100 mb-6">
             Our expert technicians are ready to help with your maintenance needs
           </p>
           <Link
             to="/services"
-            className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            className="bg-white text-orange-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
           >
             View Services
           </Link>

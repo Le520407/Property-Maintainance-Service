@@ -27,7 +27,7 @@ const Header = () => {
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-white shadow-md">
       {/* Top Bar */}
-      <div className="bg-blue-600 text-white py-2">
+      <div className="bg-orange-600 text-white py-2">
         <div className="container mx-auto px-4 flex justify-between items-center text-sm">
           <div className="flex items-center space-x-4">
             <span>📞 +65 9123 4567</span>
@@ -57,8 +57,8 @@ const Header = () => {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`text-gray-700 hover:text-blue-600 transition-colors ${
-                  location.pathname === item.href ? 'text-blue-600 font-medium' : ''
+                className={`text-gray-700 hover:text-orange-600 transition-colors ${
+                  location.pathname === item.href ? 'text-orange-600 font-medium' : ''
                 }`}
               >
                 {item.name}
@@ -69,7 +69,7 @@ const Header = () => {
           {/* Right Side */}
           <div className="flex items-center space-x-4">
             {/* Cart */}
-            <Link to="/cart" className="relative flex items-center text-gray-700 hover:text-blue-600">
+            <Link to="/cart" className="relative flex items-center text-gray-700 hover:text-orange-600">
               <ShoppingCart className="w-6 h-6" />
               {cartItems.length > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
@@ -81,7 +81,7 @@ const Header = () => {
             {/* User Menu */}
             {user ? (
               <div className="relative group">
-                <button className="flex items-center space-x-2 text-gray-700 hover:text-blue-600">
+                <button className="flex items-center space-x-2 text-gray-700 hover:text-orange-600">
                   <User className="w-5 h-5" />
                   <span className="hidden md:block">{user.name}</span>
                 </button>
@@ -110,13 +110,13 @@ const Header = () => {
               <div className="flex items-center space-x-2">
                 <Link
                   to="/login"
-                  className="text-gray-700 hover:text-blue-600 transition-colors"
+                  className="text-gray-700 hover:text-orange-600 transition-colors"
                 >
                   {t('login')}
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                  className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
                 >
                   {t('register')}
                 </Link>
@@ -126,7 +126,7 @@ const Header = () => {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden text-gray-700 hover:text-blue-600"
+              className="md:hidden text-gray-700 hover:text-orange-600"
             >
               {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -141,8 +141,8 @@ const Header = () => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`text-gray-700 hover:text-blue-600 transition-colors ${
-                    location.pathname === item.href ? 'text-blue-600 font-medium' : ''
+                  className={`text-gray-700 hover:text-orange-600 transition-colors ${
+                    location.pathname === item.href ? 'text-orange-600 font-medium' : ''
                   }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -153,13 +153,13 @@ const Header = () => {
                 <div className="flex flex-col space-y-2 pt-4 border-t">
                   <Link
                     to="/login"
-                    className="text-gray-700 hover:text-blue-600 transition-colors"
+                    className="text-gray-700 hover:text-orange-600 transition-colors"
                   >
                     {t('login')}
                   </Link>
                   <Link
                     to="/register"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-center"
+                    className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors text-center"
                   >
                     {t('register')}
                   </Link>

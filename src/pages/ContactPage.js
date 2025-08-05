@@ -20,7 +20,7 @@ const ContactPage = () => {
       icon: Phone,
       title: 'Phone Consultation',
       details: ['+65 9123 4567', 'Monday to Sunday 8:00-22:00'],
-      color: 'bg-blue-600'
+      color: 'bg-orange-600'
     },
     {
       icon: Mail,
@@ -61,7 +61,7 @@ const ContactPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-20">
+      <section className="bg-gradient-to-r from-orange-600 to-orange-600 text-white py-20">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -139,7 +139,7 @@ const ContactPage = () => {
                       <input
                         type="text"
                         {...register('name', { required: 'Please enter your name' })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Enter your name"
                       />
                       {errors.name && (
@@ -160,7 +160,7 @@ const ContactPage = () => {
                             message: 'Please enter a valid Singapore phone number'
                           }
                         })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Enter your phone number"
                       />
                       {errors.phone && (
@@ -182,7 +182,7 @@ const ContactPage = () => {
                           message: 'Please enter a valid email address'
                         }
                       })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       placeholder="Enter your email address"
                     />
                     {errors.email && (
@@ -196,7 +196,7 @@ const ContactPage = () => {
                     </label>
                     <select
                       {...register('subject', { required: 'Please select a subject' })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     >
                       <option value="">Please select a subject</option>
                       <option value="service">Service Inquiry</option>
@@ -224,7 +224,7 @@ const ContactPage = () => {
                         }
                       })}
                       rows={6}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       placeholder="Please describe your needs or questions in detail..."
                     />
                     {errors.message && (
@@ -235,7 +235,7 @@ const ContactPage = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <>

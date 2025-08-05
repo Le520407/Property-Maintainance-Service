@@ -80,7 +80,7 @@ const BookingPage = () => {
           <p className="text-gray-600 mb-4">感谢您的预订，我们会尽快与您联系确认服务详情。</p>
           <button
             onClick={() => setIsSubmitted(false)}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+            className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700"
           >
             继续预订
           </button>
@@ -92,7 +92,7 @@ const BookingPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
+      <section className="bg-gradient-to-r from-orange-600 to-purple-600 text-white py-16">
         <div className="container mx-auto px-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -134,7 +134,7 @@ const BookingPage = () => {
                       onClick={() => setSelectedService(service.id)}
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                         selectedService === service.id
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-orange-500 bg-orange-50'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
@@ -146,7 +146,7 @@ const BookingPage = () => {
                           </p>
                         </div>
                         {selectedService === service.id && (
-                          <CheckCircle className="text-blue-500" size={20} />
+                          <CheckCircle className="text-orange-500" size={20} />
                         )}
                       </div>
                     </div>
@@ -164,7 +164,7 @@ const BookingPage = () => {
                       value={selectedDate}
                       onChange={(e) => setSelectedDate(e.target.value)}
                       min={getMinDate()}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     />
                   </div>
 
@@ -180,7 +180,7 @@ const BookingPage = () => {
                           onClick={() => setSelectedTime(time)}
                           className={`p-3 border rounded-lg text-sm transition-colors ${
                             selectedTime === time
-                              ? 'border-blue-500 bg-blue-50 text-blue-700'
+                              ? 'border-orange-500 bg-orange-50 text-orange-700'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                         >
@@ -213,7 +213,7 @@ const BookingPage = () => {
                       <input
                         type="text"
                         {...register('name', { required: '请输入姓名' })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="请输入您的姓名"
                       />
                       {errors.name && (
@@ -234,7 +234,7 @@ const BookingPage = () => {
                             message: '请输入有效的手机号码'
                           }
                         })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="请输入您的电话号码"
                       />
                       {errors.phone && (
@@ -255,7 +255,7 @@ const BookingPage = () => {
                           message: '请输入有效的邮箱地址'
                         }
                       })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       placeholder="请输入您的邮箱地址（可选）"
                     />
                     {errors.email && (
@@ -270,7 +270,7 @@ const BookingPage = () => {
                     <textarea
                       {...register('address', { required: '请输入服务地址' })}
                       rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       placeholder="请输入详细的服务地址"
                     />
                     {errors.address && (
@@ -285,7 +285,7 @@ const BookingPage = () => {
                     <textarea
                       {...register('description')}
                       rows={4}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                       placeholder="请详细描述您的服务需求..."
                     />
                   </div>
@@ -293,7 +293,7 @@ const BookingPage = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <>
@@ -316,10 +316,10 @@ const BookingPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="mt-12 bg-blue-50 p-6 rounded-lg"
+              className="mt-12 bg-orange-50 p-6 rounded-lg"
             >
               <h3 className="text-lg font-semibold mb-4 flex items-center">
-                <AlertCircle className="mr-2 text-blue-600" />
+                <AlertCircle className="mr-2 text-orange-600" />
                 预订须知
               </h3>
               <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">

@@ -121,7 +121,7 @@ const VendorRegisterPage = () => {
                 <div key={step.number} className="flex items-center">
                   <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
                     currentStep >= step.number 
-                      ? 'bg-blue-600 border-blue-600 text-white' 
+                      ? 'bg-orange-600 border-orange-600 text-white' 
                       : 'border-gray-300 text-gray-500'
                   }`}>
                     {currentStep > step.number ? (
@@ -131,13 +131,13 @@ const VendorRegisterPage = () => {
                     )}
                   </div>
                   <span className={`ml-2 text-sm font-medium ${
-                    currentStep >= step.number ? 'text-blue-600' : 'text-gray-500'
+                    currentStep >= step.number ? 'text-orange-600' : 'text-gray-500'
                   }`}>
                     {step.title}
                   </span>
                   {index < steps.length - 1 && (
                     <div className={`w-16 h-0.5 mx-4 ${
-                      currentStep > step.number ? 'bg-blue-600' : 'bg-gray-300'
+                      currentStep > step.number ? 'bg-orange-600' : 'bg-gray-300'
                     }`} />
                   )}
                 </div>
@@ -168,7 +168,7 @@ const VendorRegisterPage = () => {
                       <input
                         type="text"
                         {...register('contactName', { required: 'Please enter contact name' })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Enter contact name"
                       />
                       {errors.contactName && (
@@ -189,7 +189,7 @@ const VendorRegisterPage = () => {
                             message: 'Please enter a valid phone number'
                           }
                         })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Enter contact phone"
                       />
                       {errors.phone && (
@@ -210,7 +210,7 @@ const VendorRegisterPage = () => {
                             message: 'Please enter a valid email address'
                           }
                         })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Enter email address"
                       />
                       {errors.email && (
@@ -231,7 +231,7 @@ const VendorRegisterPage = () => {
                             message: 'Please enter a valid ID number'
                           }
                         })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Enter ID number"
                       />
                       {errors.idNumber && (
@@ -262,7 +262,7 @@ const VendorRegisterPage = () => {
                       <input
                         type="text"
                         {...register('companyName', { required: 'Please enter company name' })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Enter company name"
                       />
                       {errors.companyName && (
@@ -278,7 +278,7 @@ const VendorRegisterPage = () => {
                         <input
                           type="text"
                           {...register('businessLicense', { required: 'Please enter business license number' })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                           placeholder="Enter business license number"
                         />
                         {errors.businessLicense && (
@@ -293,7 +293,7 @@ const VendorRegisterPage = () => {
                         <input
                           type="date"
                           {...register('establishDate', { required: 'Please select establishment date' })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         />
                         {errors.establishDate && (
                           <p className="text-red-500 text-sm mt-1">{errors.establishDate.message}</p>
@@ -308,7 +308,7 @@ const VendorRegisterPage = () => {
                       <textarea
                         {...register('address', { required: 'Please enter company address' })}
                         rows={3}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Enter detailed company address"
                       />
                       {errors.address && (
@@ -323,7 +323,7 @@ const VendorRegisterPage = () => {
                       <textarea
                         {...register('description')}
                         rows={4}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Briefly introduce your company..."
                       />
                     </div>
@@ -375,7 +375,7 @@ const VendorRegisterPage = () => {
                         <input
                           type="text"
                           {...register('serviceArea', { required: 'Please enter service area' })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                           placeholder="e.g. Chaoyang District, Haidian District, etc."
                         />
                         {errors.serviceArea && (
@@ -389,7 +389,7 @@ const VendorRegisterPage = () => {
                         </label>
                         <select
                           {...register('teamSize', { required: 'Please select team size' })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         >
                           <option value="">Select team size</option>
                           <option value="1-5">1-5 people</option>
@@ -411,7 +411,7 @@ const VendorRegisterPage = () => {
                       <textarea
                         {...register('experience', { required: 'Please describe your service experience' })}
                         rows={4}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         placeholder="Describe your service experience, successful cases, etc..."
                       />
                       {errors.experience && (
@@ -454,7 +454,7 @@ const VendorRegisterPage = () => {
                                 message: 'Password must contain uppercase and lowercase letters and numbers'
                               }
                             })}
-                            className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                             placeholder="Enter password"
                           />
                           <button
@@ -481,7 +481,7 @@ const VendorRegisterPage = () => {
                               required: 'Please confirm password',
                               validate: value => value === password || 'Passwords do not match'
                             })}
-                            className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                             placeholder="Enter password again"
                           />
                           <button
@@ -506,7 +506,7 @@ const VendorRegisterPage = () => {
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                           <Upload className="mx-auto h-12 w-12 text-gray-400" />
                           <div className="mt-4">
-                            <label htmlFor="business-license" className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            <label htmlFor="business-license" className="cursor-pointer bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700">
                               Choose File
                             </label>
                             <input
@@ -530,7 +530,7 @@ const VendorRegisterPage = () => {
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                           <Upload className="mx-auto h-12 w-12 text-gray-400" />
                           <div className="mt-4">
-                            <label htmlFor="id-card" className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            <label htmlFor="id-card" className="cursor-pointer bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700">
                               Choose File
                             </label>
                             <input
@@ -556,9 +556,9 @@ const VendorRegisterPage = () => {
                       />
                       <label className="text-sm text-gray-600">
                         I have read and agree to the 
-                        <Link to="/terms" className="text-blue-600 hover:underline"> Terms of Service</Link> 
+                        <Link to="/terms" className="text-orange-600 hover:underline"> Terms of Service</Link> 
                         and 
-                        <Link to="/privacy" className="text-blue-600 hover:underline"> Privacy Policy</Link>
+                        <Link to="/privacy" className="text-orange-600 hover:underline"> Privacy Policy</Link>
                       </label>
                     </div>
                     {errors.agreeTerms && (
@@ -583,7 +583,7 @@ const VendorRegisterPage = () => {
                   <button
                     type="button"
                     onClick={nextStep}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
                   >
                     Next
                   </button>
@@ -591,7 +591,7 @@ const VendorRegisterPage = () => {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {isSubmitting ? (
                       <>
@@ -611,7 +611,7 @@ const VendorRegisterPage = () => {
           <div className="text-center mt-8">
             <p className="text-gray-600">
               Already have an account? 
-              <Link to="/login" className="text-blue-600 hover:underline">
+              <Link to="/login" className="text-orange-600 hover:underline">
                 Log in now
               </Link>
             </p>
