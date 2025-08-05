@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api, apiUtils } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -15,103 +16,171 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 检查本地存储中是否有用户信息
+    // 检查token和用户信息
+    const token = apiUtils.getToken();
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+    
+    if (token && apiUtils.isTokenValid(token) && savedUser) {
       setUser(JSON.parse(savedUser));
+    } else if (token && !apiUtils.isTokenValid(token)) {
+      // Token过期，清除本地数据
+      apiUtils.removeToken();
+      localStorage.removeItem('user');
     }
+    
     setLoading(false);
   }, []);
 
   const login = async (email, password) => {
     try {
-      // 模拟API调用
-      // 在实际应用中，这里会调用后端API
-      const mockUser = {
-        id: 1,
-        name: '张三',
-        email: email,
-        role: 'customer', // customer, vendor, admin
-        avatar: null,
-        phone: '+60 12-345 6789',
-        address: '马来西亚吉隆坡',
+      const response = await api.auth.login({ email, password });
+      
+      // 保存token
+      apiUtils.setToken(response.token);
+      
+      // 转换用户数据格式以匹配前端期望
+      const userData = {
+        id: response.user._id || response.user.id,
+        name: response.user.fullName,
+        email: response.user.email,
+        role: response.user.role,
+        avatar: response.user.avatar,
+        phone: response.user.phone,
+        address: response.user.city || 'Singapore',
         wallet: {
-          balance: 150.00,
-          currency: 'MYR'
+          balance: response.user.totalSpent || 0,
+          currency: 'SGD'
         },
-        referralCode: 'SF123456',
-        referralCount: 5,
-        referralEarnings: 50.00
+        referralCode: `SF${String(response.user._id || response.user.id).slice(0, 8).toUpperCase()}`,
+        referralCount: 0,
+        referralEarnings: 0,
+        // 技术员特定数据
+        ...(response.user.role === 'technician' && {
+          skills: response.user.skills || [],
+          experience: response.user.experience || 0,
+          hourlyRate: response.user.hourlyRate || 0,
+          rating: response.user.rating || 0,
+          totalReviews: response.user.totalReviews || 0,
+          completedJobs: response.user.completedJobs || 0,
+          subscriptionPlan: response.user.subscriptionPlan || 'basic',
+          status: response.user.status
+        }),
+        // 客户特定数据
+        ...(response.user.role === 'customer' && {
+          totalSpent: response.user.totalSpent || 0,
+          totalBookings: response.user.totalBookings || 0
+        })
       };
 
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      return { success: true, user: mockUser };
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      return { success: true, user: userData };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: apiUtils.handleError(error) };
     }
   };
 
   const register = async (userData) => {
     try {
-      // 模拟API调用
-      const mockUser = {
-        id: 2,
-        name: userData.name,
+      const response = await api.auth.register({
+        firstName: userData.name.split(' ')[0],
+        lastName: userData.name.split(' ').slice(1).join(' ') || '',
         email: userData.email,
+        phone: userData.phone,
+        password: userData.password,
         role: 'customer',
+        city: userData.address,
+        country: 'Singapore'
+      });
+      
+      // 保存token
+      apiUtils.setToken(response.token);
+      
+      // 转换用户数据格式
+      const userDataFormatted = {
+        id: response.user._id || response.user.id,
+        name: response.user.fullName,
+        email: response.user.email,
+        role: response.user.role,
         avatar: null,
         phone: userData.phone,
         address: userData.address,
         wallet: {
           balance: 0.00,
-          currency: 'MYR'
+          currency: 'SGD'
         },
-        referralCode: `SF${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+        referralCode: `SF${String(response.user._id || response.user.id).slice(0, 8).toUpperCase()}`,
         referralCount: 0,
         referralEarnings: 0.00
       };
 
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      return { success: true, user: mockUser };
+      setUser(userDataFormatted);
+      localStorage.setItem('user', JSON.stringify(userDataFormatted));
+      return { success: true, user: userDataFormatted };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: apiUtils.handleError(error) };
     }
   };
 
   const vendorRegister = async (vendorData) => {
     try {
-      // 模拟API调用
-      const mockVendor = {
-        id: 3,
-        name: vendorData.name,
+      const response = await api.auth.registerTechnician({
+        firstName: vendorData.name.split(' ')[0],
+        lastName: vendorData.name.split(' ').slice(1).join(' ') || '',
         email: vendorData.email,
-        role: 'vendor',
+        phone: vendorData.phone,
+        password: vendorData.password,
+        city: vendorData.address,
+        country: 'Singapore',
+        skills: vendorData.services || [],
+        experience: vendorData.experience || 0,
+        hourlyRate: vendorData.hourlyRate || 0
+      });
+      
+      // 保存token
+      apiUtils.setToken(response.token);
+      
+      // 转换技术员数据格式
+      const vendorDataFormatted = {
+        id: response.user._id || response.user.id,
+        name: response.user.fullName,
+        email: response.user.email,
+        role: 'technician',
         avatar: null,
         phone: vendorData.phone,
         address: vendorData.address,
-        services: vendorData.services,
-        experience: vendorData.experience,
-        status: 'pending', // pending, approved, rejected
+        services: vendorData.services || [],
+        experience: vendorData.experience || 0,
+        status: response.user.status,
         rating: 0,
         totalJobs: 0,
         earnings: 0.00,
         wallet: {
           balance: 0.00,
-          currency: 'MYR'
-        }
+          currency: 'SGD'
+        },
+        skills: response.user.skills || [],
+        hourlyRate: response.user.hourlyRate || 0
       };
 
-      return { success: true, vendor: mockVendor };
+      return { success: true, vendor: vendorDataFormatted };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: apiUtils.handleError(error) };
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      // 调用后端登出API
+      await api.auth.logout();
+    } catch (error) {
+      console.error('Logout API error:', error);
+    } finally {
+      // 清除本地数据
+      setUser(null);
+      apiUtils.removeToken();
+      localStorage.removeItem('user');
+    }
   };
 
   const updateUser = (updatedData) => {

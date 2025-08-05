@@ -22,7 +22,9 @@ import ServiceDetailPage from './pages/ServiceDetailPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import ReferralPage from './pages/ReferralPage';
+import SubscriptionPage from './pages/SubscriptionPage';
 import NotFoundPage from './pages/NotFoundPage';
+import ApiTest from './components/ApiTest';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
@@ -54,6 +56,8 @@ function App() {
                   <Route path="/cart" element={<CartPage />} />
                   <Route path="/checkout" element={<CheckoutPage />} />
                   <Route path="/referral" element={<ReferralPage />} />
+                  <Route path="/subscription" element={<SubscriptionPage />} />
+                  <Route path="/api-test" element={<ApiTest />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </AnimatePresence>

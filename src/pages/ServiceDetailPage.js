@@ -26,71 +26,71 @@ const ServiceDetailPage = () => {
       name: 'Plumbing Repair',
       category: 'plumbing',
       price: 80,
-      duration: '2-4 hours',
-      rating: 4.8,
+    duration: '2-4 hours',
+    rating: 4.8,
       description: 'Professional plumbing repair and maintenance services including pipe unclogging, leak repair, and pipe replacement. Our expert team has extensive experience to quickly solve various plumbing issues.',
-      features: [
+    features: [
         '24/7 Emergency Service',
         'Licensed Technicians', 
         'Warranty Included',
-        'Professional tools and equipment',
-        'Transparent pricing',
-        'Quick response'
-      ],
-      process: [
-        {
-          step: 1,
-          title: 'Schedule Service',
-          description: 'Book via phone or online, describe the issue'
-        },
-        {
-          step: 2,
-          title: 'On-site Inspection',
-          description: 'Professional technician visits for assessment'
-        },
-        {
-          step: 3,
-          title: 'Confirm Quote',
-          description: 'Review detailed quote and approve work'
-        },
-        {
-          step: 4,
-          title: 'Complete Service',
-          description: 'Finish repairs and customer inspection'
-        }
-      ],
-      vendor: {
-        name: 'Professional Plumbing Repair Company',
-        rating: 4.9,
-        reviews: 234,
-        experience: '8 years',
-        location: 'Singapore',
-        phone: '400-123-4567',
-        description: 'Specializing in plumbing services for 8 years with professional team and advanced equipment. Served thousands of customers with excellent reviews.'
+      'Professional tools and equipment',
+      'Transparent pricing',
+      'Quick response'
+    ],
+    process: [
+      {
+        step: 1,
+        title: 'Schedule Service',
+        description: 'Book via phone or online, describe the issue'
       },
-      reviews: [
-        {
-          id: 1,
-          user: 'Mr. Zhang',
-          rating: 5,
-          date: '2024-01-15',
-          comment: 'Very professional service, technician solved the problem quickly.'
-        },
-        {
-          id: 2,
-          user: 'Ms. Li',
-          rating: 5,
-          date: '2024-01-10',
-          comment: 'Reasonable price and good service attitude. Recommended!'
-        },
-        {
-          id: 3,
-          user: 'Mr. Wang',
-          rating: 4,
-          date: '2024-01-05',
-          comment: 'Fast response and professional skills. Trustworthy.'
-        }
-      ]
+      {
+        step: 2,
+        title: 'On-site Inspection',
+        description: 'Professional technician visits for assessment'
+      },
+      {
+        step: 3,
+        title: 'Confirm Quote',
+        description: 'Review detailed quote and approve work'
+      },
+      {
+        step: 4,
+        title: 'Complete Service',
+        description: 'Finish repairs and customer inspection'
+      }
+    ],
+    vendor: {
+      name: 'Professional Plumbing Repair Company',
+      rating: 4.9,
+      reviews: 234,
+      experience: '8 years',
+        location: 'Singapore',
+      phone: '400-123-4567',
+      description: 'Specializing in plumbing services for 8 years with professional team and advanced equipment. Served thousands of customers with excellent reviews.'
+    },
+    reviews: [
+      {
+        id: 1,
+        user: 'Mr. Zhang',
+        rating: 5,
+        date: '2024-01-15',
+        comment: 'Very professional service, technician solved the problem quickly.'
+      },
+      {
+        id: 2,
+        user: 'Ms. Li',
+        rating: 5,
+        date: '2024-01-10',
+        comment: 'Reasonable price and good service attitude. Recommended!'
+      },
+      {
+        id: 3,
+        user: 'Mr. Wang',
+        rating: 4,
+        date: '2024-01-05',
+        comment: 'Fast response and professional skills. Trustworthy.'
+      }
+    ]
     },
     {
       id: 2,
@@ -602,12 +602,12 @@ const ServiceDetailPage = () => {
                       </p>
                       <div>
                         <h4 className="font-semibold text-gray-900 mb-2">Service Details:</h4>
-                        <ul className="space-y-2 text-gray-600">
+                      <ul className="space-y-2 text-gray-600">
                           <li>• Category: {service.category.charAt(0).toUpperCase() + service.category.slice(1)}</li>
                           <li>• Duration: {service.duration}</li>
                           <li>• Rating: {service.rating}/5 ({service.reviews.length} reviews)</li>
                           <li>• Location: {service.vendor.location}</li>
-                        </ul>
+                      </ul>
                       </div>
                     </div>
                   </div>
