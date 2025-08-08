@@ -160,6 +160,73 @@ export const api = {
     // 获取服务详情
     getService: (id) => request(`/services/${id}`),
   },
+  
+  // CMS相关
+  cms: {
+    // 博客管理
+    blogs: {
+      // 获取所有博客（管理员用）
+      getAll: () => request('/cms/blogs'),
+      
+      // 获取已发布的博客（公共接口）
+      getPublished: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return request(`/cms/blogs/published?${queryString}`);
+      },
+      
+      // 根据slug获取博客
+      getBySlug: (slug) => request(`/cms/blogs/slug/${slug}`),
+      
+      // 创建博客
+      create: (blogData) => request('/cms/blogs', {
+        method: 'POST',
+        body: JSON.stringify(blogData),
+      }),
+      
+      // 更新博客
+      update: (id, blogData) => request(`/cms/blogs/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(blogData),
+      }),
+      
+      // 删除博客
+      delete: (id) => request(`/cms/blogs/${id}`, {
+        method: 'DELETE',
+      }),
+    },
+    
+    // FAQ管理
+    faqs: {
+      // 获取所有FAQ
+      getAll: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return request(`/cms/faqs?${queryString}`);
+      },
+      
+      // 创建FAQ
+      create: (faqData) => request('/cms/faqs', {
+        method: 'POST',
+        body: JSON.stringify(faqData),
+      }),
+      
+      // 更新FAQ
+      update: (id, faqData) => request(`/cms/faqs/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(faqData),
+      }),
+      
+      // 删除FAQ
+      delete: (id) => request(`/cms/faqs/${id}`, {
+        method: 'DELETE',
+      }),
+      
+      // FAQ投票
+      vote: (id, helpful) => request(`/cms/faqs/${id}/vote`, {
+        method: 'POST',
+        body: JSON.stringify({ helpful }),
+      }),
+    },
+  },
 };
 
 // 工具函数

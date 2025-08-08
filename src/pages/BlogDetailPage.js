@@ -15,6 +15,7 @@ import {
   Copy,
   CheckCircle
 } from 'lucide-react';
+import { api } from '../services/api';
 
 const BlogDetailPage = () => {
   const { slug } = useParams();
@@ -39,19 +40,12 @@ const BlogDetailPage = () => {
   useEffect(() => {
     const fetchBlog = async () => {
       try {
-        const response = await fetch(`/api/cms/blogs/slug/${slug}`);
-        if (response.ok) {
-          const data = await response.json();
-          setBlog(data);
-          
-          // 获取相关博客
-          if (data.category) {
-            fetchRelatedBlogs(data.category, data._id);
-          }
-        } else if (response.status === 404) {
-          setError('Blog post not found');
-        } else {
-          setError('Failed to load blog post');
+        const data = await api.cms.blogs.getBySlug(slug);
+        setBlog(data);
+        
+        // 获取相关博客
+        if (data.category) {
+          fetchRelatedBlogs(data.category, data._id);
         }
       } catch (error) {
         console.error('Error fetching blog:', error);
@@ -69,13 +63,10 @@ const BlogDetailPage = () => {
   // 获取相关博客
   const fetchRelatedBlogs = async (category, currentBlogId) => {
     try {
-      const response = await fetch(`/api/cms/blogs/published?category=${category}&limit=3`);
-      if (response.ok) {
-        const data = await response.json();
-        // 过滤掉当前博客
-        const related = data.blogs.filter(blog => blog._id !== currentBlogId);
-        setRelatedBlogs(related.slice(0, 3));
-      }
+      const data = await api.cms.blogs.getPublished({ category, limit: '4' });
+      // 过滤掉当前博客
+      const related = data.blogs.filter(blog => blog._id !== currentBlogId);
+      setRelatedBlogs(related.slice(0, 3));
     } catch (error) {
       console.error('Error fetching related blogs:', error);
     }

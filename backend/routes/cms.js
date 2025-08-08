@@ -1,10 +1,47 @@
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const router = express.Router();
 const Banner = require('../models/Banner');
 const Blog = require('../models/Blog');
 const FAQ = require('../models/FAQ');
 const Pricing = require('../models/Pricing');
 const { auth } = require('../middleware/auth');
+
+// 确保上传目录存在
+const uploadDir = path.join(__dirname, '../uploads/blog-images');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// 配置 multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'blog-' + uniqueSuffix + ext);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed!'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: fileFilter
+});
 
 // 横幅管理路由
 // 获取所有横幅（管理员用）
@@ -155,18 +192,42 @@ router.post('/blogs', auth, async (req, res) => {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });
     }
-    const blog = new Blog({
-      ...req.body,
-      author: req.user.userId
+    
+    console.log('Creating blog with user:', {
+      userId: req.user._id,
+      userIdString: req.user._id.toString(),
+      userRole: req.user.role,
+      bodyData: req.body
     });
+    
+    // Check if slug already exists
+    const existingBlog = await Blog.findOne({ slug: req.body.slug });
+    if (existingBlog) {
+      return res.status(400).json({ message: 'A blog with this slug already exists' });
+    }
+    
+    const blogData = {
+      ...req.body,
+      author: req.user._id
+    };
+    
+    console.log('Blog data being created:', blogData);
+    
+    const blog = new Blog(blogData);
     
     if (blog.isPublished && !blog.publishedAt) {
       blog.publishedAt = new Date();
     }
     
     await blog.save();
-    res.status(201).json(blog);
+    const savedBlog = await Blog.findById(blog._id).populate('author', 'username email');
+    res.status(201).json(savedBlog);
   } catch (error) {
+    console.error('Blog creation error:', error);
+    if (error.code === 11000) {
+      // Duplicate key error
+      return res.status(400).json({ message: 'A blog with this slug already exists' });
+    }
     res.status(400).json({ message: error.message });
   }
 });
@@ -358,6 +419,50 @@ router.delete('/pricing/:id', auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+});
+
+// 博客图片上传路由
+router.post('/upload/blog-image', auth, upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file uploaded' });
+    }
+
+    // 只有管理员可以上传图片
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin privileges required' });
+    }
+
+    // 返回可访问的图片URL
+    const imageUrl = `/uploads/blog-images/${req.file.filename}`;
+    
+    res.status(200).json({
+      message: 'Image uploaded successfully',
+      imageUrl: imageUrl,
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size
+    });
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ message: 'Failed to upload image' });
+  }
+});
+
+// 错误处理中间件
+router.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ message: 'File size too large. Maximum size is 5MB.' });
+    }
+  }
+  
+  if (error.message === 'Only image files are allowed!') {
+    return res.status(400).json({ message: 'Only image files are allowed!' });
+  }
+  
+  res.status(500).json({ message: 'Upload failed', error: error.message });
 });
 
 module.exports = router;

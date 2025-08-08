@@ -69,7 +69,6 @@ const blogSchema = new mongoose.Schema({
 });
 
 // 创建索引用于搜索和排序
-blogSchema.index({ slug: 1 });
 blogSchema.index({ isPublished: 1, publishedAt: -1 });
 blogSchema.index({ category: 1, isPublished: 1 });
 blogSchema.index({ isFeatured: 1, isPublished: 1 });

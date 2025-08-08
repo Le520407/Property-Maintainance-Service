@@ -23,6 +23,9 @@ const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ message: 'Account is not active' });
     }
 
+    console.log('Auth middleware - decoded token:', decoded);
+    console.log('Auth middleware - user from DB:', user);
+
     req.user = user;
     next();
   } catch (error) {

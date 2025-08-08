@@ -6,7 +6,8 @@
       "Bash(powershell:*)",
       "Bash(curl:*)",
       "Bash(npm start)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(npm install:*)"
     ],
     "deny": []
   }
