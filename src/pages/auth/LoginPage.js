@@ -13,7 +13,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
 
   const {
-    register,
+    register,  
     handleSubmit,
     formState: { errors }
   } = useForm();

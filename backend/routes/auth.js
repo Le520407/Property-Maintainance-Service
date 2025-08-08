@@ -43,7 +43,7 @@ router.post('/register', async (req, res) => {
       phone,
       city,
       country,
-      role: role.toUpperCase()
+      role: role.toLowerCase()
     });
 
     // Generate token
@@ -101,7 +101,7 @@ router.post('/register-technician', async (req, res) => {
       phone,
       city,
       country,
-      role: 'TECHNICIAN',
+      role: 'vendor',
       status: 'PENDING', // Technicians need approval
       skills,
       experience,
@@ -153,6 +153,9 @@ router.post('/login', async (req, res) => {
         message: user.status === 'PENDING' ? 'Account pending approval' : 'Account is suspended' 
       });
     }
+
+    // Update last login
+    await user.updateLastLogin();
 
     // Generate token
     const token = generateToken({ userId: user._id, email: user.email, role: user.role });

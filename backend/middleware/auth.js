@@ -45,7 +45,76 @@ const requireRole = (roles) => {
   };
 };
 
+// 检查管理员权限
+const requireAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Admin privileges required' });
+  }
+
+  next();
+};
+
+// 检查超级管理员权限
+const requireSuperAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+
+  if (req.user.role !== 'admin' || !req.user.isSuper) {
+    return res.status(403).json({ message: 'Super admin privileges required' });
+  }
+
+  next();
+};
+
+// 检查特定权限
+const requirePermission = (permission) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    if (!req.user.hasPermission(permission)) {
+      return res.status(403).json({ 
+        message: `Permission '${permission}' required` 
+      });
+    }
+
+    next();
+  };
+};
+
+// 检查用户是否可以访问资源（本人或管理员）
+const requireOwnershipOrAdmin = (userIdField = 'userId') => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const resourceUserId = req.params[userIdField] || req.body[userIdField];
+    const isOwner = req.user._id.toString() === resourceUserId;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    next();
+  };
+};
+
 module.exports = {
   authenticateToken,
-  requireRole
+  requireRole,
+  requireAdmin,
+  requireSuperAdmin,
+  requirePermission,
+  requireOwnershipOrAdmin,
+  
+  // 导出单个auth中间件作为默认
+  auth: authenticateToken
 };

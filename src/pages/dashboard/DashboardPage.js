@@ -15,7 +15,8 @@ import {
   FileText,
   MessageSquare,
   Building,
-  CheckCircle
+  CheckCircle,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -312,6 +313,30 @@ const AdminDashboard = () => {
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-4">快速操作</h2>
           <div className="space-y-3">
+            <Link
+              to="/admin/banners"
+              className="w-full text-left p-3 border rounded-lg hover:bg-gray-50 block transition-colors"
+            >
+              横幅管理
+            </Link>
+            <Link
+              to="/admin/blogs"
+              className="w-full text-left p-3 border rounded-lg hover:bg-gray-50 block transition-colors"
+            >
+              博客管理
+            </Link>
+            <Link
+              to="/admin/faqs"
+              className="w-full text-left p-3 border rounded-lg hover:bg-gray-50 block transition-colors"
+            >
+              FAQ管理
+            </Link>
+            <Link
+              to="/admin/pricing"
+              className="w-full text-left p-3 border rounded-lg hover:bg-gray-50 block transition-colors"
+            >
+              价格管理
+            </Link>
             <button className="w-full text-left p-3 border rounded-lg hover:bg-gray-50">
               审核供应商申请
             </button>
@@ -351,9 +376,10 @@ const DashboardPage = () => {
   const location = useLocation();
 
   const navigation = [
-    { name: '仪表盘', href: '/dashboard', icon: Home },
-    { name: '个人资料', href: '/dashboard/profile', icon: User },
-    { name: '设置', href: '/dashboard/settings', icon: Settings }
+    { name: 'Back to Site', href: '/', icon: ArrowLeft, external: true },
+    { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'Profile', href: '/dashboard/profile', icon: User },
+    { name: 'Settings', href: '/dashboard/settings', icon: Settings }
   ];
 
   const handleLogout = () => {
@@ -377,16 +403,32 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-16">
       <div className="flex">
         {/* Sidebar */}
         <div className="w-64 bg-white shadow-lg min-h-screen">
           <div className="p-6">
-            <h1 className="text-xl font-bold text-gray-900 mb-6">Swift Fix Pro</h1>
+            <a href="/" className="block mb-6">
+              <h1 className="text-xl font-bold text-gray-900 hover:text-orange-600 transition-colors">Swift Fix Pro</h1>
+            </a>
             
             <nav className="space-y-2">
               {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
+                const isActive = location.pathname === item.href && !item.external;
+                
+                if (item.external) {
+                  return (
+                    <a
+                      key={item.name}
+                      href={item.href}
+                      className="flex items-center px-4 py-2 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
+                    >
+                      <item.icon size={20} className="mr-3" />
+                      {item.name}
+                    </a>
+                  );
+                }
+                
                 return (
                   <Link
                     key={item.name}

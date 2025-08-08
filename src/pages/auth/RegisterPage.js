@@ -278,6 +278,16 @@ const RegisterPage = () => {
             </p>
           </div>
 
+          {/* Vendor Registration Link */}
+          <div className="text-center mt-4">
+            <p className="text-gray-600">
+              Want to provide services?{' '}
+              <Link to="/vendor-register" className="text-orange-600 hover:text-orange-700 font-medium">
+                Register as Vendor
+              </Link>
+            </p>
+          </div>
+
           {/* Benefits */}
           <div className="mt-8 bg-green-50 rounded-xl p-6">
             <div className="text-center">

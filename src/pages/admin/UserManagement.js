@@ -1,0 +1,1102 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Users, 
+  Search, 
+  Filter, 
+  Plus, 
+  Edit2, 
+  Trash2, 
+  Eye,
+  EyeOff,
+  Shield,
+  UserCheck,
+  UserX,
+  Clock,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Crown,
+  Grid,
+  List,
+  Download,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Star,
+  Award,
+  DollarSign,
+  Briefcase,
+  MoreHorizontal
+} from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import toast from 'react-hot-toast';
+
+const UserManagement = () => {
+  const { user } = useAuth();
+  const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'table'
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [sortBy, setSortBy] = useState('newest');
+  const [editingUser, setEditingUser] = useState(null);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    phone: '',
+    city: '',
+    country: 'Singapore',
+    role: 'customer',
+    skills: [],
+    experience: 0,
+    hourlyRate: 0,
+    permissions: [],
+    isSuper: false,
+    status: 'ACTIVE'
+  });
+
+  // 角色选项
+  const roleOptions = [
+    { value: '', label: 'All Roles' },
+    { value: 'customer', label: 'Customer', color: 'blue' },
+    { value: 'vendor', label: 'Vendor', color: 'purple' },
+    { value: 'admin', label: 'Admin', color: 'orange' }
+  ];
+
+  // 状态选项
+  const statusOptions = [
+    { value: '', label: 'All Status' },
+    { value: 'ACTIVE', label: 'Active', color: 'green' },
+    { value: 'PENDING', label: 'Pending', color: 'yellow' },
+    { value: 'INACTIVE', label: 'Inactive', color: 'gray' },
+    { value: 'SUSPENDED', label: 'Suspended', color: 'red' }
+  ];
+
+  // 排序选项
+  const sortOptions = [
+    { value: 'newest', label: 'Newest First' },
+    { value: 'oldest', label: 'Oldest First' },
+    { value: 'name_asc', label: 'Name A-Z' },
+    { value: 'name_desc', label: 'Name Z-A' },
+    { value: 'last_login', label: 'Last Login' }
+  ];
+
+  // 权限选项
+  const permissionOptions = [
+    { value: 'manage_users', label: 'Manage Users' },
+    { value: 'manage_content', label: 'Manage Content' },
+    { value: 'manage_services', label: 'Manage Services' },
+    { value: 'manage_payments', label: 'Manage Payments' },
+    { value: 'view_analytics', label: 'View Analytics' },
+    { value: 'manage_system', label: 'Manage System' }
+  ];
+
+  // 获取用户列表
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: '10'
+      });
+      
+      if (selectedRole) params.append('role', selectedRole);
+      if (selectedStatus) params.append('status', selectedStatus);
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+
+      const response = await fetch(`http://localhost:5000/api/admin/users?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users);
+        setTotalPages(data.totalPages);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 获取统计数据
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/admin/stats', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      fetchUsers();
+      fetchStats();
+    }
+  }, [user, currentPage, selectedRole, selectedStatus, searchQuery]);
+
+  // 处理搜索
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+  };
+
+  // 处理筛选
+  const handleFilter = (type, value) => {
+    if (type === 'role') setSelectedRole(value);
+    if (type === 'status') setSelectedStatus(value);
+    setCurrentPage(1);
+  };
+
+  // 创建用户
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('http://localhost:5000/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        await fetchUsers();
+        await fetchStats();
+        resetForm();
+        toast.success(`${formData.role.charAt(0).toUpperCase() + formData.role.slice(1)} user created successfully!`);
+      } else {
+        const error = await response.json();
+        toast.error(error.message);
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast.error('Error creating user');
+    }
+  };
+
+  // 更新用户状态
+  const updateUserStatus = async (userId, newStatus) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (response.ok) {
+        await fetchUsers();
+        await fetchStats();
+        const statusText = newStatus === 'ACTIVE' ? 'approved' : 'updated';
+        toast.success(`User status ${statusText} successfully!`);
+      }
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      toast.error('Failed to update user status');
+    }
+  };
+
+  // 批量操作
+  const handleBulkAction = async (action) => {
+    if (selectedUsers.length === 0) {
+      toast.error('Please select users first');
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to ${action} ${selectedUsers.length} user(s)?`;
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      const promises = selectedUsers.map(userId => {
+        if (action === 'activate') {
+          return updateUserStatus(userId, 'ACTIVE');
+        } else if (action === 'suspend') {
+          return updateUserStatus(userId, 'SUSPENDED');
+        }
+      });
+
+      await Promise.all(promises);
+      setSelectedUsers([]);
+      toast.success(`Bulk ${action} completed successfully!`);
+    } catch (error) {
+      toast.error(`Failed to ${action} users`);
+    }
+  };
+
+  // 删除用户
+  const deleteUser = async (userId) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/admin/users/${userId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (response.ok) {
+          await fetchUsers();
+          await fetchStats();
+          toast.success('User deleted successfully');
+        }
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        toast.error('Failed to delete user');
+      }
+    }
+  };
+
+  // 重置表单
+  const resetForm = () => {
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      phone: '',
+      city: '',
+      country: 'Singapore',
+      role: 'customer',
+      skills: [],
+      experience: 0,
+      hourlyRate: 0,
+      permissions: [],
+      isSuper: false,
+      status: 'ACTIVE'
+    });
+    setShowCreateForm(false);
+    setEditingUser(null);
+  };
+
+  // 处理表单输入
+  const handleInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  // 处理权限变更
+  const handlePermissionChange = (permission) => {
+    setFormData(prev => ({
+      ...prev,
+      permissions: prev.permissions.includes(permission)
+        ? prev.permissions.filter(p => p !== permission)
+        : [...prev.permissions, permission]
+    }));
+  };
+
+  // 获取状态样式
+  const getStatusStyle = (status) => {
+    const styles = {
+      'ACTIVE': 'bg-green-100 text-green-800 border-green-200',
+      'PENDING': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      'INACTIVE': 'bg-gray-100 text-gray-800 border-gray-200',
+      'SUSPENDED': 'bg-red-100 text-red-800 border-red-200'
+    };
+    return styles[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  // 获取角色样式
+  const getRoleStyle = (role) => {
+    const styles = {
+      'customer': 'bg-blue-100 text-blue-800 border-blue-200',
+      'vendor': 'bg-purple-100 text-purple-800 border-purple-200',
+      'admin': 'bg-orange-100 text-orange-800 border-orange-200'
+    };
+    return styles[role] || 'bg-gray-100 text-gray-800';
+  };
+
+  // 用户卡片组件
+  const UserCard = ({ userData }) => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200 p-6"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+              {userData.firstName?.[0] || userData.email[0].toUpperCase()}
+            </div>
+            {userData.status === 'ACTIVE' && (
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+            )}
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900 text-lg">
+              {userData.fullName || `${userData.firstName} ${userData.lastName}`}
+            </h3>
+            <div className="flex items-center space-x-2 mt-1">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getRoleStyle(userData.role)}`}>
+                {userData.role}
+              </span>
+              {userData.isSuper && (
+                <Crown className="w-4 h-4 text-yellow-500" title="Super Admin" />
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusStyle(userData.status)}`}>
+            {userData.status}
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center text-gray-600 text-sm">
+          <Mail className="w-4 h-4 mr-2" />
+          {userData.email}
+        </div>
+        {userData.phone && (
+          <div className="flex items-center text-gray-600 text-sm">
+            <Phone className="w-4 h-4 mr-2" />
+            {userData.phone}
+          </div>
+        )}
+        {userData.city && (
+          <div className="flex items-center text-gray-600 text-sm">
+            <MapPin className="w-4 h-4 mr-2" />
+            {userData.city}, {userData.country}
+          </div>
+        )}
+      </div>
+
+      {userData.role === 'vendor' && (
+        <div className="bg-gray-50 rounded-lg p-3 mb-4">
+          <div className="grid grid-cols-2 gap-3">
+            {userData.skills && userData.skills.length > 0 && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Skills</p>
+                <div className="flex flex-wrap gap-1">
+                  {userData.skills.slice(0, 2).map((skill, idx) => (
+                    <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                      {skill}
+                    </span>
+                  ))}
+                  {userData.skills.length > 2 && (
+                    <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs">
+                      +{userData.skills.length - 2}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Experience</p>
+              <p className="text-sm font-medium">{userData.experience} years</p>
+            </div>
+            {userData.hourlyRate > 0 && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Rate</p>
+                <p className="text-sm font-medium">${userData.hourlyRate}/hr</p>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Rating</p>
+              <div className="flex items-center">
+                <Star className="w-4 h-4 text-yellow-500 mr-1" />
+                <span className="text-sm font-medium">{userData.rating || 0}/5</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
+        <span>Joined: {new Date(userData.createdAt).toLocaleDateString()}</span>
+        <span>
+          Last login: {userData.lastLogin ? new Date(userData.lastLogin).toLocaleDateString() : 'Never'}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+        {userData.status === 'PENDING' ? (
+          <div className="flex space-x-2">
+            <button
+              onClick={() => updateUserStatus(userData._id, 'ACTIVE')}
+              className="flex items-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+            >
+              <UserCheck className="w-4 h-4 mr-1" />
+              Approve
+            </button>
+            <button
+              onClick={() => updateUserStatus(userData._id, 'SUSPENDED')}
+              className="flex items-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+            >
+              <UserX className="w-4 h-4 mr-1" />
+              Reject
+            </button>
+          </div>
+        ) : (
+          <div className="flex space-x-2">
+            <button
+              onClick={() => updateUserStatus(userData._id, userData.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE')}
+              className={`flex items-center px-3 py-2 rounded-lg transition-colors text-sm ${
+                userData.status === 'ACTIVE'
+                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+              }`}
+            >
+              {userData.status === 'ACTIVE' ? (
+                <>
+                  <UserX className="w-4 h-4 mr-1" />
+                  Suspend
+                </>
+              ) : (
+                <>
+                  <UserCheck className="w-4 h-4 mr-1" />
+                  Activate
+                </>
+              )}
+            </button>
+          </div>
+        )}
+        
+        <div className="flex items-center space-x-2">
+          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+            <Edit2 className="w-4 h-4" />
+          </button>
+          {user.isSuper && (
+            <button
+              onClick={() => deleteUser(userData._id)}
+              className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  if (user?.role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">Admin privileges required to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header Section */}
+      <section className="bg-gradient-to-r from-orange-600 to-orange-600 text-white py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+            <div className="mb-4 lg:mb-0">
+              <h1 className="text-3xl font-bold text-white">User Management</h1>
+              <p className="text-orange-100 mt-1">Manage users, approve vendors, and monitor system activity</p>
+              {stats.pendingUsers > 0 && (
+                <div className="flex items-center mt-2 px-3 py-2 bg-orange-800 text-orange-100 rounded-lg inline-flex">
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  {stats.pendingUsers} user{stats.pendingUsers > 1 ? 's' : ''} pending approval
+                </div>
+              )}
+            </div>
+            
+            <div className="flex flex-wrap gap-3">
+              {stats.pendingUsers > 0 && (
+                <button
+                  onClick={() => {
+                    setSelectedStatus('PENDING');
+                    setSelectedRole('vendor');
+                    setCurrentPage(1);
+                  }}
+                  className="flex items-center px-4 py-2 bg-orange-800 text-white rounded-lg hover:bg-orange-900 transition-colors"
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  View Pending ({stats.pendingUsers})
+                </button>
+              )}
+              
+              <button
+                onClick={() => fetchUsers()}
+                className="flex items-center px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-orange-50 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </button>
+              
+              {user.isSuper && (
+                <button
+                  onClick={() => setShowCreateForm(true)}
+                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create User
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total Users</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.totalUsers || 0}</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Users className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Customers</p>
+                <p className="text-2xl font-bold text-green-600">{stats.totalCustomers || 0}</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-lg">
+                <UserCheck className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Vendors</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.totalVendors || 0}</p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <Shield className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Admins</p>
+                <p className="text-2xl font-bold text-orange-600">{stats.totalAdmins || 0}</p>
+              </div>
+              <div className="p-3 bg-orange-100 rounded-lg">
+                <Crown className="w-6 h-6 text-orange-600" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Active</p>
+                <p className="text-2xl font-bold text-green-600">{stats.activeUsers || 0}</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-lg">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Pending</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.pendingUsers || 0}</p>
+              </div>
+              <div className="p-3 bg-yellow-100 rounded-lg">
+                <Clock className="w-6 h-6 text-yellow-600" />
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Filters and Search */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search users by name, email, or phone..."
+                  value={searchQuery}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-3">
+              <select
+                value={selectedRole}
+                onChange={(e) => handleFilter('role', e.target.value)}
+                className="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[140px]"
+              >
+                {roleOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedStatus}
+                onChange={(e) => handleFilter('status', e.target.value)}
+                className="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[140px]"
+              >
+                {statusOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[140px]"
+              >
+                {sortOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              {/* View Toggle */}
+              <div className="flex border border-gray-300 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className={`p-3 ${viewMode === 'cards' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  <Grid className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`p-3 ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  <List className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bulk Actions */}
+        {selectedUsers.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-blue-800">
+                {selectedUsers.length} user{selectedUsers.length > 1 ? 's' : ''} selected
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleBulkAction('activate')}
+                  className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                >
+                  Activate
+                </button>
+                <button
+                  onClick={() => handleBulkAction('suspend')}
+                  className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                >
+                  Suspend
+                </button>
+                <button
+                  onClick={() => setSelectedUsers([])}
+                  className="px-3 py-1 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* User List */}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+              <p className="text-gray-600">Loading users...</p>
+            </div>
+          </div>
+        ) : users.length > 0 ? (
+          <div className={viewMode === 'cards' ? 'grid gap-6 md:grid-cols-2 lg:grid-cols-3' : 'space-y-4'}>
+            {users.map((userData) => (
+              <UserCard key={userData._id} userData={userData} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-medium text-gray-900 mb-2">No Users Found</h3>
+            <p className="text-gray-600 mb-4">
+              {searchQuery || selectedRole || selectedStatus
+                ? 'No users match your search criteria.'
+                : 'No users have been created yet.'}
+            </p>
+            {(searchQuery || selectedRole || selectedStatus) && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedRole('');
+                  setSelectedStatus('');
+                  setCurrentPage(1);
+                }}
+                className="text-blue-600 hover:text-blue-700"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              
+              {[...Array(Math.min(totalPages, 5))].map((_, index) => {
+                const page = index + Math.max(1, currentPage - 2);
+                if (page > totalPages) return null;
+                
+                return (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                      page === currentPage
+                        ? 'text-white bg-blue-600'
+                        : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+              
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Create User Modal */}
+        <AnimatePresence>
+          {showCreateForm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+              onClick={(e) => e.target === e.currentTarget && resetForm()}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              >
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Create New User</h2>
+                    <button
+                      onClick={resetForm}
+                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                    >
+                      <XCircle className="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleCreateUser} className="space-y-6">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          First Name *
+                        </label>
+                        <input
+                          type="text"
+                          name="firstName"
+                          value={formData.firstName}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Last Name *
+                        </label>
+                        <input
+                          type="text"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Email *
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Phone
+                        </label>
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Role *
+                        </label>
+                        <select
+                          name="role"
+                          value={formData.role}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="customer">Customer</option>
+                          <option value="vendor">Vendor</option>
+                          {user?.isSuper && <option value="admin">Admin</option>}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Status *
+                        </label>
+                        <select
+                          name="status"
+                          value={formData.status}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="ACTIVE">Active</option>
+                          <option value="PENDING">Pending</option>
+                          <option value="INACTIVE">Inactive</option>
+                          <option value="SUSPENDED">Suspended</option>
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Password *
+                        </label>
+                        <input
+                          type="password"
+                          name="password"
+                          value={formData.password}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Vendor specific fields */}
+                    {formData.role === 'vendor' && (
+                      <div className="border-t pt-6">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Vendor Information</h3>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Skills (comma-separated)
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Plumbing, Electrical, Carpentry"
+                              onChange={(e) => {
+                                const skills = e.target.value.split(',').map(s => s.trim()).filter(s => s);
+                                setFormData({...formData, skills});
+                              }}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Years of Experience
+                            </label>
+                            <input
+                              type="number"
+                              name="experience"
+                              value={formData.experience}
+                              onChange={handleInputChange}
+                              min="0"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Admin specific fields */}
+                    {formData.role === 'admin' && (
+                      <div className="border-t pt-6">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Admin Permissions</h3>
+                        <div className="grid md:grid-cols-2 gap-3">
+                          {permissionOptions.map(permission => (
+                            <div key={permission.value} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                id={permission.value}
+                                checked={formData.permissions.includes(permission.value)}
+                                onChange={() => handlePermissionChange(permission.value)}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              />
+                              <label htmlFor={permission.value} className="ml-2 block text-sm text-gray-700">
+                                {permission.label}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+
+                        {user?.isSuper && (
+                          <div className="mt-4">
+                            <div className="flex items-center">
+                              <input
+                                type="checkbox"
+                                name="isSuper"
+                                checked={formData.isSuper}
+                                onChange={handleInputChange}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              />
+                              <label className="ml-2 block text-sm font-medium text-gray-700">
+                                Super Administrator
+                              </label>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="flex gap-4 pt-6 border-t">
+                      <button
+                        type="submit"
+                        className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        Create {formData.role.charAt(0).toUpperCase() + formData.role.slice(1)}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetForm}
+                        className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
+
+export default UserManagement;
