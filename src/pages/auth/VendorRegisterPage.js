@@ -16,7 +16,7 @@ import {
   FileText,
   Shield
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const VendorRegisterPage = () => {
@@ -25,7 +25,6 @@ const VendorRegisterPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const navigate = useNavigate();
-  const { vendorRegister } = useAuth();
 
   const {
     register,
@@ -68,16 +67,33 @@ const VendorRegisterPage = () => {
     setIsSubmitting(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Ensure all required fields are present
+      if (!data.firstName || !data.lastName || !data.email || !data.password || !data.phone) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
+
+      const vendorData = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        password: data.password,
+        phone: data.phone,
+        city: data.serviceArea || 'Singapore',
+        country: 'Singapore',
+        skills: Array.isArray(data.services) ? data.services : [data.services].filter(Boolean),
+        experience: parseInt(data.teamSize?.split('-')[0]) || 0,
+        hourlyRate: 0
+      };
       
-      console.log('Vendor registration data:', data);
-      await vendorRegister(data);
+      console.log('Submitting vendor data:', vendorData); // Debug log
       
-      toast.success('Vendor registration successful! We will review your application soon.');
-      navigate('/dashboard');
+      const result = await api.auth.registerTechnician(vendorData);
+      toast.success('Vendor registration successful! Your account is pending approval.');
+      navigate('/login');
     } catch (error) {
-      toast.error('Registration failed, please try again');
+      console.error('Registration error:', error); // Debug log
+      toast.error(error.message || 'Registration failed, please try again');
     } finally {
       setIsSubmitting(false);
     }
@@ -85,6 +101,30 @@ const VendorRegisterPage = () => {
 
   const nextStep = () => {
     if (currentStep < 4) {
+      // Basic validation for each step
+      const currentStepData = watch();
+      
+      if (currentStep === 1) {
+        if (!currentStepData.firstName || !currentStepData.lastName || !currentStepData.email || !currentStepData.phone) {
+          toast.error('Please fill in all required fields in this step');
+          return;
+        }
+      }
+      
+      if (currentStep === 2) {
+        if (!currentStepData.companyName || !currentStepData.businessLicense || !currentStepData.establishDate || !currentStepData.address) {
+          toast.error('Please fill in all required company information');
+          return;
+        }
+      }
+      
+      if (currentStep === 3) {
+        if (!currentStepData.services || currentStepData.services.length === 0 || !currentStepData.serviceArea || !currentStepData.teamSize || !currentStepData.experience) {
+          toast.error('Please complete all service information');
+          return;
+        }
+      }
+      
       setCurrentStep(currentStep + 1);
     }
   };
@@ -163,39 +203,34 @@ const VendorRegisterPage = () => {
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Contact Name *
+                        First Name *
                       </label>
                       <input
                         type="text"
-                        {...register('contactName', { required: 'Please enter contact name' })}
+                        {...register('firstName', { required: 'Please enter first name' })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        placeholder="Enter contact name"
+                        placeholder="Enter first name"
                       />
-                      {errors.contactName && (
-                        <p className="text-red-500 text-sm mt-1">{errors.contactName.message}</p>
+                      {errors.firstName && (
+                        <p className="text-red-500 text-sm mt-1">{errors.firstName.message}</p>
                       )}
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Contact Phone *
+                        Last Name *
                       </label>
                       <input
-                        type="tel"
-                        {...register('phone', { 
-                          required: 'Please enter contact phone',
-                          pattern: {
-                            value: /^1[3-9]\d{9}$/,
-                            message: 'Please enter a valid phone number'
-                          }
-                        })}
+                        type="text"
+                        {...register('lastName', { required: 'Please enter last name' })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        placeholder="Enter contact phone"
+                        placeholder="Enter last name"
                       />
-                      {errors.phone && (
-                        <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
+                      {errors.lastName && (
+                        <p className="text-red-500 text-sm mt-1">{errors.lastName.message}</p>
                       )}
                     </div>
+
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -220,22 +255,22 @@ const VendorRegisterPage = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        ID Number *
+                        Phone Number *
                       </label>
                       <input
-                        type="text"
-                        {...register('idNumber', { 
-                          required: 'Please enter ID number',
+                        type="tel"
+                        {...register('phone', { 
+                          required: 'Please enter phone number',
                           pattern: {
-                            value: /^[1-9]\d{5}(18|19|20)\d{2}((0[1-9])|(1[0-2]))(([0-2][1-9])|10|20|30|31)\d{3}[0-9Xx]$/,
-                            message: 'Please enter a valid ID number'
+                            value: /^[+]?[\d\s\-\(\)]+$/,
+                            message: 'Please enter a valid phone number'
                           }
                         })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        placeholder="Enter ID number"
+                        placeholder="Enter phone number"
                       />
-                      {errors.idNumber && (
-                        <p className="text-red-500 text-sm mt-1">{errors.idNumber.message}</p>
+                      {errors.phone && (
+                        <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
                       )}
                     </div>
                   </div>

@@ -16,9 +16,22 @@ const Header = () => {
     { name: t('home'), href: '/' },
     { name: t('services'), href: '/services' },
     { name: t('products'), href: '/products' },
+    { name: 'Blog', href: '/blog' },
+    { name: 'FAQ', href: '/faq' },
     { name: t('about'), href: '/about' },
     { name: t('contact'), href: '/contact' },
   ];
+
+  // Admin navigation items (only show for admin users)
+  const adminNavigation = user?.role === 'admin' ? [
+    { name: 'CMS', href: '/dashboard', isDropdown: true, items: [
+      { name: 'Banner Management', href: '/admin/banners' },
+      { name: 'Blog Management', href: '/admin/blogs' },
+      { name: 'FAQ Management', href: '/admin/faqs' },
+      { name: 'Pricing Management', href: '/admin/pricing' },
+      { name: 'User Management', href: '/admin/users' },
+    ]}
+  ] : [];
 
   const handleLogout = () => {
     logout();
@@ -53,6 +66,7 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
+            {/* Regular Navigation */}
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -63,6 +77,29 @@ const Header = () => {
               >
                 {item.name}
               </Link>
+            ))}
+            
+            {/* Admin Navigation Dropdown */}
+            {adminNavigation.map((item) => (
+              <div key={item.name} className="relative group">
+                <button className="flex items-center text-gray-700 hover:text-orange-600 transition-colors">
+                  {item.name}
+                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute left-0 top-full mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-[9999] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border border-gray-200">
+                  {item.items.map((subItem) => (
+                    <Link
+                      key={subItem.name}
+                      to={subItem.href}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      {subItem.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ))}
           </nav>
 
@@ -83,9 +120,12 @@ const Header = () => {
               <div className="relative group">
                 <button className="flex items-center space-x-2 text-gray-700 hover:text-orange-600">
                   <User className="w-5 h-5" />
-                  <span className="hidden md:block">{user.name}</span>
+                  <div className="hidden md:block">
+                    <span className="block text-sm">{user.firstName || user.name}</span>
+                    <span className="block text-xs text-gray-500 capitalize">{user.role}</span>
+                  </div>
                 </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-[9999] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border border-gray-200">
                   <Link
                     to="/dashboard"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

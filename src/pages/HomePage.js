@@ -1,11 +1,57 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Wrench, Shield, Star, ArrowRight, CheckCircle } from 'lucide-react';
+import { Wrench, Shield, Star, ArrowRight, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const HomePage = () => {
   const { t } = useLanguage();
+  const [banners, setBanners] = useState([]);
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // 获取首页横幅数据
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const response = await fetch('/api/cms/banners/active?location=homepage');
+        if (response.ok) {
+          const data = await response.json();
+          setBanners(data);
+        }
+      } catch (error) {
+        console.error('Error fetching banners:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBanners();
+  }, []);
+
+  // 自动轮播横幅
+  useEffect(() => {
+    if (banners.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentBannerIndex((prev) => (prev + 1) % banners.length);
+      }, 5000); // 每5秒切换
+
+      return () => clearInterval(interval);
+    }
+  }, [banners.length]);
+
+  // 手动切换横幅
+  const nextBanner = () => {
+    setCurrentBannerIndex((prev) => (prev + 1) % banners.length);
+  };
+
+  const prevBanner = () => {
+    setCurrentBannerIndex((prev) => (prev - 1 + banners.length) % banners.length);
+  };
+
+  const goToBanner = (index) => {
+    setCurrentBannerIndex(index);
+  };
 
   const services = [
     {
@@ -43,48 +89,143 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="relative bg-gradient-to-r from-orange-600 to-orange-800 text-white py-20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <motion.h1 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-5xl md:text-6xl font-bold mb-6"
+      {/* Dynamic Banner Section */}
+      {!loading && banners.length > 0 ? (
+        <section className="relative h-screen overflow-hidden">
+          {banners.map((banner, index) => (
+            <div
+              key={banner._id}
+              className={`absolute inset-0 transition-opacity duration-1000 ${
+                index === currentBannerIndex ? 'opacity-100' : 'opacity-0'
+              }`}
             >
-              Professional Property Maintenance
-            </motion.h1>
-            <motion.p 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-xl mb-8 text-orange-100"
-            >
-              Trusted maintenance services for your property. Fast, reliable, and professional solutions.
-            </motion.p>
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
-            >
-              <Link
-                to="/services"
-                className="bg-white text-orange-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center"
+              {/* 背景图片 */}
+              <div 
+                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                style={{ backgroundImage: `url(${banner.imageUrl})` }}
               >
-                View Services
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Link>
-              <Link
-                to="/booking"
-                className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-orange-600 transition-colors"
+                <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+              </div>
+              
+              {/* 内容 */}
+              <div className="relative h-full flex items-center justify-center text-white">
+                <div className="container mx-auto px-4 text-center">
+                  <motion.h1
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="text-4xl md:text-6xl font-bold mb-6"
+                  >
+                    {banner.title}
+                  </motion.h1>
+                  {banner.subtitle && (
+                    <motion.p
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.8, delay: 0.2 }}
+                      className="text-xl md:text-2xl mb-8 text-gray-200"
+                    >
+                      {banner.subtitle}
+                    </motion.p>
+                  )}
+                  {banner.linkUrl && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.8, delay: 0.4 }}
+                    >
+                      <Link
+                        to={banner.linkUrl}
+                        className="bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors inline-flex items-center"
+                      >
+                        {banner.buttonText}
+                        <ArrowRight className="ml-2 w-5 h-5" />
+                      </Link>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* 导航控制 */}
+          {banners.length > 1 && (
+            <>
+              {/* 左右箭头 */}
+              <button
+                onClick={prevBanner}
+                className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-colors z-10"
               >
-                Book Now
-              </Link>
-            </motion.div>
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                onClick={nextBanner}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-colors z-10"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+
+              {/* 指示点 */}
+              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2 z-10">
+                {banners.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToBanner(index)}
+                    className={`w-3 h-3 rounded-full transition-colors ${
+                      index === currentBannerIndex
+                        ? 'bg-white'
+                        : 'bg-white bg-opacity-50 hover:bg-opacity-70'
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      ) : (
+        // 默认英雄区域（当没有横幅时）
+        <section className="relative bg-gradient-to-r from-orange-600 to-orange-800 text-white py-20">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto text-center">
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-5xl md:text-6xl font-bold mb-6"
+              >
+                Professional Property Maintenance
+              </motion.h1>
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-xl mb-8 text-orange-100"
+              >
+                Trusted maintenance services for your property. Fast, reliable, and professional solutions.
+              </motion.p>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="flex flex-col sm:flex-row gap-4 justify-center"
+              >
+                <Link
+                  to="/services"
+                  className="bg-white text-orange-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center"
+                >
+                  View Services
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
+                <Link
+                  to="/booking"
+                  className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-orange-600 transition-colors"
+                >
+                  Book Now
+                </Link>
+              </motion.div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Stats Section */}
       <section className="py-16 bg-gray-50">

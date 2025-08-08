@@ -122,19 +122,34 @@ export const api = {
     // 获取所有用户
     getAllUsers: (params = {}) => {
       const queryString = new URLSearchParams(params).toString();
-      return request(`/users/admin/all?${queryString}`);
+      return request(`/admin/users?${queryString}`);
     },
     
+    // 创建用户
+    createUser: (userData) => request('/admin/create-user', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    }),
+    
     // 更新用户状态
-    updateUserStatus: (userId, status) => request(`/users/admin/${userId}/status`, {
-      method: 'PUT',
+    updateUserStatus: (userId, status) => request(`/admin/users/${userId}/status`, {
+      method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
     
+    // 更新用户角色
+    updateUserRole: (userId, role) => request(`/admin/users/${userId}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role }),
+    }),
+    
     // 删除用户
-    deleteUser: (userId) => request(`/users/admin/${userId}`, {
+    deleteUser: (userId) => request(`/admin/users/${userId}`, {
       method: 'DELETE',
     }),
+    
+    // 获取系统统计
+    getStats: () => request('/admin/stats'),
   },
   
   // 服务相关

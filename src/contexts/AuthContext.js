@@ -44,6 +44,7 @@ export const AuthProvider = ({ children }) => {
         name: response.user.fullName,
         email: response.user.email,
         role: response.user.role,
+        status: response.user.status,
         avatar: response.user.avatar,
         phone: response.user.phone,
         address: response.user.city || 'Singapore',
@@ -54,6 +55,11 @@ export const AuthProvider = ({ children }) => {
         referralCode: `SF${String(response.user._id || response.user.id).slice(0, 8).toUpperCase()}`,
         referralCount: 0,
         referralEarnings: 0,
+        // 管理员特定数据
+        ...(response.user.role === 'admin' && {
+          permissions: response.user.permissions || [],
+          isSuper: response.user.isSuper || false
+        }),
         // 技术员特定数据
         ...(response.user.role === 'technician' && {
           skills: response.user.skills || [],
@@ -62,8 +68,7 @@ export const AuthProvider = ({ children }) => {
           rating: response.user.rating || 0,
           totalReviews: response.user.totalReviews || 0,
           completedJobs: response.user.completedJobs || 0,
-          subscriptionPlan: response.user.subscriptionPlan || 'basic',
-          status: response.user.status
+          subscriptionPlan: response.user.subscriptionPlan || 'basic'
         }),
         // 客户特定数据
         ...(response.user.role === 'customer' && {

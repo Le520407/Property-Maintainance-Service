@@ -38,13 +38,12 @@ const userSchema = new mongoose.Schema({
   },
   country: {
     type: String,
-    trim: true,
-    default: 'Singapore'
+    trim: true
   },
   role: {
     type: String,
-    enum: ['CUSTOMER', 'TECHNICIAN', 'ADMIN'],
-    default: 'CUSTOMER'
+    enum: ['customer', 'vendor', 'admin'],
+    default: 'customer'
   },
   status: {
     type: String,
@@ -66,7 +65,7 @@ const userSchema = new mongoose.Schema({
     default: 0
   },
   
-  // Technician specific fields
+  // Vendor/Technician specific fields
   skills: [{
     type: String,
     trim: true
@@ -97,6 +96,19 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['BASIC', 'PREMIUM', 'ENTERPRISE'],
     default: 'BASIC'
+  },
+  
+  // Admin specific fields
+  permissions: [{
+    type: String,
+    enum: ['manage_users', 'manage_content', 'manage_services', 'manage_payments', 'view_analytics', 'manage_system']
+  }],
+  lastLogin: {
+    type: Date
+  },
+  isSuper: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
@@ -113,6 +125,28 @@ userSchema.pre('save', async function(next) {
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Role checking methods
+userSchema.methods.isAdmin = function() {
+  return this.role === 'admin';
+};
+
+userSchema.methods.isVendor = function() {
+  return this.role === 'vendor';
+};
+
+userSchema.methods.isCustomer = function() {
+  return this.role === 'customer';
+};
+
+userSchema.methods.hasPermission = function(permission) {
+  return this.isAdmin() && (this.isSuper || this.permissions.includes(permission));
+};
+
+userSchema.methods.updateLastLogin = function() {
+  this.lastLogin = new Date();
+  return this.save();
 };
 
 // Add virtual id field
