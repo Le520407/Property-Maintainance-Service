@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
 
 const connectDB = require('./config/database');
 const authRoutes = require('./routes/auth');
@@ -35,6 +36,9 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// 静态文件服务 - 上传的图片
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -51,6 +55,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/cms', cmsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/upload', require('./routes/upload'));
 
 // Global error handler
 app.use((err, req, res, next) => {

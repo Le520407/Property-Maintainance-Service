@@ -12,6 +12,7 @@ import {
   Star,
   Clock
 } from 'lucide-react';
+import { api } from '../services/api';
 
 const BlogPage = () => {
   const [blogs, setBlogs] = useState([]);
@@ -48,11 +49,8 @@ const BlogPage = () => {
   useEffect(() => {
     const fetchFeaturedBlogs = async () => {
       try {
-        const response = await fetch('/api/cms/blogs/published?featured=true&limit=3');
-        if (response.ok) {
-          const data = await response.json();
-          setFeaturedBlogs(data.blogs);
-        }
+        const data = await api.cms.blogs.getPublished({ featured: 'true', limit: '3' });
+        setFeaturedBlogs(data.blogs);
       } catch (error) {
         console.error('Error fetching featured blogs:', error);
       }
@@ -66,21 +64,18 @@ const BlogPage = () => {
     const fetchBlogs = async () => {
       setLoading(true);
       try {
-        const params = new URLSearchParams({
+        const params = {
           page: currentPage.toString(),
           limit: '9'
-        });
+        };
         
         if (selectedCategory) {
-          params.append('category', selectedCategory);
+          params.category = selectedCategory;
         }
         
-        const response = await fetch(`/api/cms/blogs/published?${params.toString()}`);
-        if (response.ok) {
-          const data = await response.json();
-          setBlogs(data.blogs);
-          setTotalPages(data.totalPages);
-        }
+        const data = await api.cms.blogs.getPublished(params);
+        setBlogs(data.blogs);
+        setTotalPages(data.totalPages);
       } catch (error) {
         console.error('Error fetching blogs:', error);
       } finally {
