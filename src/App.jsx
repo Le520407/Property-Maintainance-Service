@@ -3,38 +3,39 @@ import { Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Layout Components
-import Header from './components/layout/Header';
-import Footer from './components/layout/Footer';
+import Header from './components/layout/Header.jsx';
+import Footer from './components/layout/Footer.jsx';
 
 // Page Components
-import HomePage from './pages/HomePage';
-import ServicesPage from './pages/ServicesPage';
-import ProductsPage from './pages/ProductsPage';
-import AboutPage from './pages/AboutPage';
-import ContactPage from './pages/ContactPage';
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
-import VendorRegisterPage from './pages/auth/VendorRegisterPage';
-import DashboardPage from './pages/dashboard/DashboardPage';
-import BookingPage from './pages/BookingPage';
-import ProductDetailPage from './pages/ProductDetailPage';
-import ServiceDetailPage from './pages/ServiceDetailPage';
-import CartPage from './pages/CartPage';
-import CheckoutPage from './pages/CheckoutPage';
-import ReferralPage from './pages/ReferralPage';
-import SubscriptionPage from './pages/SubscriptionPage';
-import BlogPage from './pages/BlogPage';
-import BlogDetailPage from './pages/BlogDetailPage';
-import FAQPage from './pages/FAQPage';
-import PricingPage from './pages/PricingPage';
-import BannerManagement from './pages/admin/BannerManagement';
-import BlogManagement from './pages/admin/BlogManagement';
-import FAQManagement from './pages/admin/FAQManagement';
-import PricingManagement from './pages/admin/PricingManagement';
-import UserManagement from './pages/admin/UserManagement';
-import NotFoundPage from './pages/NotFoundPage';
-import ApiTest from './components/ApiTest';
-import ProtectedRoute from './components/auth/ProtectedRoute';
+import HomePage from './pages/HomePage.jsx';
+import ServicesPage from './pages/ServicesPage.jsx';
+import ProductsPage from './pages/ProductsPage.jsx';
+import AboutPage from './pages/AboutPage.jsx';
+import ContactPage from './pages/ContactPage.jsx';
+import LoginPage from './pages/auth/LoginPage.jsx';
+import RegisterPage from './pages/auth/RegisterPage.jsx';
+import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
+import DashboardPage from './pages/dashboard/DashboardPage.jsx';
+import BookingPage from './pages/BookingPage.jsx';
+import ProductDetailPage from './pages/ProductDetailPage.jsx';
+import ServiceDetailPage from './pages/ServiceDetailPage.jsx';
+import CartPage from './pages/CartPage.jsx';
+import CheckoutPage from './pages/CheckoutPage.jsx';
+import ReferralPage from './pages/ReferralPage.jsx';
+import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
+import SubscriptionPage from './pages/SubscriptionPage.jsx';
+import BlogPage from './pages/BlogPage.jsx';
+import BlogDetailPage from './pages/BlogDetailPage.jsx';
+import FAQPage from './pages/FAQPage.jsx';
+import PricingPage from './pages/PricingPage.jsx';
+import BannerManagement from './pages/admin/BannerManagement.jsx';
+import BlogManagement from './pages/admin/BlogManagement.jsx';
+import FAQManagement from './pages/admin/FAQManagement.jsx';
+import PricingManagement from './pages/admin/PricingManagement.jsx';
+import UserManagement from './pages/admin/UserManagement.jsx';
+import NotFoundPage from './pages/NotFoundPage.jsx';
+import ApiTest from './components/ApiTest.jsx';
+import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
@@ -132,6 +133,11 @@ function App() {
                       <Route path="/cart" element={<CartPage />} />
                       <Route path="/checkout" element={<CheckoutPage />} />
                       <Route path="/referral" element={<ReferralPage />} />
+                      <Route path="/referral-dashboard" element={
+                        <ProtectedRoute>
+                          <ReferralDashboardPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/subscription" element={<SubscriptionPage />} />
                       <Route path="/api-test" element={<ApiTest />} />
                       <Route path="*" element={<NotFoundPage />} />

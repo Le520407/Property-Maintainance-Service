@@ -873,7 +873,6 @@ const UserManagement = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-              onClick={(e) => e.target === e.currentTarget && resetForm()}
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
@@ -961,7 +960,7 @@ const UserManagement = () => {
                         >
                           <option value="customer">Customer</option>
                           <option value="vendor">Vendor</option>
-                          {user?.isSuper && <option value="admin">Admin</option>}
+                          {user?.role === 'admin' && <option value="admin">Admin</option>}
                         </select>
                       </div>
 

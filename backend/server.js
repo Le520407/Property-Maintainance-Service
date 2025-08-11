@@ -12,6 +12,8 @@ const userRoutes = require('./routes/users');
 const serviceRoutes = require('./routes/services');
 const cmsRoutes = require('./routes/cms');
 const adminRoutes = require('./routes/admin');
+const referralRoutes = require('./routes/referral');
+const vendorRoutes = require('./routes/vendor');
 
 const app = express();
 
@@ -36,7 +38,7 @@ app.use(limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// 静态文件服务 - 上传的图片
+// Static file service - uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health check
@@ -55,6 +57,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/cms', cmsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/referral', referralRoutes);
+app.use('/api/vendor', vendorRoutes);
 app.use('/api/upload', require('./routes/upload'));
 
 // Global error handler

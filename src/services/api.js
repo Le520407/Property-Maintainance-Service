@@ -1,7 +1,7 @@
-// API 基础配置
+// API base configuration
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-// 请求拦截器
+// Request interceptor
 const request = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
   
@@ -17,7 +17,7 @@ const request = async (endpoint, options = {}) => {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     
-    // 处理非2xx响应
+    // Handle non-2xx responses
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
@@ -30,197 +30,399 @@ const request = async (endpoint, options = {}) => {
   }
 };
 
-// API 方法
+// API methods
 export const api = {
-  // 认证相关
+  // Authentication related
   auth: {
-    // 用户注册
+    // User registration
     register: (userData) => request('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     }),
     
-    // 技术员注册
+    // Technician registration
     registerTechnician: (technicianData) => request('/auth/register-technician', {
       method: 'POST',
       body: JSON.stringify(technicianData),
     }),
     
-    // 用户登录
+    // User login
     login: (credentials) => request('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     }),
     
-    // 获取当前用户
+    // Get current user
     getCurrentUser: () => request('/auth/me'),
     
-    // 刷新token
+    // Refresh token
     refreshToken: () => request('/auth/refresh', {
       method: 'POST',
     }),
     
-    // 登出
+    // Logout
     logout: () => request('/auth/logout', {
       method: 'POST',
     }),
     
-    // 忘记密码
+    // Forgot password
     forgotPassword: (email) => request('/auth/forgot-password', {
       method: 'POST',
       body: JSON.stringify({ email }),
     }),
     
-    // 重置密码
+    // Reset password
     resetPassword: (token, newPassword) => request('/auth/reset-password', {
       method: 'POST',
       body: JSON.stringify({ token, newPassword }),
     }),
   },
   
-  // 用户相关
+  // User related
   users: {
-    // 获取用户资料
+    // Get user profile
     getProfile: () => request('/users/profile'),
     
-    // 更新用户资料
+    // Update user profile
     updateProfile: (profileData) => request('/users/profile', {
       method: 'PUT',
       body: JSON.stringify(profileData),
     }),
     
-    // 修改密码
+    // Change password
     changePassword: (passwordData) => request('/users/password', {
       method: 'PUT',
       body: JSON.stringify(passwordData),
     }),
     
-    // 获取技术员列表
+    // Get technicians list
     getTechnicians: (params = {}) => {
       const queryString = new URLSearchParams(params).toString();
       return request(`/users/technicians?${queryString}`);
     },
     
-    // 获取技术员详情
+    // Get technician details
     getTechnician: (id) => request(`/users/technicians/${id}`),
     
-    // 更新技术员时薪
+    // Update technician hourly rate
     updateHourlyRate: (hourlyRate) => request('/users/technician/rate', {
       method: 'PUT',
       body: JSON.stringify({ hourlyRate }),
     }),
     
-    // 更新技术员技能
+    // Update technician skills
     updateSkills: (skills) => request('/users/technician/skills', {
       method: 'PUT',
       body: JSON.stringify({ skills }),
     }),
   },
   
-  // 管理功能
+  // Admin functions
   admin: {
-    // 获取所有用户
+    // Get all users
     getAllUsers: (params = {}) => {
       const queryString = new URLSearchParams(params).toString();
       return request(`/admin/users?${queryString}`);
     },
     
-    // 创建用户
+    // Create user
     createUser: (userData) => request('/admin/create-user', {
       method: 'POST',
       body: JSON.stringify(userData),
     }),
     
-    // 更新用户状态
+    // Update user status
     updateUserStatus: (userId, status) => request(`/admin/users/${userId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
     
-    // 更新用户角色
+    // Update user role
     updateUserRole: (userId, role) => request(`/admin/users/${userId}/role`, {
       method: 'PATCH',
       body: JSON.stringify({ role }),
     }),
     
-    // 删除用户
+    // Delete user
     deleteUser: (userId) => request(`/admin/users/${userId}`, {
       method: 'DELETE',
     }),
     
-    // 获取系统统计
+    // Get system statistics
     getStats: () => request('/admin/stats'),
+    
+    // Referral system management
+    referrals: {
+      // Get referral system overview
+      getOverview: () => request('/admin/referrals/overview'),
+      
+      // Get all referrals
+      getAll: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return request(`/admin/referrals?${queryString}`);
+      },
+      
+      // Get referral details
+      getDetails: (id) => request(`/admin/referrals/${id}`),
+      
+      // Get commission list
+      getCommissions: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return request(`/admin/commissions?${queryString}`);
+      },
+      
+      // Update commission status
+      updateCommissionStatus: (id, statusData) => request(`/admin/commissions/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify(statusData),
+      }),
+      
+      // Get payout requests
+      getPayouts: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return request(`/admin/payouts?${queryString}`);
+      },
+      
+      // Update payout status
+      updatePayoutStatus: (id, statusData) => request(`/admin/payouts/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify(statusData),
+      }),
+      
+      // Update referral tier
+      updateTier: (id, tier) => request(`/admin/referrals/${id}/tier`, {
+        method: 'PATCH',
+        body: JSON.stringify({ tier }),
+      }),
+      
+      // Toggle referral status
+      toggleStatus: (id) => request(`/admin/referrals/${id}/toggle-status`, {
+        method: 'PATCH',
+      }),
+    },
+    
+    // Vendor verification management
+    vendors: {
+      // Get pending vendors
+      getPending: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return request(`/admin/vendors/pending?${queryString}`);
+      },
+      
+      // Get all vendors
+      getAll: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return request(`/admin/vendors?${queryString}`);
+      },
+      
+      // Get vendor details
+      getDetails: (vendorId) => request(`/admin/vendors/${vendorId}`),
+      
+      // Verify/reject vendor
+      verify: (vendorId, verificationData) => request(`/admin/vendors/${vendorId}/verify`, {
+        method: 'PATCH',
+        body: JSON.stringify(verificationData),
+      }),
+      
+      // Suspend/resume vendor
+      suspend: (vendorId, suspendData) => request(`/admin/vendors/${vendorId}/suspend`, {
+        method: 'PATCH',
+        body: JSON.stringify(suspendData),
+      }),
+      
+      // Get verification statistics
+      getVerificationStats: () => request('/admin/vendors/stats/verification'),
+      
+      // Get vendor job records
+      getJobs: (vendorId, params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return request(`/admin/vendors/${vendorId}/jobs?${queryString}`);
+      },
+      
+      // Get vendor rating records
+      getRatings: (vendorId, params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return request(`/admin/vendors/${vendorId}/ratings?${queryString}`);
+      },
+    },
   },
   
-  // 服务相关
+  // Referral system - User side
+  referral: {
+    // Generate referral code
+    generateCode: () => request('/referral/generate-code', {
+      method: 'POST',
+    }),
+    
+    // Apply referral code
+    applyCode: (referralCode, userId) => request('/referral/apply-code', {
+      method: 'POST',
+      body: JSON.stringify({ referralCode, userId }),
+    }),
+    
+    // Get referral dashboard
+    getDashboard: () => request('/referral/dashboard'),
+    
+    // Process commission
+    processCommission: (commissionData) => request('/referral/process-commission', {
+      method: 'POST',
+      body: JSON.stringify(commissionData),
+    }),
+    
+    // Get commission history
+    getCommissions: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return request(`/referral/commissions?${queryString}`);
+    },
+    
+    // Request payout
+    requestPayout: (payoutData) => request('/referral/request-payout', {
+      method: 'POST',
+      body: JSON.stringify(payoutData),
+    }),
+    
+    // Get payout history
+    getPayouts: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return request(`/referral/payouts?${queryString}`);
+    },
+    
+    // Get share link
+    getShareLink: () => request('/referral/share-link'),
+  },
+  
+  // Service related
   services: {
-    // 获取服务列表
+    // Get services list
     getServices: () => request('/services'),
     
-    // 获取服务详情
+    // Get service details
     getService: (id) => request(`/services/${id}`),
   },
   
-  // CMS相关
+  // Vendor related
+  vendor: {
+    // Register vendor
+    register: (vendorData) => request('/vendor/register', {
+      method: 'POST',
+      body: JSON.stringify(vendorData),
+    }),
+    
+    // Get vendor profile
+    getProfile: () => request('/vendor/profile'),
+    
+    // Update vendor profile
+    updateProfile: (profileData) => request('/vendor/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    }),
+    
+    // Get vendor dashboard data
+    getDashboard: () => request('/vendor/dashboard'),
+    
+    // Get vendor job list
+    getJobs: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return request(`/vendor/jobs?${queryString}`);
+    },
+    
+    // Update job status
+    updateJobStatus: (jobId, statusData) => request(`/vendor/jobs/${jobId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(statusData),
+    }),
+    
+    // Accept/reject job assignment
+    respondToJob: (jobId, responseData) => request(`/vendor/jobs/${jobId}/respond`, {
+      method: 'PATCH',
+      body: JSON.stringify(responseData),
+    }),
+    
+    // Update job progress
+    updateJobProgress: (jobId, progressData) => request(`/vendor/jobs/${jobId}/progress`, {
+      method: 'PATCH',
+      body: JSON.stringify(progressData),
+    }),
+    
+    // Get vendor ratings
+    getRatings: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return request(`/vendor/ratings?${queryString}`);
+    },
+    
+    // Respond to rating
+    respondToRating: (ratingId, responseData) => request(`/vendor/ratings/${ratingId}/respond`, {
+      method: 'POST',
+      body: JSON.stringify(responseData),
+    }),
+    
+    // Get analytics data
+    getAnalytics: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return request(`/vendor/analytics?${queryString}`);
+    },
+  },
+
+  // CMS related
   cms: {
-    // 博客管理
+    // Blog management
     blogs: {
-      // 获取所有博客（管理员用）
+      // Get all blogs (for admin)
       getAll: () => request('/cms/blogs'),
       
-      // 获取已发布的博客（公共接口）
+      // Get published blogs (public API)
       getPublished: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return request(`/cms/blogs/published?${queryString}`);
       },
       
-      // 根据slug获取博客
+      // Get blog by slug
       getBySlug: (slug) => request(`/cms/blogs/slug/${slug}`),
       
-      // 创建博客
+      // Create blog
       create: (blogData) => request('/cms/blogs', {
         method: 'POST',
         body: JSON.stringify(blogData),
       }),
       
-      // 更新博客
+      // Update blog
       update: (id, blogData) => request(`/cms/blogs/${id}`, {
         method: 'PUT',
         body: JSON.stringify(blogData),
       }),
       
-      // 删除博客
+      // Delete blog
       delete: (id) => request(`/cms/blogs/${id}`, {
         method: 'DELETE',
       }),
     },
     
-    // FAQ管理
+    // FAQ management
     faqs: {
-      // 获取所有FAQ
+      // Get all FAQs
       getAll: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return request(`/cms/faqs?${queryString}`);
       },
       
-      // 创建FAQ
+      // Create FAQ
       create: (faqData) => request('/cms/faqs', {
         method: 'POST',
         body: JSON.stringify(faqData),
       }),
       
-      // 更新FAQ
+      // Update FAQ
       update: (id, faqData) => request(`/cms/faqs/${id}`, {
         method: 'PUT',
         body: JSON.stringify(faqData),
       }),
       
-      // 删除FAQ
+      // Delete FAQ
       delete: (id) => request(`/cms/faqs/${id}`, {
         method: 'DELETE',
       }),
       
-      // FAQ投票
+      // FAQ voting
       vote: (id, helpful) => request(`/cms/faqs/${id}/vote`, {
         method: 'POST',
         body: JSON.stringify({ helpful }),
@@ -229,24 +431,24 @@ export const api = {
   },
 };
 
-// 工具函数
+// Utility functions
 export const apiUtils = {
-  // 设置token
+  // Set token
   setToken: (token) => {
     localStorage.setItem('token', token);
   },
   
-  // 获取token
+  // Get token
   getToken: () => {
     return localStorage.getItem('token');
   },
   
-  // 移除token
+  // Remove token
   removeToken: () => {
     localStorage.removeItem('token');
   },
   
-  // 检查token是否有效
+  // Check if token is valid
   isTokenValid: (token) => {
     if (!token) return false;
     
@@ -258,10 +460,10 @@ export const apiUtils = {
     }
   },
   
-  // 处理API错误
+  // Handle API errors
   handleError: (error) => {
     if (error.message.includes('401')) {
-      // 未授权，清除token并重定向到登录页
+      // Unauthorized, clear token and redirect to login page
       apiUtils.removeToken();
       window.location.href = '/login';
     }
