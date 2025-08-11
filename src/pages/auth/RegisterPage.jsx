@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin, CheckCircle, Gift } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchParams] = useSearchParams();
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
 
@@ -17,17 +19,37 @@ const RegisterPage = () => {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors }
   } = useForm();
 
   const password = watch('password');
+
+  // Handle referral code from URL parameter
+  useEffect(() => {
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      setValue('referralCode', refCode.toUpperCase());
+    }
+  }, [searchParams, setValue]);
 
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
       const result = await registerUser(data);
       if (result.success) {
-        toast.success('Registration successful! Welcome to Swift Fix Pro');
+        // If registration is successful and there's a referral code, apply it
+        if (data.referralCode && result.user?.id) {
+          try {
+            await api.referral.applyCode(data.referralCode, result.user.id);
+            toast.success('Registration successful! Referral code applied successfully');
+          } catch (referralError) {
+            console.error('Referral application error:', referralError);
+            toast.success('Registration successful! Note: Referral code could not be applied');
+          }
+        } else {
+          toast.success('Registration successful! Welcome to Swift Fix Pro');
+        }
         navigate('/dashboard');
       } else {
         toast.error(result.error || 'Registration failed, please try again later');
@@ -163,6 +185,46 @@ const RegisterPage = () => {
                 {errors.address && (
                   <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>
                 )}
+              </div>
+
+              {/* Referral Code */}
+              <div>
+                <label htmlFor="referralCode" className="block text-sm font-medium text-gray-700 mb-2">
+                  Referral Code (Optional)
+                </label>
+                <div className="relative">
+                  <Gift size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    {...register('referralCode', {
+                      minLength: {
+                        value: 6,
+                        message: 'Referral code must be at least 6 characters'
+                      },
+                      maxLength: {
+                        value: 10,
+                        message: 'Referral code cannot exceed 10 characters'
+                      },
+                      pattern: {
+                        value: /^[A-Z0-9]+$/,
+                        message: 'Referral code must contain only uppercase letters and numbers'
+                      }
+                    })}
+                    type="text"
+                    id="referralCode"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                    placeholder="Enter referral code (optional)"
+                    style={{ textTransform: 'uppercase' }}
+                    onChange={(e) => {
+                      e.target.value = e.target.value.toUpperCase();
+                    }}
+                  />
+                </div>
+                {errors.referralCode && (
+                  <p className="mt-1 text-sm text-red-600">{errors.referralCode.message}</p>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  Have a referral code? Enter it to get special benefits!
+                </p>
               </div>
 
               {/* Password */}

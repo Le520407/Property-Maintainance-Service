@@ -61,7 +61,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Register technician
+// Register technician (simplified version - full registration should use /vendor/register)
 router.post('/register-technician', async (req, res) => {
   try {
     const { 

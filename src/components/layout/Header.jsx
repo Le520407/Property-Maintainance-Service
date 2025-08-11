@@ -133,6 +133,12 @@ const Header = () => {
                     {t('dashboard')}
                   </Link>
                   <Link
+                    to="/referral-dashboard"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Referral Dashboard
+                  </Link>
+                  <Link
                     to="/profile"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >

@@ -48,7 +48,7 @@ const requireRole = (roles) => {
   };
 };
 
-// 检查管理员权限
+// Check admin permissions
 const requireAdmin = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Authentication required' });
@@ -61,7 +61,7 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-// 检查超级管理员权限
+// Check super admin permissions
 const requireSuperAdmin = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Authentication required' });
@@ -74,7 +74,7 @@ const requireSuperAdmin = (req, res, next) => {
   next();
 };
 
-// 检查特定权限
+// Check specific permissions
 const requirePermission = (permission) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -91,7 +91,7 @@ const requirePermission = (permission) => {
   };
 };
 
-// 检查用户是否可以访问资源（本人或管理员）
+// Check if user can access resource (owner or admin)
 const requireOwnershipOrAdmin = (userIdField = 'userId') => {
   return (req, res, next) => {
     if (!req.user) {
@@ -118,6 +118,6 @@ module.exports = {
   requirePermission,
   requireOwnershipOrAdmin,
   
-  // 导出单个auth中间件作为默认
+  // Export single auth middleware as default
   auth: authenticateToken
 };
