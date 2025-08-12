@@ -42,6 +42,8 @@ export const AuthProvider = ({ children }) => {
       const userData = {
         id: response.user._id || response.user.id,
         name: response.user.fullName,
+        firstName: response.user.firstName,
+        lastName: response.user.lastName,
         email: response.user.email,
         role: response.user.role,
         status: response.user.status,
@@ -60,8 +62,8 @@ export const AuthProvider = ({ children }) => {
           permissions: response.user.permissions || [],
           isSuper: response.user.isSuper || false
         }),
-        // 技术员特定数据
-        ...(response.user.role === 'technician' && {
+        // 技术员/供应商特定数据
+        ...((['technician', 'vendor'].includes(response.user.role)) && {
           skills: response.user.skills || [],
           experience: response.user.experience || 0,
           hourlyRate: response.user.hourlyRate || 0,

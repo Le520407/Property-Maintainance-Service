@@ -23,6 +23,7 @@ import CartPage from './pages/CartPage.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import ReferralPage from './pages/ReferralPage.jsx';
 import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
+import VendorDashboardPage from './pages/vendor/VendorDashboardPage.jsx';
 import SubscriptionPage from './pages/SubscriptionPage.jsx';
 import BlogPage from './pages/BlogPage.jsx';
 import BlogDetailPage from './pages/BlogDetailPage.jsx';
@@ -136,6 +137,11 @@ function App() {
                       <Route path="/referral-dashboard" element={
                         <ProtectedRoute>
                           <ReferralDashboardPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/vendor-dashboard" element={
+                        <ProtectedRoute requiredRole="vendor">
+                          <VendorDashboardPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/subscription" element={<SubscriptionPage />} />

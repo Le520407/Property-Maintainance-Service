@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { ShoppingCart, User, Menu, X } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, Gift } from 'lucide-react';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -11,6 +11,22 @@ const Header = () => {
   const location = useLocation();
   const { t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const navigation = [
     { name: t('home'), href: '/' },
@@ -117,40 +133,95 @@ const Header = () => {
 
             {/* User Menu */}
             {user ? (
-              <div className="relative group">
-                <button className="flex items-center space-x-2 text-gray-700 hover:text-orange-600">
+              <div className="relative" ref={userMenuRef}>
+                <button 
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center space-x-2 text-gray-700 hover:text-orange-600"
+                >
                   <User className="w-5 h-5" />
                   <div className="hidden md:block">
                     <span className="block text-sm">{user.firstName || user.name}</span>
                     <span className="block text-xs text-gray-500 capitalize">{user.role}</span>
                   </div>
                 </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-[9999] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border border-gray-200">
-                  <Link
-                    to="/dashboard"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    {t('dashboard')}
-                  </Link>
-                  <Link
-                    to="/referral-dashboard"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Referral Dashboard
-                  </Link>
-                  <Link
-                    to="/profile"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    {t('profile')}
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    {t('logout')}
-                  </button>
-                </div>
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-2 z-[9999] border border-gray-200">
+                    {/* Membership Info */}
+                    <div className="px-4 py-3 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">
+                            {user.role === 'vendor' ? 'Membership' : user.role === 'admin' ? 'Access Level' : 'Account'}
+                          </p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {user.role === 'vendor' ? 'Professional Plan' : 
+                             user.role === 'admin' ? 'Administrator' : 
+                             'Standard Member'}
+                          </p>
+                        </div>
+                        <div className="flex items-center">
+                          <div className={`w-2 h-2 rounded-full mr-2 ${
+                            user.status === 'ACTIVE' ? 'bg-green-400' : 'bg-yellow-400'
+                          }`}></div>
+                          <span className={`text-xs font-medium ${
+                            user.status === 'ACTIVE' ? 'text-green-600' : 'text-yellow-600'
+                          }`}>
+                            {user.status === 'ACTIVE' ? 'Active' : 'Pending'}
+                          </span>
+                        </div>
+                      </div>
+                      {user.role === 'vendor' && user.status === 'ACTIVE' && (
+                        <p className="text-xs text-gray-500 mt-1">Next billing: Feb 15, 2025</p>
+                      )}
+                      {user.status === 'PENDING' && (
+                        <p className="text-xs text-yellow-600 mt-1">Account pending approval</p>
+                      )}
+                    </div>
+                    
+                    <Link
+                      to={user.role === 'vendor' ? '/vendor-dashboard' : '/dashboard'}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => {
+                        console.log('Dashboard link clicked. User role:', user.role);
+                        setIsUserMenuOpen(false);
+                      }}
+                    >
+                      {t('dashboard')} {user.role === 'vendor' && '(Vendor)'}
+                    </Link>
+                    {user.role !== 'vendor' && (
+                      <>
+                        <Link
+                          to="/dashboard?section=account&tab=profile"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => {
+                            console.log('Profile link clicked for role:', user.role);
+                            setIsUserMenuOpen(false);
+                          }}
+                        >
+                          <User className="w-4 h-4 inline mr-2" />
+                          {t('profile')}
+                        </Link>
+                        <Link
+                          to="/dashboard?section=referrals&tab=overview"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          <Gift className="w-4 h-4 inline mr-2" />
+                          Referrals
+                        </Link>
+                      </>
+                    )}
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsUserMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      {t('logout')}
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex items-center space-x-2">

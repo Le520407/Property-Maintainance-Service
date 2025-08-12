@@ -24,7 +24,7 @@ const LoginPage = () => {
       const result = await login(data.email, data.password);
       if (result.success) {
         toast.success('Login successful!');
-        navigate('/dashboard');
+        navigate('/');
       } else {
         toast.error(result.error || 'Login failed, please check your email and password');
       }
@@ -166,7 +166,7 @@ const LoginPage = () => {
                   // Demo login
                   login('demo@swiftfixpro.sg', 'password123');
                   toast.success('Demo login successful!');
-                  navigate('/dashboard');
+                  navigate('/');
                 }}
                 className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
               >

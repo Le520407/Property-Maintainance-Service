@@ -8,7 +8,8 @@
       "Bash(npm start)",
       "Bash(taskkill:*)",
       "Bash(npm install:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(tasklist:*)"
     ],
     "deny": []
   }
