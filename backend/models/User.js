@@ -109,6 +109,17 @@ const userSchema = new mongoose.Schema({
   isSuper: {
     type: Boolean,
     default: false
+  },
+  
+  // Referral fields
+  referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  referralCode: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

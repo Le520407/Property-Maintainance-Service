@@ -1,5 +1,6 @@
 const express = require('express');
 const User = require('../models/User');
+const { Referral } = require('../models/Referral');
 const { generateToken } = require('../utils/jwt');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -16,7 +17,8 @@ router.post('/register', async (req, res) => {
       phone, 
       city, 
       country, 
-      role = 'CUSTOMER' 
+      role = 'CUSTOMER',
+      referralCode
     } = req.body;
 
     // Validation
@@ -33,6 +35,16 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
+    // Validate referral code if provided (only for non-vendor users)
+    let referralData = null;
+    if (referralCode && role.toLowerCase() !== 'vendor') {
+      const referral = await Referral.findOne({ referralCode: referralCode.toUpperCase() });
+      if (!referral) {
+        return res.status(400).json({ message: 'Invalid referral code' });
+      }
+      referralData = referral;
+    }
+
     // Create user
     const user = await User.create({
       firstName,
@@ -43,8 +55,32 @@ router.post('/register', async (req, res) => {
       phone,
       city,
       country,
-      role: role.toLowerCase()
+      role: role.toLowerCase(),
+      referredBy: referralData ? referralData.referrer : null,
+      referralCode: (referralCode && role.toLowerCase() !== 'vendor') ? referralCode.toUpperCase() : null
     });
+
+    // Apply referral if valid
+    if (referralData) {
+      try {
+        // Add user to referral
+        referralData.referredUsers.push({
+          user: user._id,
+          tier: 1,
+          status: 'ACTIVE'
+        });
+        
+        referralData.totalReferrals += 1;
+        referralData.activeReferrals += 1;
+        
+        // Update tier if needed
+        await referralData.updateTier();
+        await referralData.save();
+      } catch (referralError) {
+        console.error('Error applying referral:', referralError);
+        // Don't fail registration if referral application fails
+      }
+    }
 
     // Generate token
     const token = generateToken({ userId: user._id, email: user.email, role: user.role });
@@ -52,7 +88,18 @@ router.post('/register', async (req, res) => {
     res.status(201).json({
       message: 'User registered successfully',
       token,
-      user
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        city: user.city,
+        country: user.country,
+        role: user.role,
+        status: user.status,
+        referredBy: user.referredBy
+      }
     });
 
   } catch (error) {

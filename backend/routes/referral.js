@@ -7,7 +7,9 @@ const { authenticateToken: auth } = require('../middleware/auth');
 // Generate or get user's referral code
 router.post('/generate-code', auth, async (req, res) => {
   try {
-    let referral = await Referral.findOne({ referrer: req.user.userId });
+    console.log('Generate referral code - req.user:', req.user);
+    console.log('req.user._id:', req.user._id);
+    let referral = await Referral.findOne({ referrer: req.user._id });
     
     if (!referral) {
       // Generate unique referral code
@@ -22,7 +24,7 @@ router.post('/generate-code', auth, async (req, res) => {
       
       referral = new Referral({
         referralCode,
-        referrer: req.user.userId
+        referrer: req.user._id
       });
       
       await referral.save();
@@ -118,7 +120,7 @@ router.post('/apply-code', async (req, res) => {
 // Get user's referral dashboard data
 router.get('/dashboard', auth, async (req, res) => {
   try {
-    const referral = await Referral.findOne({ referrer: req.user.userId })
+    const referral = await Referral.findOne({ referrer: req.user._id })
       .populate('referredUsers.user', 'firstName lastName email createdAt totalSpent');
     
     if (!referral) {
@@ -129,14 +131,14 @@ router.get('/dashboard', auth, async (req, res) => {
     }
     
     // Get commission statistics
-    const commissions = await Commission.find({ referrer: req.user.userId });
+    const commissions = await Commission.find({ referrer: req.user._id });
     const totalEarned = commissions.reduce((sum, comm) => sum + comm.commissionAmount, 0);
     const pendingEarnings = commissions
       .filter(comm => comm.status === 'PENDING' || comm.status === 'APPROVED')
       .reduce((sum, comm) => sum + comm.commissionAmount, 0);
     
     // Get recent commissions
-    const recentCommissions = await Commission.find({ referrer: req.user.userId })
+    const recentCommissions = await Commission.find({ referrer: req.user._id })
       .populate('referredUser', 'firstName lastName')
       .sort({ createdAt: -1 })
       .limit(10);
@@ -262,7 +264,7 @@ router.get('/commissions', auth, async (req, res) => {
   try {
     const { page = 1, limit = 10, status } = req.query;
     
-    const query = { referrer: req.user.userId };
+    const query = { referrer: req.user._id };
     if (status) {
       query.status = status;
     }
@@ -295,7 +297,7 @@ router.post('/request-payout', auth, async (req, res) => {
     
     // Get approved commissions
     const approvedCommissions = await Commission.find({
-      referrer: req.user.userId,
+      referrer: req.user._id,
       status: 'APPROVED'
     });
     
@@ -311,7 +313,7 @@ router.post('/request-payout', auth, async (req, res) => {
     
     // Create payout request
     const payout = new Payout({
-      referrer: req.user.userId,
+      referrer: req.user._id,
       commissions: approvedCommissions.map(c => c._id),
       totalAmount,
       paymentMethod,
@@ -347,12 +349,12 @@ router.get('/payouts', auth, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     
-    const payouts = await Payout.find({ referrer: req.user.userId })
+    const payouts = await Payout.find({ referrer: req.user._id })
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
     
-    const total = await Payout.countDocuments({ referrer: req.user.userId });
+    const total = await Payout.countDocuments({ referrer: req.user._id });
     
     res.json({
       payouts,
@@ -370,7 +372,7 @@ router.get('/payouts', auth, async (req, res) => {
 // Get referral link for sharing
 router.get('/share-link', auth, async (req, res) => {
   try {
-    const referral = await Referral.findOne({ referrer: req.user.userId });
+    const referral = await Referral.findOne({ referrer: req.user._id });
     
     if (!referral) {
       return res.status(404).json({ message: 'No referral code found' });

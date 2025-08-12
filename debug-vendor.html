@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vendor Dashboard Debug</title>
+</head>
+<body>
+    <h1>Vendor Dashboard Quick Access</h1>
+    <p>Use these links to test the vendor dashboard:</p>
+    
+    <h2>Direct Links:</h2>
+    <ul>
+        <li><a href="http://localhost:3000/vendor-dashboard" target="_blank">Vendor Dashboard</a></li>
+        <li><a href="http://localhost:3000/login" target="_blank">Login Page</a></li>
+        <li><a href="http://localhost:3000/" target="_blank">Homepage</a></li>
+    </ul>
+    
+    <h2>Test Credentials:</h2>
+    <p><strong>Email:</strong> vendor@test.com</p>
+    <p><strong>Password:</strong> password123</p>
+    
+    <h2>Testing Steps:</h2>
+    <ol>
+        <li>Login with the test credentials</li>
+        <li>Go to Homepage</li>
+        <li>Click on "Vendor 1" in the top-right corner</li>
+        <li>Click "Dashboard" - should go to /vendor-dashboard</li>
+        <li>Click "Profile" - should go to /vendor-dashboard with Profile tab active</li>
+        <li>In Profile tab, you should see: Service Packages, Price Lists, Availability</li>
+    </ol>
+    
+    <h2>Debug Console Messages:</h2>
+    <p>Open browser DevTools (F12) and check Console tab for debug messages:</p>
+    <ul>
+        <li>🔄 Fetching vendor dashboard data...</li>
+        <li>🔑 Token exists: true/false</li>
+        <li>👤 User info: {...}</li>
+        <li>Dashboard link clicked. User role: vendor</li>
+        <li>Profile link clicked for role: vendor</li>
+    </ul>
+</body>
+</html>
