@@ -17,25 +17,20 @@ const Footer = () => {
 
   const footerLinks = {
     services: [
-      { name: 'Plumbing Repair', href: '/services/plumbing' },
-      { name: 'Electrical Repair', href: '/services/electrical' },
-      { name: 'HVAC Repair', href: '/services/hvac' },
-      { name: 'Cleaning Services', href: '/services/cleaning' },
-      { name: 'Renovation Services', href: '/services/renovation' },
+      { name: 'All Services', href: '/services' },
+      { name: 'Products', href: '/products' },
+      { name: 'Pricing', href: '/pricing' },
     ],
     company: [
       { name: 'About Us', href: '/about' },
       { name: 'Contact Us', href: '/contact' },
-      { name: 'Careers', href: '/careers' },
-      { name: 'Privacy Policy', href: '/privacy' },
-      { name: 'Terms of Service', href: '/terms' },
+      { name: 'Announcements', href: '/announcements' },
+      { name: 'FAQ', href: '/faq' },
     ],
     support: [
-      { name: 'Help Center', href: '/help' },
-      { name: 'FAQ', href: '/faq' },
-      { name: 'Referral Program', href: '/referral' },
       { name: 'Vendor Registration', href: '/vendor-register' },
-      { name: 'Customer Support', href: '/support' },
+      { name: 'Login', href: '/login' },
+      { name: 'Register', href: '/register' },
     ],
   };
 
@@ -89,7 +84,7 @@ const Footer = () => {
 
           {/* Services */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">Our Services</h4>
+            <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
             <ul className="space-y-2">
               {footerLinks.services.map((link) => (
                 <li key={link.name}>
@@ -125,7 +120,7 @@ const Footer = () => {
 
           {/* Support & Newsletter */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">Support & Help</h4>
+            <h4 className="text-lg font-semibold mb-4">Get Started</h4>
             <ul className="space-y-2 mb-6">
               {footerLinks.support.map((link) => (
                 <li key={link.name}>

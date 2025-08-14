@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { ShoppingCart, User, Menu, X, Gift } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, Gift, MessageCircle } from 'lucide-react';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -32,7 +32,7 @@ const Header = () => {
     { name: t('home'), href: '/' },
     { name: t('services'), href: '/services' },
     { name: t('products'), href: '/products' },
-    { name: 'Blog', href: '/blog' },
+    { name: 'Announcements', href: '/announcements' },
     { name: 'FAQ', href: '/faq' },
     { name: t('about'), href: '/about' },
     { name: t('contact'), href: '/contact' },
@@ -40,12 +40,11 @@ const Header = () => {
 
   // Admin navigation items (only show for admin users)
   const adminNavigation = user?.role === 'admin' ? [
-    { name: 'CMS', href: '/dashboard', isDropdown: true, items: [
-      { name: 'Banner Management', href: '/admin/banners' },
-      { name: 'Blog Management', href: '/admin/blogs' },
-      { name: 'FAQ Management', href: '/admin/faqs' },
-      { name: 'Pricing Management', href: '/admin/pricing' },
+    { name: 'Admin Panel', href: '/dashboard', isDropdown: true, items: [
+      { name: 'Order Management', href: '/admin/orders' },
       { name: 'User Management', href: '/admin/users' },
+      { name: 'Announcement Management', href: '/admin/announcements' },
+      { name: 'FAQ Management', href: '/admin/faqs' },
     ]}
   ] : [];
 
@@ -121,6 +120,27 @@ const Header = () => {
 
           {/* Right Side */}
           <div className="flex items-center space-x-4">
+            {/* Request Service Button - Only show for customers or non-logged users */}
+            {(!user || user.role === 'customer') && (
+              <Link
+                to="/order-request"
+                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors font-medium"
+              >
+                Request Service
+              </Link>
+            )}
+            
+            {/* Messages - Only show for logged in customers and vendors */}
+            {user && (user.role === 'customer' || user.role === 'vendor') && (
+              <Link
+                to="/messages"
+                className="relative flex items-center text-gray-700 hover:text-orange-600"
+              >
+                <MessageCircle className="w-6 h-6" />
+                {/* You can add unread count badge here later */}
+              </Link>
+            )}
+            
             {/* Cart */}
             <Link to="/cart" className="relative flex items-center text-gray-700 hover:text-orange-600">
               <ShoppingCart className="w-6 h-6" />

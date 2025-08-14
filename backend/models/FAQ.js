@@ -51,7 +51,7 @@ const faqSchema = new mongoose.Schema({
 });
 
 // 创建索引
-faqSchema.index({ category: 1, isActive: 1, order: 1 });
+faqSchema.index({ category: 1, isActive: 1 });
 faqSchema.index({ keywords: 1 });
 
 module.exports = mongoose.model('FAQ', faqSchema);

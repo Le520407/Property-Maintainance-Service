@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
+import VendorPricingManagement from '../../components/vendor/VendorPricingManagement';
 
 const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
   const [activeSection, setActiveSection] = useState(initialSection || 'services');
@@ -1114,7 +1115,7 @@ const VendorDashboardPage = () => {
         </div>
       );
       if (activeTab === 'services') return <ProfileTab vendor={vendor} onUpdate={fetchDashboardData} activeSection="services" />;
-      if (activeTab === 'pricing') return <ProfileTab vendor={vendor} onUpdate={fetchDashboardData} activeSection="pricing" />;
+      if (activeTab === 'pricing') return <VendorPricingManagement />;
       if (activeTab === 'schedule') return <ProfileTab vendor={vendor} onUpdate={fetchDashboardData} activeSection="schedule" />;
     }
 

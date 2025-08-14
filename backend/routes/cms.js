@@ -7,6 +7,7 @@ const Banner = require('../models/Banner');
 const Blog = require('../models/Blog');
 const FAQ = require('../models/FAQ');
 const Pricing = require('../models/Pricing');
+const Announcement = require('../models/Announcement');
 const { auth } = require('../middleware/auth');
 
 // 确保上传目录存在
@@ -447,6 +448,79 @@ router.post('/upload/blog-image', auth, upload.single('image'), (req, res) => {
   } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({ message: 'Failed to upload image' });
+  }
+});
+
+// 公告管理路由
+// 获取已发布的公告（公共接口）
+router.get('/announcements/published', async (req, res) => {
+  try {
+    const { page = 1, limit = 10, category, targetAudience = 'all', priority } = req.query;
+    
+    // 构建查询条件
+    const filter = { 
+      isPublished: true,
+      $or: [
+        { expiresAt: { $exists: false } },
+        { expiresAt: { $gt: new Date() } }
+      ]
+    };
+    
+    // 目标受众过滤
+    if (targetAudience !== 'all') {
+      filter.$or = [
+        { targetAudience: 'all' },
+        { targetAudience: targetAudience }
+      ];
+    } else {
+      filter.targetAudience = { $in: ['all', 'customers'] };
+    }
+    
+    if (category) filter.category = category;
+    if (priority) filter.priority = priority;
+    
+    const announcements = await Announcement.find(filter)
+      .populate('authorId', 'firstName lastName')
+      .sort({ isPinned: -1, priority: -1, createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+    
+    const total = await Announcement.countDocuments(filter);
+    
+    res.json({
+      announcements,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      total
+    });
+  } catch (error) {
+    console.error('Get published announcements error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// 获取单个公告详情（公共接口）
+router.get('/announcements/:id', async (req, res) => {
+  try {
+    const announcement = await Announcement.findById(req.params.id)
+      .populate('authorId', 'firstName lastName');
+    
+    if (!announcement || !announcement.isPublished) {
+      return res.status(404).json({ message: 'Announcement not found' });
+    }
+    
+    // 检查是否已过期
+    if (announcement.expiresAt && announcement.expiresAt < new Date()) {
+      return res.status(404).json({ message: 'Announcement has expired' });
+    }
+    
+    // 增加浏览次数
+    await announcement.incrementViews();
+    
+    res.json(announcement);
+  } catch (error) {
+    console.error('Get announcement error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
