@@ -10,10 +10,14 @@ const connectDB = require('./config/database');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const serviceRoutes = require('./routes/services');
+const jobRoutes = require('./routes/jobs');
+const messageRoutes = require('./routes/messages');
+const paymentRoutes = require('./routes/payments');
 const cmsRoutes = require('./routes/cms');
 const adminRoutes = require('./routes/admin');
 const referralRoutes = require('./routes/referral');
 const vendorRoutes = require('./routes/vendor');
+const announcementRoutes = require('./routes/announcements');
 
 const app = express();
 
@@ -55,10 +59,14 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/services', serviceRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/payments', paymentRoutes);
 app.use('/api/cms', cmsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/referral', referralRoutes);
 app.use('/api/vendor', vendorRoutes);
+app.use('/api/announcements', announcementRoutes);
 app.use('/api/upload', require('./routes/upload'));
 
 // Global error handler

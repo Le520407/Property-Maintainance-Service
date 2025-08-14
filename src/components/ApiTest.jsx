@@ -22,26 +22,28 @@ const ApiTest = () => {
 
   const tests = [
     {
-      name: '健康检查',
+      name: 'Health Check',
       function: () => fetch('http://localhost:5000/api/health').then(res => res.json())
     },
     {
-      name: '用户注册',
-      function: () => api.auth.register({
-        firstName: 'Test',
-        lastName: 'User',
-        email: `test${Date.now()}@example.com`,
-        phone: '1234567890',
-        password: 'Password123',
-        role: 'customer'
+      name: 'Check Token',
+      function: () => Promise.resolve({
+        tokenExists: !!localStorage.getItem('token'),
+        tokenLength: localStorage.getItem('token')?.length || 0,
+        tokenPreview: localStorage.getItem('token')?.substring(0, 50) + '...'
       })
     },
     {
-      name: '用户登录',
-      function: () => api.auth.login({
-        email: 'test@example.com',
-        password: 'Password123'
-      })
+      name: 'Test Auth Me',
+      function: () => api.get('/auth/me')
+    },
+    {
+      name: 'Test Jobs Endpoint',
+      function: () => api.get('/jobs')
+    },
+    {
+      name: 'Test Admin Vendors',
+      function: () => api.get('/admin/vendors')
     }
   ];
 

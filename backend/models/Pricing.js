@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 // 价格方案数据模型
 const pricingSchema = new mongoose.Schema({
+  vendorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true
+  },
   name: {
     type: String,
     required: true,
@@ -28,7 +34,7 @@ const pricingSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['plumbing', 'electrical', 'cleaning', 'maintenance', 'subscription']
+    enum: ['plumbing', 'electrical', 'cleaning', 'maintenance', 'aircon', 'painting', 'carpentry', 'locksmith', 'appliance']
   },
   features: [{
     name: {
@@ -93,6 +99,7 @@ const pricingSchema = new mongoose.Schema({
 });
 
 // 创建索引
+pricingSchema.index({ vendorId: 1, category: 1, isActive: 1 });
 pricingSchema.index({ category: 1, isActive: 1, order: 1 });
 pricingSchema.index({ isPopular: 1, isActive: 1 });
 

@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Vendor = require('../models/Vendor');
 const Job = require('../models/Job');
 const Rating = require('../models/Rating');
+const Pricing = require('../models/Pricing');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
@@ -480,6 +481,80 @@ router.get('/analytics', authenticateToken, requireRole(['vendor']), async (req,
     });
   } catch (error) {
     console.error('Get vendor analytics error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// ==================== VENDOR PRICING ROUTES ====================
+
+// Get vendor's pricing plans
+router.get('/pricing', authenticateToken, requireRole(['vendor']), async (req, res) => {
+  try {
+    const pricingPlans = await Pricing.find({ vendorId: req.user._id })
+      .sort({ order: 1, createdAt: -1 });
+    
+    res.json(pricingPlans);
+  } catch (error) {
+    console.error('Get vendor pricing plans error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Create new pricing plan
+router.post('/pricing', authenticateToken, requireRole(['vendor']), async (req, res) => {
+  try {
+    const pricingData = {
+      ...req.body,
+      vendorId: req.user._id
+    };
+    
+    const pricing = new Pricing(pricingData);
+    await pricing.save();
+    
+    res.status(201).json(pricing);
+  } catch (error) {
+    console.error('Create pricing plan error:', error);
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Update pricing plan
+router.put('/pricing/:id', authenticateToken, requireRole(['vendor']), async (req, res) => {
+  try {
+    const pricing = await Pricing.findOne({ 
+      _id: req.params.id, 
+      vendorId: req.user._id 
+    });
+    
+    if (!pricing) {
+      return res.status(404).json({ message: 'Pricing plan not found' });
+    }
+    
+    Object.assign(pricing, req.body);
+    await pricing.save();
+    
+    res.json(pricing);
+  } catch (error) {
+    console.error('Update pricing plan error:', error);
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Delete pricing plan
+router.delete('/pricing/:id', authenticateToken, requireRole(['vendor']), async (req, res) => {
+  try {
+    const pricing = await Pricing.findOneAndDelete({ 
+      _id: req.params.id, 
+      vendorId: req.user._id 
+    });
+    
+    if (!pricing) {
+      return res.status(404).json({ message: 'Pricing plan not found' });
+    }
+    
+    res.json({ message: 'Pricing plan deleted successfully' });
+  } catch (error) {
+    console.error('Delete pricing plan error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

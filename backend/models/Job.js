@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const jobLocationSchema = new mongoose.Schema({
   address: {
@@ -80,7 +81,10 @@ const jobItemSchema = new mongoose.Schema({
 const jobStatusHistorySchema = new mongoose.Schema({
   status: {
     type: String,
-    enum: ['PENDING', 'ASSIGNED', 'ACCEPTED', 'REJECTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+    enum: [
+      'PENDING', 'ASSIGNED', 'IN_DISCUSSION', 'QUOTE_SENT', 'QUOTE_ACCEPTED', 
+      'PAID', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED'
+    ],
     required: true
   },
   timestamp: {
@@ -183,10 +187,42 @@ const jobSchema = new mongoose.Schema({
     min: 0
   },
   
+  // Customer's budget estimate
+  estimatedBudget: {
+    type: Number,
+    min: 0
+  },
+  
+  // Vendor's quote
+  vendorQuote: {
+    amount: {
+      type: Number,
+      min: 0
+    },
+    description: String,
+    validUntil: Date,
+    quotedAt: Date,
+    quotedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  },
+  
   // Status and Progress
   status: {
     type: String,
-    enum: ['PENDING', 'ASSIGNED', 'ACCEPTED', 'REJECTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+    enum: [
+      'PENDING',        // Customer submitted, waiting for admin review
+      'ASSIGNED',       // Admin assigned to vendor
+      'IN_DISCUSSION',  // Vendor contacted customer, discussing details/price
+      'QUOTE_SENT',     // Vendor sent price quote to customer
+      'QUOTE_ACCEPTED', // Customer accepted quote
+      'PAID',           // Customer paid, ready to start work
+      'IN_PROGRESS',    // Work is being done
+      'COMPLETED',      // Work finished
+      'CANCELLED',      // Job cancelled
+      'REJECTED'        // Vendor rejected assignment
+    ],
     default: 'PENDING'
   },
   statusHistory: [jobStatusHistorySchema],
@@ -262,6 +298,31 @@ const jobSchema = new mongoose.Schema({
     },
     paidAt: Date,
     transactionId: String
+  },
+
+  // Commission Structure (Platform Revenue)
+  commission: {
+    platformRate: {
+      type: Number,
+      default: 0.10, // 10% platform commission
+      min: 0,
+      max: 1
+    },
+    platformAmount: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    vendorAmount: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    commissionPaid: {
+      type: Boolean,
+      default: false
+    },
+    commissionPaidAt: Date
   },
   
   // Quality Assurance
@@ -340,8 +401,9 @@ jobSchema.index({ 'location.city': 1 });
 jobSchema.index({ createdAt: -1 });
 jobSchema.index({ 'requestedTimeSlot.date': 1 });
 
-// Generate unique job number
+// Generate unique job number and calculate commission
 jobSchema.pre('save', async function(next) {
+  // Generate job number if new
   if (!this.jobNumber) {
     const date = new Date();
     const year = date.getFullYear();
@@ -361,6 +423,13 @@ jobSchema.pre('save', async function(next) {
     
     this.jobNumber = `JOB-${year}${month}${day}-${String(sequence).padStart(4, '0')}`;
   }
+  
+  // Auto-calculate commission when totalAmount changes
+  if (this.isModified('totalAmount') && this.totalAmount > 0) {
+    this.commission.platformAmount = Math.round(this.totalAmount * this.commission.platformRate * 100) / 100;
+    this.commission.vendorAmount = Math.round((this.totalAmount - this.commission.platformAmount) * 100) / 100;
+  }
+  
   next();
 });
 
@@ -450,6 +519,14 @@ jobSchema.methods.calculateDuration = function() {
   return null;
 };
 
+jobSchema.methods.calculateCommission = function() {
+  if (this.totalAmount && this.commission.platformRate) {
+    this.commission.platformAmount = Math.round(this.totalAmount * this.commission.platformRate * 100) / 100;
+    this.commission.vendorAmount = Math.round((this.totalAmount - this.commission.platformAmount) * 100) / 100;
+  }
+  return this.save();
+};
+
 // Virtual for total duration
 jobSchema.virtual('actualDuration').get(function() {
   return this.calculateDuration();
@@ -467,6 +544,9 @@ jobSchema.virtual('isOverdue').get(function() {
   
   return now > scheduledEnd;
 });
+
+// Add pagination plugin
+jobSchema.plugin(mongoosePaginate);
 
 // Ensure virtual fields are serialized
 jobSchema.set('toJSON', {

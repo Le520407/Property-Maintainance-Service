@@ -237,9 +237,7 @@ const FAQPage = () => {
 
                         {/* FAQ列表 */}
                         <div className="divide-y">
-                          {categoryFaqs
-                            .sort((a, b) => a.order - b.order)
-                            .map((faq) => (
+                          {categoryFaqs.map((faq) => (
                               <div key={faq._id} className="px-6 py-4">
                                 <button
                                   onClick={() => toggleFaq(faq._id)}

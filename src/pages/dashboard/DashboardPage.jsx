@@ -327,18 +327,6 @@ const AdminDashboard = () => {
           <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
           <div className="space-y-3">
             <Link
-              to="/admin/banners"
-              className="w-full text-left p-3 border rounded-lg hover:bg-gray-50 block transition-colors"
-            >
-              Banner Management
-            </Link>
-            <Link
-              to="/admin/blogs"
-              className="w-full text-left p-3 border rounded-lg hover:bg-gray-50 block transition-colors"
-            >
-              Blog Management
-            </Link>
-            <Link
               to="/admin/faqs"
               className="w-full text-left p-3 border rounded-lg hover:bg-gray-50 block transition-colors"
             >

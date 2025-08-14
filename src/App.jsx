@@ -29,11 +29,14 @@ import BlogPage from './pages/BlogPage.jsx';
 import BlogDetailPage from './pages/BlogDetailPage.jsx';
 import FAQPage from './pages/FAQPage.jsx';
 import PricingPage from './pages/PricingPage.jsx';
-import BannerManagement from './pages/admin/BannerManagement.jsx';
-import BlogManagement from './pages/admin/BlogManagement.jsx';
+import AnnouncementManagement from './pages/admin/AnnouncementManagement.jsx';
+import AnnouncementsPage from './pages/AnnouncementsPage.jsx';
 import FAQManagement from './pages/admin/FAQManagement.jsx';
-import PricingManagement from './pages/admin/PricingManagement.jsx';
 import UserManagement from './pages/admin/UserManagement.jsx';
+import OrderManagement from './pages/admin/OrderManagement.jsx';
+import OrderSubmissionPage from './pages/OrderSubmissionPage.jsx';
+import MessagesPage from './pages/MessagesPage.jsx';
+import PaymentPage from './pages/PaymentPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import ApiTest from './components/ApiTest.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
@@ -59,22 +62,12 @@ function App() {
                   </main>
                 </div>
               } />
-              <Route path="/admin/banners" element={
+              <Route path="/admin/announcements" element={
                 <ProtectedRoute requiredRole="admin">
                   <div className="min-h-screen bg-gray-50">
                     <Header />
                     <main className="pt-16">
-                      <BannerManagement />
-                    </main>
-                  </div>
-                </ProtectedRoute>
-              } />
-              <Route path="/admin/blogs" element={
-                <ProtectedRoute requiredRole="admin">
-                  <div className="min-h-screen bg-gray-50">
-                    <Header />
-                    <main className="pt-16">
-                      <BlogManagement />
+                      <AnnouncementManagement />
                     </main>
                   </div>
                 </ProtectedRoute>
@@ -89,22 +82,22 @@ function App() {
                   </div>
                 </ProtectedRoute>
               } />
-              <Route path="/admin/pricing" element={
-                <ProtectedRoute requiredRole="admin">
-                  <div className="min-h-screen bg-gray-50">
-                    <Header />
-                    <main className="pt-16">
-                      <PricingManagement />
-                    </main>
-                  </div>
-                </ProtectedRoute>
-              } />
               <Route path="/admin/users" element={
                 <ProtectedRoute requiredRole="admin">
                   <div className="min-h-screen bg-gray-50">
                     <Header />
                     <main className="pt-16">
                       <UserManagement />
+                    </main>
+                  </div>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/orders" element={
+                <ProtectedRoute requiredRole="admin">
+                  <div className="min-h-screen bg-gray-50">
+                    <Header />
+                    <main className="pt-16">
+                      <OrderManagement />
                     </main>
                   </div>
                 </ProtectedRoute>
@@ -123,6 +116,7 @@ function App() {
                       <Route path="/products/:id" element={<ProductDetailPage />} />
                       <Route path="/blog" element={<BlogPage />} />
                       <Route path="/blog/:slug" element={<BlogDetailPage />} />
+                      <Route path="/announcements" element={<AnnouncementsPage />} />
                       <Route path="/faq" element={<FAQPage />} />
                       <Route path="/pricing" element={<PricingPage />} />
                       <Route path="/about" element={<AboutPage />} />
@@ -131,6 +125,21 @@ function App() {
                       <Route path="/register" element={<RegisterPage />} />
                       <Route path="/vendor-register" element={<VendorRegisterPage />} />
                       <Route path="/booking" element={<BookingPage />} />
+                      <Route path="/order-request" element={
+                        <ProtectedRoute>
+                          <OrderSubmissionPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/messages" element={
+                        <ProtectedRoute>
+                          <MessagesPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/payment/:jobId" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <PaymentPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/cart" element={<CartPage />} />
                       <Route path="/checkout" element={<CheckoutPage />} />
                       <Route path="/referral" element={<ReferralPage />} />

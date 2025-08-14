@@ -32,6 +32,24 @@ const request = async (endpoint, options = {}) => {
 
 // API methods
 export const api = {
+  // Generic HTTP methods
+  get: (endpoint) => request(endpoint),
+  post: (endpoint, data) => request(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  put: (endpoint, data) => request(endpoint, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  patch: (endpoint, data) => request(endpoint, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  delete: (endpoint) => request(endpoint, {
+    method: 'DELETE',
+  }),
+
   // Authentication related
   auth: {
     // User registration

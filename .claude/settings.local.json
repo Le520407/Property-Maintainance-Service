@@ -9,8 +9,10 @@
       "Bash(taskkill:*)",
       "Bash(npm install:*)",
       "Bash(git mv:*)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "Bash(rm:*)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }
