@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Star, 
@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 
 const ServiceDetailPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState('overview');
 
   // 服务列表数据 - 与ServicesPage.js保持一致
@@ -475,8 +476,22 @@ const ServiceDetailPage = () => {
   ];
 
   const handleBooking = () => {
-    toast.success('Redirecting to booking page...');
-    // Here would be actual booking redirection
+    // Pre-populate order form with service details
+    const serviceData = {
+      title: service.name,
+      category: service.category,
+      description: service.description,
+      estimatedBudget: service.price
+    };
+    
+    // Navigate to order submission with pre-filled data
+    navigate('/order-request', { 
+      state: { 
+        prefilledData: serviceData,
+        fromService: true,
+        serviceId: service.id
+      }
+    });
   };
 
   return (

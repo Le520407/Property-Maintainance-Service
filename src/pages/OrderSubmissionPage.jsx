@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   MapPin, 
@@ -20,6 +20,7 @@ import toast from 'react-hot-toast';
 
 const OrderSubmissionPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -58,6 +59,23 @@ const OrderSubmissionPage = () => {
     // Attachments
     images: []
   });
+
+  // Handle pre-filled data from service detail page
+  useEffect(() => {
+    if (location.state?.prefilledData) {
+      const { prefilledData } = location.state;
+      setFormData(prev => ({
+        ...prev,
+        title: prefilledData.title || prev.title,
+        category: prefilledData.category || prev.category,
+        description: prefilledData.description || prev.description,
+        estimatedBudget: prefilledData.estimatedBudget?.toString() || prev.estimatedBudget
+      }));
+      
+      // Show success message
+      toast.success(`Pre-filled with ${prefilledData.title} service details`);
+    }
+  }, [location.state]);
 
   const serviceCategories = [
     { value: 'plumbing', label: 'Plumbing', icon: '🔧' },
@@ -153,23 +171,29 @@ const OrderSubmissionPage = () => {
     try {
       setLoading(true);
       
+      // Generate a unique job number
+      const jobNumber = `JOB${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+      const budgetAmount = parseFloat(formData.estimatedBudget);
+      
       // Prepare the order data
       const orderData = {
         ...formData,
-        customerId: user._id,
-        estimatedBudget: parseFloat(formData.estimatedBudget),
-        totalAmount: parseFloat(formData.estimatedBudget), // Initial estimate
+        customerId: user.id || user._id,
+        jobNumber: jobNumber,
+        estimatedBudget: budgetAmount,
+        subtotal: budgetAmount,
+        totalAmount: budgetAmount, // Initial estimate
         items: [{
           serviceName: formData.title,
           category: formData.category,
           description: formData.description,
           quantity: 1,
-          unitPrice: parseFloat(formData.estimatedBudget),
-          totalPrice: parseFloat(formData.estimatedBudget)
+          unitPrice: budgetAmount,
+          totalPrice: budgetAmount
         }]
       };
 
-      const response = await api.post('/jobs', orderData);
+      const response = await api.jobs.create(orderData);
       
       toast.success('Order submitted successfully! 🎉');
       toast.success('Our admin will review and assign it to the best vendor in your area.');
@@ -184,7 +208,20 @@ const OrderSubmissionPage = () => {
       
     } catch (error) {
       console.error('Order submission error:', error);
-      toast.error(error.response?.data?.message || 'Failed to submit order');
+      
+      // More detailed error handling
+      let errorMessage = 'Failed to submit order';
+      if (error.message.includes('401')) {
+        errorMessage = 'Authentication required. Please log in again.';
+      } else if (error.message.includes('400')) {
+        errorMessage = error.response?.data?.message || 'Invalid request data';
+      } else if (error.message.includes('500')) {
+        errorMessage = 'Server error. Please try again later.';
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
