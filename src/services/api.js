@@ -5,6 +5,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api
 const request = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
   
+  
   const config = {
     headers: {
       'Content-Type': 'application/json',
@@ -316,6 +317,36 @@ export const api = {
     
     // Get service details
     getService: (id) => request(`/services/${id}`),
+  },
+
+  // Job/Order related
+  jobs: {
+    // Create job/order
+    create: (jobData) => request('/jobs', {
+      method: 'POST',
+      body: JSON.stringify(jobData),
+    }),
+    
+    // Get user's jobs
+    getUserJobs: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return request(`/jobs/user?${queryString}`);
+    },
+    
+    // Get job details
+    getJob: (id) => request(`/jobs/${id}`),
+    
+    // Update job
+    updateJob: (id, jobData) => request(`/jobs/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(jobData),
+    }),
+    
+    // Cancel job
+    cancelJob: (id, reason) => request(`/jobs/${id}/cancel`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    }),
   },
   
   // Vendor related

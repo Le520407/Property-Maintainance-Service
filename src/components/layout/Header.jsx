@@ -120,15 +120,6 @@ const Header = () => {
 
           {/* Right Side */}
           <div className="flex items-center space-x-4">
-            {/* Request Service Button - Only show for customers or non-logged users */}
-            {(!user || user.role === 'customer') && (
-              <Link
-                to="/order-request"
-                className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors font-medium"
-              >
-                Request Service
-              </Link>
-            )}
             
             {/* Messages - Only show for logged in customers and vendors */}
             {user && (user.role === 'customer' || user.role === 'vendor') && (

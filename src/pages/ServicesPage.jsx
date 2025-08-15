@@ -118,10 +118,23 @@ const ServicesPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
-              className="text-xl text-orange-100 max-w-2xl mx-auto"
+              className="text-xl text-orange-100 max-w-2xl mx-auto mb-8"
             >
               Professional property maintenance services tailored to your needs
             </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
+              className="text-center"
+            >
+              <Link
+                to="/order-request"
+                className="bg-white text-orange-600 px-8 py-3 rounded-lg hover:bg-gray-100 transition-colors font-semibold text-lg shadow-lg"
+              >
+                Request Service
+              </Link>
+            </motion.div>
           </div>
         </div>
       </section>
