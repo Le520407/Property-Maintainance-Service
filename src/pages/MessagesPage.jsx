@@ -6,16 +6,19 @@ import {
   Users, 
   Bell,
   Settings,
-  HelpCircle
+  HelpCircle,
+  CreditCard
 } from 'lucide-react';
 import ConversationsList from '../components/communication/ConversationsList';
 import JobChat from '../components/communication/JobChat';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
 
 const MessagesPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [selectedJob, setSelectedJob] = useState(null);
   const [isMobileView, setIsMobileView] = useState(false);
   const [showConversations, setShowConversations] = useState(true);
@@ -125,7 +128,7 @@ const MessagesPage = () => {
   // Mobile layout
   if (isMobileView) {
     return (
-      <div className="h-[calc(100vh-4rem)] bg-white">
+      <div className="h-[calc(100vh-7rem)] mt-28 bg-white">
         {showConversations ? (
           <ConversationsList
             onSelectConversation={handleSelectConversation}
@@ -141,17 +144,29 @@ const MessagesPage = () => {
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <div>
+              <div className="flex-1">
                 <h1 className="text-lg font-semibold">{selectedJob.title}</h1>
                 <p className="text-sm text-gray-600">{selectedJob.jobNumber}</p>
               </div>
+              
+              {/* Pay Now Button - Mobile */}
+              {user?.role === 'customer' && selectedJob.status === 'QUOTE_ACCEPTED' && (
+                <button
+                  onClick={() => navigate(`/payment/${selectedJob._id}`)}
+                  className="flex items-center px-3 py-1 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors ml-2"
+                >
+                  Pay Now
+                </button>
+              )}
             </div>
             
             {/* Chat */}
             <div className="flex-1">
               <JobChat
+                key={selectedJob._id}
                 job={selectedJob}
                 onJobUpdate={handleJobUpdate}
+                hideHeader={true}
               />
             </div>
           </div>
@@ -162,7 +177,7 @@ const MessagesPage = () => {
 
   // Desktop layout
   return (
-    <div className="h-[calc(100vh-4rem)] bg-gray-100 flex">
+    <div className="h-[calc(100vh-7rem)] mt-28 bg-gray-100 flex">
       {/* Sidebar - Conversations List */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
         <ConversationsList
@@ -201,6 +216,17 @@ const MessagesPage = () => {
                     {selectedJob.status.replace('_', ' ')}
                   </span>
                   
+                  {/* Pay Now Button - Desktop */}
+                  {user?.role === 'customer' && selectedJob.status === 'QUOTE_ACCEPTED' && (
+                    <button
+                      onClick={() => navigate(`/payment/${selectedJob._id}`)}
+                      className="flex items-center px-3 py-1 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors"
+                    >
+                      <CreditCard className="w-3 h-3 mr-1" />
+                      Pay Now
+                    </button>
+                  )}
+                  
                   <button className="p-2 text-gray-400 hover:text-gray-600">
                     <Settings className="w-5 h-5" />
                   </button>
@@ -211,8 +237,10 @@ const MessagesPage = () => {
             {/* Chat Component */}
             <div className="flex-1 bg-white">
               <JobChat
+                key={selectedJob._id}
                 job={selectedJob}
                 onJobUpdate={handleJobUpdate}
+                hideHeader={true}
               />
             </div>
           </>

@@ -23,7 +23,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-const JobChat = ({ job, onClose, onJobUpdate }) => {
+const JobChat = ({ job, onClose, onJobUpdate, hideHeader = false }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
@@ -32,6 +32,7 @@ const JobChat = ({ job, onClose, onJobUpdate }) => {
   const [sending, setSending] = useState(false);
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
+  const [previousMessagesLength, setPreviousMessagesLength] = useState(0);
   const messagesEndRef = useRef(null);
 
   // Quote form state
@@ -61,14 +62,33 @@ const JobChat = ({ job, onClose, onJobUpdate }) => {
     : { ...job.vendorId, role: 'vendor' };
 
   useEffect(() => {
+    setPreviousMessagesLength(0); // Reset message count when switching conversations
     fetchMessages();
     const interval = setInterval(fetchMessages, 10000); // Poll every 10 seconds
     return () => clearInterval(interval);
   }, [job._id]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    // Only auto-scroll when there are NEW messages AND we have a previous count
+    // This prevents scrolling on initial load or conversation switch
+    if (messages.length > previousMessagesLength && previousMessagesLength > 0) {
+      const messagesContainer = messagesEndRef.current?.parentElement;
+      if (messagesContainer) {
+        const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
+        
+        // Only scroll if user is very close to the bottom
+        if (isNearBottom) {
+          setTimeout(() => scrollToBottom(), 50);
+        }
+      }
+    }
+    
+    // Update the previous message count (but don't track on first load)
+    if (messages.length > 0) {
+      setPreviousMessagesLength(messages.length);
+    }
+  }, [messages, previousMessagesLength]);
 
   const fetchMessages = async () => {
     try {
@@ -163,6 +183,9 @@ const JobChat = ({ job, onClose, onJobUpdate }) => {
           onJobUpdate({ ...job, status: 'QUOTE_SENT' });
         }
         
+        // Force scroll to bottom for sent messages
+        setTimeout(() => scrollToBottom(), 100);
+        
         toast.success('Message sent!');
       } catch (apiError) {
         console.log('Messages API not available, simulating message send');
@@ -187,6 +210,9 @@ const JobChat = ({ job, onClose, onJobUpdate }) => {
         if (messageData.messageType === 'QUOTE' && onJobUpdate) {
           onJobUpdate({ ...job, status: 'QUOTE_SENT' });
         }
+        
+        // Force scroll to bottom for sent messages
+        setTimeout(() => scrollToBottom(), 100);
         
         toast.success('Message sent! (Demo mode)');
       }
@@ -638,43 +664,45 @@ const JobChat = ({ job, onClose, onJobUpdate }) => {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Chat Header */}
-      <div className="border-b border-gray-200 p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">
-              {job.title} ({job.jobNumber})
-            </h2>
-            <div className="text-sm text-gray-600">
-              Chatting with {otherParty.firstName} {otherParty.lastName}
-              <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                {otherParty.role}
+      {/* Chat Header - Only show if not hidden */}
+      {!hideHeader && (
+        <div className="border-b border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">
+                {job.title} ({job.jobNumber})
+              </h2>
+              <div className="text-sm text-gray-600">
+                Chatting with {otherParty.firstName} {otherParty.lastName}
+                <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
+                  {otherParty.role}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                job.status === 'QUOTE_SENT' ? 'bg-blue-100 text-blue-800' :
+                job.status === 'QUOTE_ACCEPTED' ? 'bg-green-100 text-green-800' :
+                job.status === 'IN_DISCUSSION' ? 'bg-purple-100 text-purple-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {job.status.replace('_', ' ')}
               </span>
+              
+              {/* Pay Now Button - Only show for customers when quote is accepted */}
+              {user?.role === 'customer' && job.status === 'QUOTE_ACCEPTED' && (
+                <button
+                  onClick={() => navigate(`/payment/${job._id}`)}
+                  className="flex items-center px-3 py-1 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors"
+                >
+                  <CreditCard className="w-3 h-3 mr-1" />
+                  Pay Now
+                </button>
+              )}
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              job.status === 'QUOTE_SENT' ? 'bg-blue-100 text-blue-800' :
-              job.status === 'QUOTE_ACCEPTED' ? 'bg-green-100 text-green-800' :
-              job.status === 'IN_DISCUSSION' ? 'bg-purple-100 text-purple-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
-              {job.status.replace('_', ' ')}
-            </span>
-            
-            {/* Pay Now Button - Only show for customers when quote is accepted */}
-            {user?.role === 'customer' && job.status === 'QUOTE_ACCEPTED' && (
-              <button
-                onClick={() => navigate(`/payment/${job._id}`)}
-                className="flex items-center px-3 py-1 bg-orange-600 text-white rounded-lg text-sm hover:bg-orange-700 transition-colors"
-              >
-                <CreditCard className="w-3 h-3 mr-1" />
-                Pay Now
-              </button>
-            )}
-          </div>
         </div>
-      </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
