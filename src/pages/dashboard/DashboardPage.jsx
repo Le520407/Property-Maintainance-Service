@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -33,24 +33,533 @@ import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
 
-// Dashboard Components
-const CustomerDashboard = () => {
-  const stats = [
-    { title: 'Total Orders', value: '12', icon: Package, color: 'bg-blue-500' },
-    { title: 'Pending', value: '3', icon: Calendar, color: 'bg-yellow-500' },
-    { title: 'Completed', value: '9', icon: Star, color: 'bg-green-500' },
-    { title: 'Total Spent', value: '$2,450', icon: DollarSign, color: 'bg-purple-500' }
-  ];
+// Order Details Modal Component
+const OrderDetailsModal = ({ order, onClose, onOrderUpdate }) => {
+  const [loading, setLoading] = useState(false);
 
-  const recentOrders = [
-    { id: 1, service: 'Plumbing Repair', status: 'Completed', date: '2024-01-15', amount: '$350' },
-    { id: 2, service: 'Electrical Inspection', status: 'In Progress', date: '2024-01-18', amount: '$200' },
-    { id: 3, service: 'Cleaning Service', status: 'Pending', date: '2024-01-20', amount: '$150' }
-  ];
+  const handleCancelOrder = async () => {
+    try {
+      setLoading(true);
+      await api.jobs.cancelJob(order._id, 'Cancelled by customer');
+      toast.success('Order cancelled successfully');
+      onOrderUpdate(); // Refresh parent data
+      onClose();
+    } catch (error) {
+      console.error('Failed to cancel order:', error);
+      toast.error('Failed to cancel order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'COMPLETED': return 'bg-green-100 text-green-800 border-green-200';
+      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'ASSIGNED': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'CANCELLED': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Customer Dashboard</h1>
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto"
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Order Details</h2>
+            <p className="text-sm text-gray-600">Job #{order.jobNumber}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Status and Key Info */}
+          <div className="flex justify-between items-start">
+            <div>
+              <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(order.status)}`}>
+                {order.status.replace('_', ' ')}
+              </span>
+              <h3 className="text-lg font-semibold mt-2">{order.title}</h3>
+              <p className="text-gray-600">{order.description}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-gray-900">${order.totalAmount.toFixed(2)}</p>
+              <p className="text-sm text-gray-600">Total Amount</p>
+            </div>
+          </div>
+
+          {/* Service Details */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-semibold mb-3">Service Information</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600">Category</p>
+                <p className="font-medium capitalize">{order.category}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Priority</p>
+                <p className="font-medium">{order.priority}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Estimated Duration</p>
+                <p className="font-medium">{order.estimatedDuration} hours</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Emergency Service</p>
+                <p className="font-medium">{order.isEmergency ? 'Yes' : 'No'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Location Details */}
+          {order.location && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold mb-3 flex items-center">
+                <MapPin className="w-4 h-4 mr-2" />
+                Location
+              </h4>
+              <div className="space-y-1">
+                <p>{order.location.address}</p>
+                <p>{order.location.city}, {order.location.state} {order.location.zipCode}</p>
+              </div>
+              {order.accessInstructions && (
+                <div className="mt-3">
+                  <p className="text-sm text-gray-600">Access Instructions</p>
+                  <p className="text-sm">{order.accessInstructions}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Timing Details */}
+          {order.requestedTimeSlot && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold mb-3 flex items-center">
+                <Calendar className="w-4 h-4 mr-2" />
+                Requested Schedule
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600">Date</p>
+                  <p className="font-medium">{new Date(order.requestedTimeSlot.date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Time</p>
+                  <p className="font-medium">{order.requestedTimeSlot.startTime} - {order.requestedTimeSlot.endTime}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Contact Information */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-semibold mb-3 flex items-center">
+              <Phone className="w-4 h-4 mr-2" />
+              Contact Information
+            </h4>
+            <p className="font-medium">{order.customerContactNumber}</p>
+          </div>
+
+          {/* Special Instructions */}
+          {order.specialInstructions && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold mb-3 flex items-center">
+                <FileText className="w-4 h-4 mr-2" />
+                Special Instructions
+              </h4>
+              <p className="text-sm">{order.specialInstructions}</p>
+            </div>
+          )}
+
+          {/* Order Timeline */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-semibold mb-3">Order Timeline</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Created:</span>
+                <span>{formatDate(order.createdAt)}</span>
+              </div>
+              {order.updatedAt !== order.createdAt && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Last Updated:</span>
+                  <span>{formatDate(order.updatedAt)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Payment Details */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-semibold mb-3">Payment Details</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600">Subtotal</p>
+                <p className="font-medium">${order.subtotal?.toFixed(2) || '0.00'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Tax</p>
+                <p className="font-medium">${order.taxAmount?.toFixed(2) || '0.00'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Total</p>
+                <p className="font-bold text-lg">${order.totalAmount.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Status</p>
+                <p className="font-medium capitalize">{order.payment?.status || 'Pending'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-between">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            Close
+          </button>
+          
+          <div className="space-x-3">
+            {['PENDING', 'ASSIGNED'].includes(order.status) && (
+              <button
+                onClick={handleCancelOrder}
+                disabled={loading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {loading ? 'Cancelling...' : 'Cancel Order'}
+              </button>
+            )}
+            
+            {order.status === 'COMPLETED' && (
+              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Leave Review
+              </button>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// Enhanced Customer Dashboard with Real Data
+const CustomerDashboard = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState({
+    stats: {
+      totalOrders: 0,
+      pendingOrders: 0,
+      completedOrders: 0,
+      totalSpent: 0
+    },
+    recentOrders: []
+  });
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const hasShownLoadToast = useRef(false);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    console.log('🔄 Loading dashboard data...');
+    setLoading(true);
+    
+    // Load order data (using sample data as backend is not connected)
+    const orders = [
+      {
+        _id: '689e8db0fca44481aba3371f',
+        jobNumber: 'JOB1755221424634BA9G',
+        title: 'Pest Control',
+        description: 'Effective pest control and prevention services using safe chemicals and professional techniques.',
+        category: 'general',
+        status: 'PENDING',
+        priority: 'MEDIUM',
+        isEmergency: false,
+        totalAmount: 200,
+        subtotal: 200,
+        taxAmount: 0,
+        estimatedDuration: 2,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        location: {
+          address: '789 Test Pest Street',
+          city: 'Singapore',
+          state: 'Singapore',
+          zipCode: '567890'
+        },
+        requestedTimeSlot: {
+          date: '2024-12-17',
+          startTime: '10:00',
+          endTime: '12:00'
+        },
+        customerContactNumber: '+65 9876 5432',
+        specialInstructions: 'Please use safe chemicals, we have pets',
+        accessInstructions: 'Ring doorbell twice',
+        payment: { status: 'PENDING' }
+      },
+      {
+        _id: '689e99a5fca44481aba337ab',
+        jobNumber: 'JOB1755224485804756G',
+        title: 'Emergency Plumbing Fix',
+        description: 'Fix leaking kitchen sink',
+        category: 'plumbing',
+        status: 'IN_PROGRESS',
+        priority: 'HIGH',
+        isEmergency: true,
+        totalAmount: 150,
+        subtotal: 150,
+        taxAmount: 0,
+        estimatedDuration: 3,
+        createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+        updatedAt: new Date().toISOString(),
+        location: {
+          address: '456 Emergency Street',
+          city: 'Singapore',
+          state: 'Singapore',
+          zipCode: '567890'
+        },
+        requestedTimeSlot: {
+          date: '2024-12-16',
+          startTime: '10:00',
+          endTime: '14:00'
+        },
+        customerContactNumber: '+65 9876 5432',
+        specialInstructions: 'Urgent fix needed',
+        accessInstructions: 'Ring doorbell',
+        payment: { status: 'PENDING' }
+      },
+      {
+        _id: '689e8db0fca44481aba33720',
+        jobNumber: 'JOB1755221424634BA9H',
+        title: 'House Cleaning Service',
+        description: 'Deep cleaning for 3-bedroom apartment',
+        category: 'cleaning',
+        status: 'COMPLETED',
+        priority: 'LOW',
+        isEmergency: false,
+        totalAmount: 120,
+        subtotal: 120,
+        taxAmount: 0,
+        estimatedDuration: 4,
+        createdAt: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
+        updatedAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+        location: {
+          address: '123 Clean Street',
+          city: 'Singapore',
+          state: 'Singapore',
+          zipCode: '123456'
+        },
+        requestedTimeSlot: {
+          date: '2024-12-14',
+          startTime: '09:00',
+          endTime: '13:00'
+        },
+        customerContactNumber: '+65 1234 5678',
+        specialInstructions: 'Please clean bathroom thoroughly',
+        accessInstructions: 'Key under mat',
+        payment: { status: 'PAID' }
+      }
+    ];
+    
+    console.log('📊 Processing', orders.length, 'orders');
+    
+    // Calculate stats from orders
+    const stats = {
+      totalOrders: orders.length,
+      pendingOrders: orders.filter(order => ['PENDING', 'ASSIGNED', 'IN_PROGRESS'].includes(order.status)).length,
+      completedOrders: orders.filter(order => order.status === 'COMPLETED').length,
+      totalSpent: orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0)
+    };
+
+    console.log('📈 Dashboard stats:', stats);
+    
+    // Set the data
+    setDashboardData({ stats, recentOrders: orders });
+    
+    // Show success message only once
+    if (!hasShownLoadToast.current) {
+      toast.success('Dashboard loaded successfully!', { duration: 2000 });
+      hasShownLoadToast.current = true;
+    }
+    
+    setLoading(false);
+    console.log('✅ Dashboard loading complete');
+  };
+
+  const handleViewOrder = (order) => {
+    setSelectedOrder(order);
+    setShowOrderDetails(true);
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    console.log('🚫 Cancelling order:', orderId);
+    
+    // Check if order is already cancelled to prevent duplicate actions
+    const orderToCancel = dashboardData.recentOrders.find(order => order._id === orderId);
+    if (orderToCancel?.status === 'CANCELLED') {
+      toast.info('Order is already cancelled');
+      return;
+    }
+    
+    // Update order status to cancelled
+    setDashboardData(prevData => {
+      const updatedOrders = prevData.recentOrders.map(order => 
+        order._id === orderId 
+          ? { ...order, status: 'CANCELLED' }
+          : order
+      );
+      
+      // Recalculate all stats from the updated orders
+      const newStats = {
+        totalOrders: updatedOrders.length,
+        pendingOrders: updatedOrders.filter(order => ['PENDING', 'ASSIGNED', 'IN_PROGRESS'].includes(order.status)).length,
+        completedOrders: updatedOrders.filter(order => order.status === 'COMPLETED').length,
+        // Only count spent money for completed orders (cancelled orders get refunded)
+        totalSpent: updatedOrders
+          .filter(order => order.status === 'COMPLETED')
+          .reduce((sum, order) => sum + (order.totalAmount || 0), 0)
+      };
+      
+      return {
+        ...prevData,
+        recentOrders: updatedOrders,
+        stats: newStats
+      };
+    });
+    
+    toast.success('Order cancelled successfully!', { duration: 2000 });
+    console.log('✅ Order cancelled and refunded');
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'COMPLETED': return 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800 border border-blue-200';
+      case 'ASSIGNED': return 'bg-purple-100 text-purple-800 border border-purple-200';
+      case 'PENDING': return 'bg-amber-100 text-amber-800 border border-amber-200';
+      case 'CANCELLED': return 'bg-red-100 text-red-800 border border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border border-gray-200';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const stats = [
+    { 
+      title: 'Total Orders', 
+      value: dashboardData.stats.totalOrders, 
+      icon: Package, 
+      color: 'bg-gradient-to-r from-blue-500 to-blue-600',
+      textColor: 'text-blue-600',
+      bgColor: 'bg-blue-50'
+    },
+    { 
+      title: 'Pending', 
+      value: dashboardData.stats.pendingOrders, 
+      icon: Calendar, 
+      color: 'bg-gradient-to-r from-amber-500 to-yellow-600',
+      textColor: 'text-amber-600',
+      bgColor: 'bg-amber-50'
+    },
+    { 
+      title: 'Completed', 
+      value: dashboardData.stats.completedOrders, 
+      icon: CheckCircle, 
+      color: 'bg-gradient-to-r from-emerald-500 to-green-600',
+      textColor: 'text-emerald-600',
+      bgColor: 'bg-emerald-50'
+    },
+    { 
+      title: 'Total Spent', 
+      value: `$${dashboardData.stats.totalSpent.toFixed(2)}`, 
+      icon: DollarSign, 
+      color: 'bg-gradient-to-r from-purple-500 to-indigo-600',
+      textColor: 'text-purple-600',
+      bgColor: 'bg-purple-50'
+    }
+  ];
+
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 animate-pulse">
+              <div className="flex items-center">
+                <div className="w-14 h-14 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full"></div>
+                <div className="ml-4 flex-1">
+                  <div className="h-4 bg-gray-300 rounded-full w-20 mb-3"></div>
+                  <div className="h-8 bg-gray-300 rounded-full w-16"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+          <div className="h-8 bg-gray-300 rounded-full w-48 mb-6"></div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 bg-gray-100 rounded-lg animate-pulse"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Welcome Header */}
+      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 rounded-2xl p-8 text-white shadow-lg border border-orange-200">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.firstName || user?.name}! 👋</h1>
+            <p className="text-orange-100 text-lg">Track your service requests and manage your property maintenance</p>
+          </div>
+          <Link
+            to="/order-request"
+            className="bg-white text-orange-600 px-8 py-3 rounded-xl font-semibold hover:bg-orange-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            + Request New Service
+          </Link>
+        </div>
+      </div>
       
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -60,15 +569,20 @@ const CustomerDashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: index * 0.1 }}
-            className="bg-white p-6 rounded-lg shadow-md"
+            className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all duration-300 transform hover:-translate-y-1"
           >
-            <div className="flex items-center">
-              <div className={`p-3 rounded-full ${stat.color} text-white`}>
-                <stat.icon size={24} />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className={`p-4 rounded-xl ${stat.color} text-white shadow-lg`}>
+                  <stat.icon size={24} />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
+                  <p className={`text-2xl font-bold ${stat.textColor}`}>{stat.value}</p>
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">{stat.title}</p>
-                <p className="text-2xl font-bold">{stat.value}</p>
+              <div className={`w-16 h-16 ${stat.bgColor} rounded-full flex items-center justify-center opacity-20`}>
+                <stat.icon size={28} className={stat.textColor} />
               </div>
             </div>
           </motion.div>
@@ -76,43 +590,205 @@ const CustomerDashboard = () => {
       </div>
 
       {/* Recent Orders */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold mb-4">Recent Orders</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-3">Service</th>
-                <th className="text-left py-3">Status</th>
-                <th className="text-left py-3">Date</th>
-                <th className="text-left py-3">Amount</th>
-                <th className="text-left py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentOrders.map((order) => (
-                <tr key={order.id} className="border-b hover:bg-gray-50">
-                  <td className="py-3">{order.service}</td>
-                  <td className="py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      order.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                      order.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="py-3">{order.date}</td>
-                  <td className="py-3">{order.amount}</td>
-                  <td className="py-3">
-                    <button className="text-blue-600 hover:underline">View Details</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Recent Orders</h2>
+            <p className="text-gray-600">Track your latest service requests</p>
+          </div>
+          <button
+            onClick={() => navigate('/dashboard?section=orders')}
+            className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+          >
+            View All Orders →
+          </button>
+        </div>
+
+        {dashboardData.recentOrders.length > 0 ? (
+          <div className="overflow-x-auto">
+            <div className="min-w-full">
+              <div className="hidden lg:grid lg:grid-cols-6 gap-4 py-4 px-6 bg-gray-50 rounded-lg font-semibold text-gray-700 text-sm mb-4">
+                <div>Job Number</div>
+                <div>Service</div>
+                <div>Status</div>
+                <div>Date</div>
+                <div>Amount</div>
+                <div>Actions</div>
+              </div>
+              <div className="space-y-4">
+                {dashboardData.recentOrders.slice(0, 5).map((order, index) => (
+                  <motion.div
+                    key={order._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="lg:grid lg:grid-cols-6 gap-4 p-6 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all duration-200 border border-gray-200 hover:border-gray-300"
+                  >
+                    {/* Mobile layout */}
+                    <div className="lg:hidden space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-mono text-sm text-gray-600">{order.jobNumber}</p>
+                          <p className="font-semibold text-gray-900">{order.title}</p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                          {order.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-sm text-gray-600">{formatDate(order.createdAt)}</p>
+                          <p className="text-lg font-bold text-gray-900">${order.totalAmount.toFixed(2)}</p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleViewOrder(order)}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                          >
+                            View
+                          </button>
+                          {['PENDING', 'ASSIGNED'].includes(order.status) && (
+                            <button
+                              onClick={() => handleCancelOrder(order._id)}
+                              className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Desktop layout */}
+                    <div className="hidden lg:flex lg:items-center">
+                      <span className="font-mono text-sm text-gray-600">{order.jobNumber}</span>
+                    </div>
+                    <div className="hidden lg:flex lg:items-center">
+                      <span className="font-semibold text-gray-900">{order.title}</span>
+                    </div>
+                    <div className="hidden lg:flex lg:items-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                        {order.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="hidden lg:flex lg:items-center">
+                      <span className="text-gray-700">{formatDate(order.createdAt)}</span>
+                    </div>
+                    <div className="hidden lg:flex lg:items-center">
+                      <span className="text-lg font-bold text-gray-900">${order.totalAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="hidden lg:flex lg:items-center lg:space-x-2">
+                      <button
+                        onClick={() => handleViewOrder(order)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                      >
+                        View Details
+                      </button>
+                      {['PENDING', 'ASSIGNED'].includes(order.status) && (
+                        <button
+                          onClick={() => handleCancelOrder(order._id)}
+                          className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <div className="bg-gray-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+              <Package className="w-12 h-12 text-gray-400" />
+            </div>
+            <h3 className="text-2xl font-semibold text-gray-900 mb-3">No orders yet</h3>
+            <p className="text-gray-600 mb-8 text-lg">Ready to get started? Request your first service and let us handle the rest!</p>
+            <Link
+              to="/order-request"
+              className="bg-gradient-to-r from-orange-600 to-red-600 text-white px-8 py-4 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              🚀 Request Your First Service
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Link
+            to="/order-request"
+            className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-8 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 block text-white group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="p-4 rounded-xl bg-white bg-opacity-20 group-hover:bg-opacity-30 transition-all duration-200">
+                  <Package className="w-8 h-8" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-xl font-bold">Request Service</h3>
+                  <p className="text-orange-100 mt-1">Book a new maintenance service</p>
+                </div>
+              </div>
+              <div className="text-orange-200 group-hover:text-white transition-colors">
+                →
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/services"
+            className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-8 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 block text-white group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="p-4 rounded-xl bg-white bg-opacity-20 group-hover:bg-opacity-30 transition-all duration-200">
+                  <Settings className="w-8 h-8" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-xl font-bold">Browse Services</h3>
+                  <p className="text-blue-100 mt-1">Explore available services</p>
+                </div>
+              </div>
+              <div className="text-blue-200 group-hover:text-white transition-colors">
+                →
+              </div>
+            </div>
+          </Link>
+
+          <button
+            onClick={loadDashboardData}
+            className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg p-8 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-white group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="p-4 rounded-xl bg-white bg-opacity-20 group-hover:bg-opacity-30 transition-all duration-200">
+                  <TrendingUp className="w-8 h-8" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-xl font-bold">Refresh Data</h3>
+                  <p className="text-emerald-100 mt-1">Update dashboard information</p>
+                </div>
+              </div>
+              <div className="text-emerald-200 group-hover:text-white transition-colors">
+                ↻
+              </div>
+            </div>
+          </button>
         </div>
       </div>
+
+      {/* Order Details Modal */}
+      {showOrderDetails && selectedOrder && (
+        <OrderDetailsModal
+          order={selectedOrder}
+          onClose={() => setShowOrderDetails(false)}
+          onOrderUpdate={loadDashboardData}
+        />
+      )}
     </div>
   );
 };
@@ -1223,10 +1899,10 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 pt-16">
       <div className="flex">
         {/* Sidebar */}
-        <div className="w-64 bg-white shadow-lg min-h-screen">
+        <div className="w-64 bg-white shadow-xl border-r border-gray-200 min-h-screen">
           <div className="p-6">
             <a href="/" className="block mb-6">
               <h1 className="text-xl font-bold text-gray-900 hover:text-orange-600 transition-colors">Swift Fix Pro</h1>
@@ -1307,7 +1983,7 @@ const DashboardPage = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-8 bg-gradient-to-br from-transparent via-blue-50/30 to-orange-50/20">
           {/* Breadcrumb */}
           <div className="mb-6">
             <div className="flex items-center text-sm text-gray-500 mb-2">

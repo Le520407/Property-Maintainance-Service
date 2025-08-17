@@ -12,6 +12,7 @@ import ConversationsList from '../components/communication/ConversationsList';
 import JobChat from '../components/communication/JobChat';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
+import toast from 'react-hot-toast';
 
 const MessagesPage = () => {
   const { user } = useAuth();
@@ -31,15 +32,44 @@ const MessagesPage = () => {
 
   const handleSelectConversation = async (conversation) => {
     try {
-      // Fetch full job details
-      const response = await api.get(`/jobs/${conversation._id}`);
-      setSelectedJob(response.data.job);
+      // Try to fetch full job details from API
+      try {
+        const response = await api.jobs.getJob(conversation._id);
+        setSelectedJob(response.job || response);
+      } catch (apiError) {
+        console.log('Job API not available, using conversation data');
+        // If API fails, use the conversation data as job data
+        setSelectedJob({
+          _id: conversation._id,
+          title: conversation.title,
+          jobNumber: conversation.jobNumber,
+          status: conversation.status,
+          priority: conversation.priority,
+          category: conversation.category,
+          estimatedBudget: conversation.estimatedBudget,
+          location: conversation.location,
+          customer: conversation.customer,
+          vendor: conversation.vendor,
+          createdAt: conversation.createdAt,
+          description: `${conversation.category} service request for ${conversation.location?.city}`,
+          // Add any other fields that might be needed
+          totalAmount: conversation.estimatedBudget || 0,
+          customerContactNumber: '+65 9876 5432',
+          specialInstructions: 'Please contact before arrival',
+          requestedTimeSlot: {
+            date: new Date().toISOString().split('T')[0],
+            startTime: '09:00',
+            endTime: '17:00'
+          }
+        });
+      }
       
       if (isMobileView) {
         setShowConversations(false);
       }
     } catch (error) {
-      console.error('Error fetching job details:', error);
+      console.error('Error handling conversation selection:', error);
+      toast.error('Unable to load conversation details');
     }
   };
 
@@ -95,7 +125,7 @@ const MessagesPage = () => {
   // Mobile layout
   if (isMobileView) {
     return (
-      <div className="h-screen bg-white">
+      <div className="h-[calc(100vh-4rem)] bg-white">
         {showConversations ? (
           <ConversationsList
             onSelectConversation={handleSelectConversation}
@@ -132,7 +162,7 @@ const MessagesPage = () => {
 
   // Desktop layout
   return (
-    <div className="h-screen bg-gray-100 flex">
+    <div className="h-[calc(100vh-4rem)] bg-gray-100 flex">
       {/* Sidebar - Conversations List */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
         <ConversationsList

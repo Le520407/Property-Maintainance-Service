@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -24,6 +24,7 @@ const OrderSubmissionPage = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const hasShownPrefilledToast = useRef(false);
   const [formData, setFormData] = useState({
     // Service Details
     title: '',
@@ -62,18 +63,27 @@ const OrderSubmissionPage = () => {
 
   // Handle pre-filled data from service detail page
   useEffect(() => {
-    if (location.state?.prefilledData) {
+    if (location.state?.prefilledData && !hasShownPrefilledToast.current) {
       const { prefilledData } = location.state;
+      
+      // Map categories that don't exist in backend to valid ones
+      const categoryMapping = {
+        'maintenance': 'general', // Map maintenance to general since backend doesn't accept maintenance
+      };
+      
+      const mappedCategory = categoryMapping[prefilledData.category] || prefilledData.category;
+      
       setFormData(prev => ({
         ...prev,
         title: prefilledData.title || prev.title,
-        category: prefilledData.category || prev.category,
+        category: mappedCategory || prev.category,
         description: prefilledData.description || prev.description,
         estimatedBudget: prefilledData.estimatedBudget?.toString() || prev.estimatedBudget
       }));
       
-      // Show success message
+      // Show success message only once
       toast.success(`Pre-filled with ${prefilledData.title} service details`);
+      hasShownPrefilledToast.current = true;
     }
   }, [location.state]);
 
@@ -202,7 +212,7 @@ const OrderSubmissionPage = () => {
       navigate('/dashboard', { 
         state: { 
           message: 'Order submitted successfully!',
-          orderId: response.data._id 
+          orderId: response.job?._id || response.job?.id
         }
       });
       
