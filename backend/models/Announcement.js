@@ -136,7 +136,6 @@ announcementSchema.index({ targetAudience: 1, isPublished: 1 });
 announcementSchema.index({ priority: 1, isPinned: -1, createdAt: -1 });
 announcementSchema.index({ category: 1, isPublished: 1 });
 announcementSchema.index({ expiresAt: 1 });
-announcementSchema.index({ slug: 1 });
 
 // Virtual for checking if announcement is expired
 announcementSchema.virtual('isExpired').get(function() {

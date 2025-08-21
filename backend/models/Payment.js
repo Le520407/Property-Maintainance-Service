@@ -249,11 +249,6 @@ const paymentSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-paymentSchema.index({ paymentId: 1 });
-paymentSchema.index({ transactionId: 1 });
-paymentSchema.index({ jobId: 1 });
-paymentSchema.index({ customerId: 1 });
-paymentSchema.index({ vendorId: 1 });
 paymentSchema.index({ status: 1 });
 paymentSchema.index({ paymentMethod: 1 });
 paymentSchema.index({ createdAt: -1 });

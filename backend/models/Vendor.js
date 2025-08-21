@@ -269,7 +269,6 @@ const vendorSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-vendorSchema.index({ userId: 1 });
 vendorSchema.index({ serviceCategories: 1 });
 vendorSchema.index({ serviceArea: 1 });
 vendorSchema.index({ currentRating: -1 });

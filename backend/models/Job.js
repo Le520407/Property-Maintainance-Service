@@ -391,7 +391,6 @@ const jobSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-jobSchema.index({ jobNumber: 1 });
 jobSchema.index({ customerId: 1 });
 jobSchema.index({ vendorId: 1 });
 jobSchema.index({ status: 1 });
