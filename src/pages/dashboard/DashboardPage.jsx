@@ -291,7 +291,6 @@ const CustomerDashboard = () => {
   }, []);
 
   const loadDashboardData = async () => {
-    console.log('🔄 Loading dashboard data...');
     setLoading(true);
     
     // Load order data (using sample data as backend is not connected)
@@ -391,7 +390,6 @@ const CustomerDashboard = () => {
       }
     ];
     
-    console.log('📊 Processing', orders.length, 'orders');
     
     // Calculate stats from orders
     const stats = {
@@ -401,7 +399,6 @@ const CustomerDashboard = () => {
       totalSpent: orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0)
     };
 
-    console.log('📈 Dashboard stats:', stats);
     
     // Set the data
     setDashboardData({ stats, recentOrders: orders });
@@ -413,7 +410,6 @@ const CustomerDashboard = () => {
     }
     
     setLoading(false);
-    console.log('✅ Dashboard loading complete');
   };
 
   const handleViewOrder = (order) => {
@@ -422,7 +418,6 @@ const CustomerDashboard = () => {
   };
 
   const handleCancelOrder = async (orderId) => {
-    console.log('🚫 Cancelling order:', orderId);
     
     // Check if order is already cancelled to prevent duplicate actions
     const orderToCancel = dashboardData.recentOrders.find(order => order._id === orderId);
@@ -458,7 +453,6 @@ const CustomerDashboard = () => {
     });
     
     toast.success('Order cancelled successfully!', { duration: 2000 });
-    console.log('✅ Order cancelled and refunded');
   };
 
   const getStatusColor = (status) => {
@@ -1058,8 +1052,11 @@ const ProfileTab = () => {
     lastName: user?.lastName || '',
     email: user?.email || '',
     phone: user?.phone || '',
-    city: user?.address || user?.city || '', // Use address from AuthContext first, then city
-    country: user?.country || ''
+    address: user?.address || '', // Street Address
+    city: user?.city || '',
+    state: user?.state || '',
+    zipCode: user?.zipCode || '',
+    country: user?.country || 'Malaysia'
   });
   
   // Update profile data when user context changes
@@ -1070,8 +1067,11 @@ const ProfileTab = () => {
         lastName: user.lastName || '',
         email: user.email || '',
         phone: user.phone || '',
-        city: user.address || user.city || '',
-        country: user.country || ''
+        address: user.address || '',
+        city: user.city || '',
+        state: user.state || '',
+        zipCode: user.zipCode || '',
+        country: user.country || 'Malaysia'
       });
     }
   }, [user]);
@@ -1082,10 +1082,8 @@ const ProfileTab = () => {
   });
 
   const handleProfileUpdate = async () => {
-    console.log('🔄 Starting profile update with data:', profileData);
     try {
       const response = await api.users.updateProfile(profileData);
-      console.log('✅ Profile update successful, response:', response);
       
       setIsEditing(false);
       toast.success('Profile updated successfully! ✅');
@@ -1097,22 +1095,28 @@ const ProfileTab = () => {
           lastName: response.user.lastName || '',
           email: response.user.email || '',
           phone: response.user.phone || '',
+          address: response.user.address || '',
           city: response.user.city || '',
-          country: response.user.country || ''
+          state: response.user.state || '',
+          zipCode: response.user.zipCode || '',
+          country: response.user.country || 'Malaysia'
         };
         setProfileData(updatedProfileData);
         
         // Update the AuthContext with new user data so it's reflected everywhere
         updateUser({
+          // Keep all other user properties unchanged
+          ...user,
           firstName: response.user.firstName,
           lastName: response.user.lastName,
           name: response.user.fullName || `${response.user.firstName} ${response.user.lastName}`,
           phone: response.user.phone,
-          address: response.user.city || user.address, // Keep existing address if city not provided
-          // Keep all other user properties unchanged
-          ...user
+          address: response.user.address || '',
+          city: response.user.city || '',
+          state: response.user.state || '',
+          zipCode: response.user.zipCode || '',
+          country: response.user.country || 'Malaysia'
         });
-        console.log('✅ AuthContext updated with new profile data');
       }
     } catch (error) {
       console.error('❌ Profile update error:', error);
@@ -1121,7 +1125,6 @@ const ProfileTab = () => {
   };
 
   const handlePasswordChange = async () => {
-    console.log('🔄 Starting password change...');
     
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast.error('Passwords do not match');
@@ -1135,7 +1138,6 @@ const ProfileTab = () => {
     
     try {
       const response = await api.users.changePassword(passwordData);
-      console.log('✅ Password change successful:', response);
       
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setShowPasswordChange(false);
@@ -1213,18 +1215,63 @@ const ProfileTab = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Street Address</label>
             <div className="relative">
               <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
               <input
                 type="text"
-                value={profileData.city}
-                onChange={(e) => setProfileData({...profileData, city: e.target.value})}
+                value={profileData.address}
+                onChange={(e) => setProfileData({...profileData, address: e.target.value})}
                 disabled={!isEditing}
+                placeholder="Jalan Permas 16/1, Bandar Baru Permas Jaya, 81750, Masai, Johor"
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-50"
+                autoComplete="street-address"
+                name="street-address"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+            <input
+              type="text"
+              value={profileData.city}
+              onChange={(e) => setProfileData({...profileData, city: e.target.value})}
+              disabled={!isEditing}
+              placeholder="Masai"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-50"
+              autoComplete="address-level2"
+              name="city"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">State/Region</label>
+            <input
+              type="text"
+              value={profileData.state}
+              onChange={(e) => setProfileData({...profileData, state: e.target.value})}
+              disabled={!isEditing}
+              placeholder="Johor"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-50"
+              autoComplete="address-level1"
+              name="state"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Postal Code</label>
+            <input
+              type="text"
+              value={profileData.zipCode}
+              onChange={(e) => setProfileData({...profileData, zipCode: e.target.value})}
+              disabled={!isEditing}
+              placeholder="81750"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-50"
+              autoComplete="postal-code"
+              name="postal-code"
+            />
           </div>
 
           <div>
@@ -1234,7 +1281,10 @@ const ProfileTab = () => {
               value={profileData.country}
               onChange={(e) => setProfileData({...profileData, country: e.target.value})}
               disabled={!isEditing}
+              placeholder="Malaysia"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-50"
+              autoComplete="country-name"
+              name="country"
             />
           </div>
         </div>

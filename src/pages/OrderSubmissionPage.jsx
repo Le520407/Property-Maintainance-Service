@@ -12,7 +12,9 @@ import {
   Camera,
   AlertCircle,
   CheckCircle,
-  Upload
+  Upload,
+  Video,
+  X
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -35,10 +37,13 @@ const OrderSubmissionPage = () => {
     
     // Location
     location: {
-      address: '',
+      streetAddress: '',
+      building: '',
+      unit: '',
       city: '',
       state: '',
       zipCode: '',
+      address: '', // Keep for backward compatibility
     },
     
     // Timing
@@ -58,10 +63,11 @@ const OrderSubmissionPage = () => {
     accessInstructions: '',
     
     // Attachments
-    images: []
+    images: [],
+    videos: []
   });
 
-  // Handle pre-filled data from service detail page
+  // Handle pre-filled data from service detail page and auto-fill address
   useEffect(() => {
     if (location.state?.prefilledData && !hasShownPrefilledToast.current) {
       const { prefilledData } = location.state;
@@ -85,7 +91,22 @@ const OrderSubmissionPage = () => {
       toast.success(`Pre-filled with ${prefilledData.title} service details`);
       hasShownPrefilledToast.current = true;
     }
-  }, [location.state]);
+
+    // Auto-fill address from user profile on component mount
+    if (user && user.address) {
+      setFormData(prev => ({
+        ...prev,
+        location: {
+          ...prev.location,
+          streetAddress: user.address || prev.location.streetAddress,
+          city: user.city || prev.location.city,
+          state: user.state || prev.location.state,
+          zipCode: user.zipCode || prev.location.zipCode,
+          address: user.address || prev.location.address, // For backward compatibility
+        }
+      }));
+    }
+  }, [location.state, user]);
 
   const serviceCategories = [
     { value: 'plumbing', label: 'Plumbing', icon: '🔧' },
@@ -98,14 +119,20 @@ const OrderSubmissionPage = () => {
     { value: 'general', label: 'General Maintenance', icon: '🛠️' }
   ];
 
-  const priorityLevels = [
-    { value: 'LOW', label: 'Low Priority', color: 'text-green-600', desc: 'Can wait a few days' },
-    { value: 'MEDIUM', label: 'Medium Priority', color: 'text-yellow-600', desc: 'Within this week' },
-    { value: 'HIGH', label: 'High Priority', color: 'text-orange-600', desc: 'Within 1-2 days' },
-    { value: 'EMERGENCY', label: 'Emergency', color: 'text-red-600', desc: 'Immediate attention needed' }
-  ];
 
   const handleInputChange = (field, value) => {
+    // Prevent selecting past dates
+    if (field === 'requestedTimeSlot.date') {
+      const selectedDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+      
+      if (selectedDate < today) {
+        toast.error('Cannot select a date in the past. Please choose today or a future date.');
+        return;
+      }
+    }
+
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
       setFormData(prev => ({
@@ -123,23 +150,46 @@ const OrderSubmissionPage = () => {
     }
   };
 
-  const handleImageUpload = (e) => {
+  const handleFileUpload = (e, type) => {
     const files = Array.from(e.target.files);
-    // In a real app, you'd upload these to a cloud service
-    // For now, we'll just store the file names
-    const imageNames = files.map(file => file.name);
-    setFormData(prev => ({
-      ...prev,
-      images: [...prev.images, ...imageNames]
-    }));
-    toast.success(`${files.length} image(s) uploaded successfully`);
+    
+    files.forEach(file => {
+      // File size validation
+      const maxSize = type === 'images' ? 10 * 1024 * 1024 : 50 * 1024 * 1024; // 10MB for images, 50MB for videos
+      if (file.size > maxSize) {
+        toast.error(`File ${file.name} is too large. Maximum size is ${type === 'images' ? '10MB' : '50MB'}.`);
+        return;
+      }
+
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const fileData = {
+          file: file,
+          preview: event.target.result,
+          name: file.name,
+          size: file.size
+        };
+
+        setFormData(prev => ({
+          ...prev,
+          [type]: [...prev[type], fileData]
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
+
+    if (files.length > 0) {
+      toast.success(`${files.length} ${type === 'images' ? 'image(s)' : 'video(s)'} uploaded successfully`);
+    }
   };
 
-  const removeImage = (index) => {
+  const removeFile = (index, type) => {
     setFormData(prev => ({
       ...prev,
-      images: prev.images.filter((_, i) => i !== index)
+      [type]: prev[type].filter((_, i) => i !== index)
     }));
+    toast.success(`${type === 'images' ? 'Image' : 'Video'} removed successfully`);
   };
 
   const validateStep = (step) => {
@@ -147,7 +197,7 @@ const OrderSubmissionPage = () => {
       case 1:
         return formData.title && formData.description && formData.category;
       case 2:
-        return formData.location.address && formData.location.city;
+        return formData.location.streetAddress && formData.location.city && formData.location.zipCode;
       case 3:
         return formData.requestedTimeSlot.date;
       case 4:
@@ -185,6 +235,15 @@ const OrderSubmissionPage = () => {
       const jobNumber = `JOB${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
       const budgetAmount = parseFloat(formData.estimatedBudget);
       
+      // Create complete address string for backend compatibility
+      const completeAddress = [
+        formData.location.unit && `Unit ${formData.location.unit}`,
+        formData.location.building,
+        formData.location.streetAddress,
+        formData.location.zipCode && formData.location.city && `${formData.location.zipCode} ${formData.location.city}`,
+        formData.location.state
+      ].filter(Boolean).join(', ');
+
       // Prepare the order data
       const orderData = {
         ...formData,
@@ -193,6 +252,10 @@ const OrderSubmissionPage = () => {
         estimatedBudget: budgetAmount,
         subtotal: budgetAmount,
         totalAmount: budgetAmount, // Initial estimate
+        location: {
+          ...formData.location,
+          address: completeAddress || formData.location.streetAddress // Ensure backward compatibility
+        },
         items: [{
           serviceName: formData.title,
           category: formData.category,
@@ -343,53 +406,146 @@ const OrderSubmissionPage = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Detailed Description *
                 </label>
+                <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="text-sm font-medium text-blue-800 mb-2">📝 What to include for {formData.category === 'general' ? 'General Maintenance' : serviceCategories.find(c => c.value === formData.category)?.label || 'your'} services:</h4>
+                  <div className="text-sm text-blue-700">
+                    {formData.category === 'general' ? (
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Please describe the maintenance work needed</li>
+                        <li>Type of repair or maintenance required</li>
+                        <li>Location and extent of work</li>
+                        <li>Current condition or problem</li>
+                        <li>Any safety concerns</li>
+                        <li>Timeline requirements</li>
+                      </ul>
+                    ) : (
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Specific problem or issue you're experiencing</li>
+                        <li>When the problem started</li>
+                        <li>Location and extent of the issue</li>
+                        <li>Any attempted fixes or troubleshooting</li>
+                        <li>Safety concerns (if any)</li>
+                        <li>Preferred timeline</li>
+                      </ul>
+                    )}
+                  </div>
+                </div>
                 <textarea
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
-                  rows={4}
-                  placeholder="Describe the problem or work needed in detail..."
+                  rows={6}
+                  placeholder="Professional carpentry and woodwork services with custom solutions, quality materials, and expert craftsmanship for all your woodworking needs."
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                 />
               </div>
 
-              {/* Priority */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Priority Level
-                </label>
-                <div className="space-y-2">
-                  {priorityLevels.map((priority) => (
-                    <label key={priority.value} className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        name="priority"
-                        value={priority.value}
-                        checked={formData.priority === priority.value}
-                        onChange={(e) => handleInputChange('priority', e.target.value)}
-                        className="mr-3 text-orange-600"
-                      />
-                      <div>
-                        <div className={`font-medium ${priority.color}`}>{priority.label}</div>
-                        <div className="text-sm text-gray-500">{priority.desc}</div>
+              {/* Photo & Video Upload */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900">Add Photos & Videos (Optional)</h3>
+                <p className="text-sm text-gray-600">Help us understand the issue better by uploading photos or videos.</p>
+                
+                {/* Photo Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Camera className="inline w-4 h-4 mr-1" />
+                    Photos
+                  </label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-orange-400 transition-colors">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload(e, 'images')}
+                      className="hidden"
+                      id="photo-upload"
+                    />
+                    <label htmlFor="photo-upload" className="cursor-pointer">
+                      <div className="text-center">
+                        <Camera className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium text-orange-600">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
                       </div>
                     </label>
-                  ))}
+                  </div>
+                  
+                  {/* Photo Preview */}
+                  {formData.images.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                      {formData.images.map((image, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={image.preview}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-20 object-cover rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index, 'images')}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Video Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <Video className="inline w-4 h-4 mr-1" />
+                    Videos
+                  </label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-orange-400 transition-colors">
+                    <input
+                      type="file"
+                      multiple
+                      accept="video/*"
+                      onChange={(e) => handleFileUpload(e, 'videos')}
+                      className="hidden"
+                      id="video-upload"
+                    />
+                    <label htmlFor="video-upload" className="cursor-pointer">
+                      <div className="text-center">
+                        <Video className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium text-orange-600">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-gray-500">MP4, WebM, MOV up to 50MB each</p>
+                      </div>
+                    </label>
+                  </div>
+                  
+                  {/* Video Preview */}
+                  {formData.videos.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      {formData.videos.map((video, index) => (
+                        <div key={index} className="relative">
+                          <video
+                            src={video.preview}
+                            className="w-full h-32 object-cover rounded-lg"
+                            controls
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index, 'videos')}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                          <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                            {video.file.name}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Emergency checkbox */}
-              <div className="flex items-center p-4 bg-red-50 border border-red-200 rounded-lg">
-                <input
-                  type="checkbox"
-                  checked={formData.isEmergency}
-                  onChange={(e) => handleInputChange('isEmergency', e.target.checked)}
-                  className="mr-3 text-red-600"
-                />
-                <div>
-                  <div className="font-medium text-red-800">Emergency Service</div>
-                  <div className="text-sm text-red-600">Check if this requires immediate attention (24/7)</div>
-                </div>
-              </div>
             </div>
           )}
 
@@ -398,73 +554,132 @@ const OrderSubmissionPage = () => {
             <div className="space-y-6">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">Where is the service needed?</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
+              {/* Auto-fill notification */}
+              {user?.address && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center">
+                  <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-green-800">
+                      Address auto-filled from your profile!
+                    </div>
+                    <div className="text-sm text-green-600">
+                      We've pre-filled your saved address. You can edit it below if needed, or update your profile address for future orders.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Auto-fill from user profile
+                      if (user.address) {
+                        handleInputChange('location.streetAddress', user.address);
+                        handleInputChange('location.address', user.address); // For backward compatibility
+                      }
+                      if (user.city) {
+                        handleInputChange('location.city', user.city);
+                      }
+                      if (user.state) {
+                        handleInputChange('location.state', user.state);
+                      }
+                      if (user.zipCode) {
+                        handleInputChange('location.zipCode', user.zipCode);
+                      }
+                      toast.success('Address auto-filled from your profile');
+                    }}
+                    className="ml-3 text-sm text-green-600 hover:text-green-800 underline"
+                  >
+                    Manage Profile →
+                  </button>
+                </div>
+              )}
+              
+              <div className="space-y-4">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Address *
+                    Street Address *
                   </label>
                   <input
                     type="text"
-                    value={formData.location.address}
-                    onChange={(e) => handleInputChange('location.address', e.target.value)}
-                    placeholder="Street address, building name, unit number"
+                    value={formData.location.streetAddress}
+                    onChange={(e) => handleInputChange('location.streetAddress', e.target.value)}
+                    placeholder="e.g., Jalan Permas 16/1"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    City *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.location.city}
-                    onChange={(e) => handleInputChange('location.city', e.target.value)}
-                    placeholder="City"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                  />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      City/Area *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.location.city}
+                      onChange={(e) => handleInputChange('location.city', e.target.value)}
+                      placeholder="e.g., Masai"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      State *
+                    </label>
+                    <select
+                      value={formData.location.state}
+                      onChange={(e) => handleInputChange('location.state', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
+                    >
+                      <option value="">Select State</option>
+                      <option value="Johor">Johor</option>
+                      <option value="Kedah">Kedah</option>
+                      <option value="Kelantan">Kelantan</option>
+                      <option value="Kuala Lumpur">Kuala Lumpur</option>
+                      <option value="Labuan">Labuan</option>
+                      <option value="Melaka">Melaka</option>
+                      <option value="Negeri Sembilan">Negeri Sembilan</option>
+                      <option value="Pahang">Pahang</option>
+                      <option value="Penang">Penang</option>
+                      <option value="Perak">Perak</option>
+                      <option value="Perlis">Perlis</option>
+                      <option value="Putrajaya">Putrajaya</option>
+                      <option value="Sabah">Sabah</option>
+                      <option value="Sarawak">Sarawak</option>
+                      <option value="Selangor">Selangor</option>
+                      <option value="Terengganu">Terengganu</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Postal Code *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.location.zipCode}
+                      onChange={(e) => handleInputChange('location.zipCode', e.target.value)}
+                      placeholder="e.g., 81750"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    State/Region
+                    Full Address Preview
                   </label>
-                  <input
-                    type="text"
-                    value={formData.location.state}
-                    onChange={(e) => handleInputChange('location.state', e.target.value)}
-                    placeholder="State or Region"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Postal Code
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.location.zipCode}
-                    onChange={(e) => handleInputChange('location.zipCode', e.target.value)}
-                    placeholder="Postal code"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                  />
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+                    {[
+                      formData.location.unit && `Unit ${formData.location.unit}`,
+                      formData.location.building,
+                      formData.location.streetAddress,
+                      formData.location.zipCode && formData.location.city && `${formData.location.zipCode} ${formData.location.city}`,
+                      formData.location.state
+                    ].filter(Boolean).join(', ') || 'Address will appear here as you fill in the fields above'}
+                  </div>
                 </div>
               </div>
 
-              {/* Access Instructions */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Access Instructions
-                </label>
-                <textarea
-                  value={formData.accessInstructions}
-                  onChange={(e) => handleInputChange('accessInstructions', e.target.value)}
-                  rows={3}
-                  placeholder="How can the vendor access the location? (e.g., gate code, parking instructions, etc.)"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                />
-              </div>
             </div>
           )}
 
@@ -473,7 +688,7 @@ const OrderSubmissionPage = () => {
             <div className="space-y-6">
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">When do you need this service?</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Preferred Date *
@@ -485,53 +700,94 @@ const OrderSubmissionPage = () => {
                     min={new Date().toISOString().split('T')[0]}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                   />
+                  <p className="mt-1 text-sm text-gray-500">Please select from today onwards to allow proper scheduling</p>
                 </div>
 
+                {/* Time Sessions */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start Time
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Preferred Time Session
                   </label>
-                  <input
-                    type="time"
-                    value={formData.requestedTimeSlot.startTime}
-                    onChange={(e) => handleInputChange('requestedTimeSlot.startTime', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                  />
-                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="timeSession"
+                        value="morning"
+                        checked={formData.requestedTimeSlot.startTime === '08:00' && formData.requestedTimeSlot.endTime === '12:00'}
+                        onChange={() => {
+                          handleInputChange('requestedTimeSlot.startTime', '08:00');
+                          handleInputChange('requestedTimeSlot.endTime', '12:00');
+                        }}
+                        className="mr-3 text-orange-600"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">Morning Session</div>
+                        <div className="text-sm text-gray-500">8:00 AM - 12:00 PM</div>
+                        <div className="text-sm text-gray-400">Good for most services and appointments</div>
+                      </div>
+                    </label>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Time
-                  </label>
-                  <input
-                    type="time"
-                    value={formData.requestedTimeSlot.endTime}
-                    onChange={(e) => handleInputChange('requestedTimeSlot.endTime', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                  />
+                    <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="timeSession"
+                        value="afternoon"
+                        checked={formData.requestedTimeSlot.startTime === '12:00' && formData.requestedTimeSlot.endTime === '16:00'}
+                        onChange={() => {
+                          handleInputChange('requestedTimeSlot.startTime', '12:00');
+                          handleInputChange('requestedTimeSlot.endTime', '16:00');
+                        }}
+                        className="mr-3 text-orange-600"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">Afternoon Session</div>
+                        <div className="text-sm text-gray-500">12:00 PM - 4:00 PM</div>
+                        <div className="text-sm text-gray-400">Good for most services and appointments</div>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="timeSession"
+                        value="evening"
+                        checked={formData.requestedTimeSlot.startTime === '16:00' && formData.requestedTimeSlot.endTime === '20:00'}
+                        onChange={() => {
+                          handleInputChange('requestedTimeSlot.startTime', '16:00');
+                          handleInputChange('requestedTimeSlot.endTime', '20:00');
+                        }}
+                        className="mr-3 text-orange-600"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">Evening Session</div>
+                        <div className="text-sm text-gray-500">4:00 PM - 8:00 PM</div>
+                        <div className="text-sm text-gray-400">Perfect for after work hours</div>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="timeSession"
+                        value="flexible"
+                        checked={formData.requestedTimeSlot.startTime === '09:00' && formData.requestedTimeSlot.endTime === '17:00'}
+                        onChange={() => {
+                          handleInputChange('requestedTimeSlot.startTime', '09:00');
+                          handleInputChange('requestedTimeSlot.endTime', '17:00');
+                        }}
+                        className="mr-3 text-orange-600"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">Flexible Timing</div>
+                        <div className="text-sm text-gray-500">Any time during business hours</div>
+                        <div className="text-sm text-gray-400">Let vendor choose the best time</div>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Estimated Duration (hours)
-                </label>
-                <select
-                  value={formData.estimatedDuration}
-                  onChange={(e) => handleInputChange('estimatedDuration', parseFloat(e.target.value))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                >
-                  <option value={0.5}>30 minutes</option>
-                  <option value={1}>1 hour</option>
-                  <option value={1.5}>1.5 hours</option>
-                  <option value={2}>2 hours</option>
-                  <option value={3}>3 hours</option>
-                  <option value={4}>4 hours</option>
-                  <option value={6}>6 hours</option>
-                  <option value={8}>Full day (8 hours)</option>
-                  <option value={16}>Multiple days</option>
-                </select>
-              </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex">
@@ -608,7 +864,7 @@ const OrderSubmissionPage = () => {
                     type="file"
                     multiple
                     accept="image/*"
-                    onChange={handleImageUpload}
+                    onChange={(e) => handleFileUpload(e, 'images')}
                     className="hidden"
                     id="image-upload"
                   />
@@ -628,7 +884,7 @@ const OrderSubmissionPage = () => {
                           <span className="text-sm text-gray-600">{image}</span>
                           <button
                             type="button"
-                            onClick={() => removeImage(index)}
+                            onClick={() => removeFile(index, 'images')}
                             className="text-red-600 hover:text-red-800"
                           >
                             Remove
@@ -654,17 +910,18 @@ const OrderSubmissionPage = () => {
                   <div className="space-y-2 text-sm">
                     <div><strong>Title:</strong> {formData.title}</div>
                     <div><strong>Category:</strong> {serviceCategories.find(c => c.value === formData.category)?.label}</div>
-                    <div><strong>Priority:</strong> {priorityLevels.find(p => p.value === formData.priority)?.label}</div>
                     <div><strong>Description:</strong> {formData.description}</div>
                   </div>
                 </div>
 
                 {/* Location Summary */}
                 <div className="bg-gray-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">Location</h3>
-                  <div className="text-sm">
-                    <div>{formData.location.address}</div>
-                    <div>{formData.location.city}, {formData.location.state} {formData.location.zipCode}</div>
+                  <h3 className="font-semibold text-gray-900 mb-3">Service Location</h3>
+                  <div className="text-sm space-y-1">
+                    {formData.location.unit && <div><strong>Unit:</strong> {formData.location.unit}</div>}
+                    {formData.location.building && <div><strong>Building:</strong> {formData.location.building}</div>}
+                    {formData.location.streetAddress && <div><strong>Street:</strong> {formData.location.streetAddress}</div>}
+                    <div><strong>Area:</strong> {formData.location.city}, {formData.location.state} {formData.location.zipCode}</div>
                   </div>
                 </div>
 
