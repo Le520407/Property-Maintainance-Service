@@ -501,8 +501,8 @@ class VendorAssignmentService {
       const job = await Job.findById(jobId);
       if (!job) throw new Error('Job not found');
       
-      if (job.status !== 'PENDING') {
-        throw new Error('Job is not in pending status');
+      if (!['PENDING', 'ASSIGNED'].includes(job.status)) {
+        throw new Error(`Job is not available for assignment. Current status: ${job.status}`);
       }
 
       const bestVendors = await this.findBestVendors(job, { limit: 1 });
@@ -513,10 +513,14 @@ class VendorAssignmentService {
 
       const bestVendor = bestVendors[0];
       
+      // Check if this is a reassignment
+      const isReassignment = job.status === 'ASSIGNED';
+      
       // Assign the job
       await job.assignToVendor(bestVendor.userId._id, job.requestedTimeSlot);
       
-      console.log(`🤖 Auto-assigned job ${job.jobNumber} to ${bestVendor.userId.firstName} ${bestVendor.userId.lastName} (Score: ${bestVendor.totalScore.toFixed(2)})`);
+      const assignmentType = isReassignment ? 'Re-assigned' : 'Auto-assigned';
+      console.log(`🤖 ${assignmentType} job ${job.jobNumber} to ${bestVendor.userId.firstName} ${bestVendor.userId.lastName} (Score: ${bestVendor.totalScore.toFixed(2)})`);
       
       return {
         job,
