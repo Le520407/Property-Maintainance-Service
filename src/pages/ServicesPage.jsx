@@ -186,9 +186,8 @@ const ServicesPage = () => {
               className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow"
             >
               <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
+                <div className="mb-4">
                   <h3 className="text-xl font-semibold text-gray-900">{service.name}</h3>
-                  <span className="text-2xl font-bold text-orange-600">{service.price}</span>
                 </div>
 
                 <p className="text-gray-600 mb-4">{service.description}</p>

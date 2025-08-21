@@ -13,7 +13,10 @@
       "Bash(rm:*)",
       "Bash(timeout 15 npm run build)",
       "Bash(timeout 10 npm run build)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

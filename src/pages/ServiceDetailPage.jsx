@@ -540,12 +540,6 @@ const ServiceDetailPage = () => {
                   </span>
                 </div>
                 
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-orange-600">
-                    SGD {service.price}
-                  </div>
-                  <div className="text-sm text-gray-500">Starting price</div>
-                </div>
               </div>
 
               <p className="text-gray-600 leading-relaxed mb-6">{service.description}</p>
@@ -739,10 +733,6 @@ const ServiceDetailPage = () => {
               <h3 className="text-xl font-semibold mb-4">Book Now</h3>
               
               <div className="space-y-4 mb-6">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Price</span>
-                  <span className="font-semibold">SGD {service.price} starting</span>
-                </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Duration</span>
                   <span className="font-semibold">{service.duration}</span>

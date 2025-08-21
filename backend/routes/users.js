@@ -21,11 +21,20 @@ router.put('/profile', authenticateToken, async (req, res) => {
     const { 
       firstName, 
       lastName, 
-      phone, 
-      city, 
+      phone,
+      address,
+      city,
+      state,
+      zipCode,
       country, 
       avatar 
     } = req.body;
+
+    console.log('🔍 Profile update request:', {
+      userId: req.user._id,
+      userEmail: req.user.email,
+      requestData: { firstName, lastName, phone, address, city, state, zipCode, country }
+    });
 
     const updateData = {};
     
@@ -35,7 +44,10 @@ router.put('/profile', authenticateToken, async (req, res) => {
       updateData.fullName = `${firstName || req.user.firstName} ${lastName || req.user.lastName}`;
     }
     if (phone) updateData.phone = phone;
+    if (address !== undefined) updateData.address = address;
     if (city) updateData.city = city;
+    if (state !== undefined) updateData.state = state;
+    if (zipCode !== undefined) updateData.zipCode = zipCode;
     if (country) updateData.country = country;
     if (avatar !== undefined) updateData.avatar = avatar;
 
@@ -44,6 +56,18 @@ router.put('/profile', authenticateToken, async (req, res) => {
       updateData,
       { new: true, select: '-password' }
     );
+
+    console.log('✅ Profile updated successfully:', {
+      userId: updatedUser._id,
+      updatedFields: updateData,
+      returnedUser: {
+        address: updatedUser.address,
+        city: updatedUser.city,
+        state: updatedUser.state,
+        zipCode: updatedUser.zipCode,
+        country: updatedUser.country
+      }
+    });
 
     res.json({
       message: 'Profile updated successfully',

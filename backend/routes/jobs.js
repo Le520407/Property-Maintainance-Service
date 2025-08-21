@@ -447,6 +447,52 @@ router.post('/:id/auto-assign', auth, requireRole('admin'), async (req, res) => 
   }
 });
 
+// Delete job (Admin only)
+router.delete('/:id', auth, requireRole('admin'), async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    // Allow deletion of any status for now (admin override)
+    // const deletableStatuses = ['PENDING', 'CANCELLED', 'REJECTED'];
+    // if (!deletableStatuses.includes(job.status)) {
+    //   return res.status(400).json({ 
+    //     message: `Cannot delete job with status: ${job.status}. Only jobs with status ${deletableStatuses.join(', ')} can be deleted.`
+    //   });
+    // }
+
+    // Store job info for logging before deletion
+    const jobInfo = {
+      jobNumber: job.jobNumber,
+      title: job.title,
+      customerId: job.customerId,
+      status: job.status
+    };
+
+    // Delete related messages first
+    await Message.deleteMany({ jobId: job._id });
+
+    // Delete the job
+    await Job.findByIdAndDelete(req.params.id);
+
+    console.log(`🗑️ Job ${jobInfo.jobNumber} deleted by admin ${req.user.email}`);
+
+    res.json({
+      message: 'Job deleted successfully',
+      deletedJob: jobInfo
+    });
+
+  } catch (error) {
+    console.error('Error deleting job:', error);
+    res.status(500).json({ 
+      message: 'Failed to delete job',
+      error: error.message 
+    });
+  }
+});
+
 // Get vendor assignment analytics (Admin only)
 router.get('/analytics/vendor-performance', auth, requireRole('admin'), async (req, res) => {
   try {

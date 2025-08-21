@@ -29,7 +29,8 @@ import {
   Plus,
   Download,
   MoreHorizontal,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -42,6 +43,8 @@ const OrderManagement = () => {
   const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [jobToDelete, setJobToDelete] = useState(null);
   const [selectedVendor, setSelectedVendor] = useState('');
   const [assignmentTimeSlot, setAssignmentTimeSlot] = useState({
     date: '',
@@ -194,8 +197,16 @@ const OrderManagement = () => {
     try {
       const response = await api.post(`/jobs/${job._id}/auto-assign`);
       
-      toast.success(`Job auto-assigned to ${response.data.assignedVendor.userId.firstName} ${response.data.assignedVendor.userId.lastName}!`);
-      toast.success(`Reason: ${response.data.recommendationReason}`);
+      // Check if response has the expected structure
+      if (response?.assignedVendor?.userId) {
+        toast.success(`Job auto-assigned to ${response.assignedVendor.userId.firstName} ${response.assignedVendor.userId.lastName}!`);
+        if (response.recommendationReason) {
+          toast.success(`Reason: ${response.recommendationReason}`);
+        }
+      } else {
+        toast.success('Job auto-assigned successfully!');
+        console.warn('Auto-assign response structure:', response);
+      }
       
       fetchJobs(); // Refresh the list
       
@@ -231,9 +242,33 @@ const OrderManagement = () => {
     }
   };
 
-  const getVendorsForJob = (job) => {
+  const handleDeleteJob = async () => {
+    if (!jobToDelete) return;
+
+    try {
+      await api.delete(`/jobs/${jobToDelete._id}`);
+      
+      toast.success(`Order ${jobToDelete.jobNumber} deleted successfully! 🗑️`);
+      setShowDeleteModal(false);
+      setJobToDelete(null);
+      fetchJobs(); // Refresh the list
+      
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete order');
+    }
+  };
+
+  const canDeleteJob = (job) => {
+    // Allow deletion of any order for now (admin override)
+    return true;
+    // const deletableStatuses = ['PENDING', 'CANCELLED', 'REJECTED'];
+    // return deletableStatuses.includes(job.status);
+  };
+
+  const getVendorsForJob = (job, vendorList = vendors) => {
     // Filter vendors by category and location
-    return vendors.filter(vendor => {
+    return vendorList.filter(vendor => {
       // Check if vendor handles this service category
       const hasCategory = vendor.serviceCategories?.includes(job.category);
       
@@ -479,6 +514,19 @@ const OrderManagement = () => {
                   Assign to Vendor
                 </button>
               )}
+              {canDeleteJob(job) && (
+                <button
+                  onClick={() => {
+                    setJobToDelete(job);
+                    setShowDeleteModal(true);
+                    onClose();
+                  }}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Order
+                </button>
+              )}
               <button
                 onClick={onClose}
                 className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
@@ -493,14 +541,70 @@ const OrderManagement = () => {
   );
 
   const AssignmentModal = () => {
-    const availableVendors = getVendorsForJob(selectedJob);
+    const [modalVendors, setModalVendors] = useState([]);
+    const [isLoadingVendors, setIsLoadingVendors] = useState(false);
+    const availableVendors = modalVendors.length > 0 ? getVendorsForJob(selectedJob, modalVendors) : getVendorsForJob(selectedJob);
 
     // Fetch recommended vendors when modal opens
     React.useEffect(() => {
-      if (selectedJob && showAssignModal) {
-        fetchRecommendedVendors(selectedJob._id);
+      let isMounted = true;
+      
+      const fetchVendorsForModal = async () => {
+        if (selectedJob && showAssignModal && !isLoadingVendors) {
+          setIsLoadingVendors(true);
+          try {
+            const response = await api.get(`/jobs/${selectedJob._id}/recommended-vendors?limit=10`);
+            if (isMounted) {
+              setModalVendors(response.recommendedVendors || []);
+              
+              if (response.recommendedVendors?.length > 0) {
+                toast.success(`Found ${response.recommendedVendors.length} recommended vendors!`);
+              } else {
+                // Fallback to all vendors
+                const allVendorsResponse = await api.get('/admin/vendors');
+                if (isMounted) {
+                  setModalVendors(allVendorsResponse.vendors || []);
+                }
+                toast.error('No suitable vendors found for this job');
+              }
+            }
+          } catch (error) {
+            if (isMounted) {
+              console.error('Error fetching recommended vendors:', error);
+              toast.error('Failed to get vendor recommendations');
+              // Fallback to all vendors
+              try {
+                const allVendorsResponse = await api.get('/admin/vendors');
+                if (isMounted) {
+                  setModalVendors(allVendorsResponse.vendors || []);
+                }
+              } catch (fallbackError) {
+                console.error('Error fetching fallback vendors:', fallbackError);
+              }
+            }
+          } finally {
+            if (isMounted) {
+              setIsLoadingVendors(false);
+            }
+          }
+        }
+      };
+
+      fetchVendorsForModal();
+
+      return () => {
+        isMounted = false;
+      };
+    }, [selectedJob?._id, showAssignModal]); // Only depend on selectedJob._id to prevent infinite loops
+
+    // Reset modal state when modal closes
+    React.useEffect(() => {
+      if (!showAssignModal) {
+        setModalVendors([]);
+        setIsLoadingVendors(false);
+        setSelectedVendor('');
       }
-    }, [selectedJob, showAssignModal]);
+    }, [showAssignModal]);
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -589,10 +693,28 @@ const OrderManagement = () => {
                 Select Vendor Manually
               </label>
               <button
-                onClick={() => fetchRecommendedVendors(selectedJob._id)}
-                className="text-sm text-orange-600 hover:text-orange-800 flex items-center"
+                onClick={async () => {
+                  setIsLoadingVendors(true);
+                  try {
+                    const response = await api.get(`/jobs/${selectedJob._id}/recommended-vendors?limit=10`);
+                    setModalVendors(response.recommendedVendors || []);
+                    
+                    if (response.recommendedVendors?.length > 0) {
+                      toast.success(`Found ${response.recommendedVendors.length} recommended vendors!`);
+                    } else {
+                      toast.error('No suitable vendors found for this job');
+                    }
+                  } catch (error) {
+                    console.error('Error fetching recommended vendors:', error);
+                    toast.error('Failed to get vendor recommendations');
+                  } finally {
+                    setIsLoadingVendors(false);
+                  }
+                }}
+                disabled={isLoadingVendors}
+                className="text-sm text-orange-600 hover:text-orange-800 flex items-center disabled:opacity-50"
               >
-                <RefreshCw className="w-4 h-4 mr-1" />
+                <RefreshCw className={`w-4 h-4 mr-1 ${isLoadingVendors ? 'animate-spin' : ''}`} />
                 Get AI Recommendations
               </button>
             </div>
@@ -674,7 +796,7 @@ const OrderManagement = () => {
                   );
                 })}
               </div>
-            ) : loading ? (
+            ) : isLoadingVendors ? (
               /* Vendor Loading Skeleton */
               <div className="space-y-3 max-h-60 overflow-y-auto">
                 {[...Array(4)].map((_, index) => (
@@ -706,8 +828,21 @@ const OrderManagement = () => {
                 <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <p>No available vendors found for this job category and location.</p>
                 <button
-                  onClick={() => fetchVendors()}
-                  className="mt-2 text-orange-600 hover:text-orange-800 text-sm"
+                  onClick={async () => {
+                    setIsLoadingVendors(true);
+                    try {
+                      const response = await api.get('/admin/vendors');
+                      setModalVendors(response.vendors || []);
+                      toast.success('All vendors loaded');
+                    } catch (error) {
+                      console.error('Error fetching vendors:', error);
+                      toast.error('Failed to load vendors');
+                    } finally {
+                      setIsLoadingVendors(false);
+                    }
+                  }}
+                  disabled={isLoadingVendors}
+                  className="mt-2 text-orange-600 hover:text-orange-800 text-sm disabled:opacity-50"
                 >
                   Load all vendors
                 </button>
@@ -780,6 +915,82 @@ const OrderManagement = () => {
       </div>
     );
   };
+
+  const DeleteConfirmationModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-xl shadow-2xl w-full max-w-md"
+      >
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center">
+              <Trash2 className="w-5 h-5 mr-2 text-red-600" />
+              Delete Order
+            </h2>
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          <div className="text-center">
+            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <Trash2 className="w-8 h-8 text-red-600" />
+            </div>
+            
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Are you sure you want to delete this order?
+            </h3>
+            
+            {jobToDelete && (
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <div className="text-sm space-y-1">
+                  <div><strong>Order:</strong> {jobToDelete.jobNumber}</div>
+                  <div><strong>Title:</strong> {jobToDelete.title}</div>
+                  <div><strong>Status:</strong> 
+                    <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${statusColors[jobToDelete.status]}`}>
+                      {jobToDelete.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div><strong>Customer:</strong> {jobToDelete.customerId?.firstName} {jobToDelete.customerId?.lastName}</div>
+                </div>
+              </div>
+            )}
+            
+            <p className="text-gray-600 mb-6">
+              This action cannot be undone. The order and all associated messages will be permanently deleted.
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end space-x-3">
+          <button
+            onClick={() => setShowDeleteModal(false)}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-white transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDeleteJob}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete Order
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1378,6 +1589,19 @@ const OrderManagement = () => {
                       </button>
                     </>
                   )}
+                  
+                  {canDeleteJob(job) && (
+                    <button
+                      onClick={() => {
+                        setJobToDelete(job);
+                        setShowDeleteModal(true);
+                      }}
+                      className="flex items-center justify-center px-3 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                      title="Delete order"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -1533,6 +1757,19 @@ const OrderManagement = () => {
                             </button>
                           </>
                         )}
+                        
+                        {canDeleteJob(job) && (
+                          <button
+                            onClick={() => {
+                              setJobToDelete(job);
+                              setShowDeleteModal(true);
+                            }}
+                            className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 transition-colors"
+                            title="Delete order"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1617,6 +1854,19 @@ const OrderManagement = () => {
                       </button>
                     </>
                   )}
+                  
+                  {canDeleteJob(job) && (
+                    <button
+                      onClick={() => {
+                        setJobToDelete(job);
+                        setShowDeleteModal(true);
+                      }}
+                      className="flex items-center justify-center px-3 py-2 text-xs font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -1664,6 +1914,10 @@ const OrderManagement = () => {
       
       {showAssignModal && selectedJob && (
         <AssignmentModal />
+      )}
+
+      {showDeleteModal && jobToDelete && (
+        <DeleteConfirmationModal />
       )}
     </div>
   );

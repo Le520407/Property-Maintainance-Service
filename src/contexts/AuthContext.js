@@ -49,7 +49,11 @@ export const AuthProvider = ({ children }) => {
         status: response.user.status,
         avatar: response.user.avatar,
         phone: response.user.phone,
-        address: response.user.city || 'Singapore',
+        address: response.user.address || '',
+        city: response.user.city || '',
+        state: response.user.state || '',
+        zipCode: response.user.zipCode || '',
+        country: response.user.country || 'Malaysia',
         wallet: {
           balance: response.user.totalSpent || 0,
           currency: 'SGD'
@@ -96,8 +100,8 @@ export const AuthProvider = ({ children }) => {
         phone: userData.phone,
         password: userData.password,
         role: 'customer',
-        city: userData.address,
-        country: 'Singapore'
+        address: userData.address,
+        country: 'Malaysia'
       });
       
       // 保存token
@@ -137,8 +141,8 @@ export const AuthProvider = ({ children }) => {
         email: vendorData.email,
         phone: vendorData.phone,
         password: vendorData.password,
-        city: vendorData.address,
-        country: 'Singapore',
+        address: vendorData.address,
+        country: 'Malaysia',
         skills: vendorData.services || [],
         experience: vendorData.experience || 0,
         hourlyRate: vendorData.hourlyRate || 0

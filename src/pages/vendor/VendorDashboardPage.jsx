@@ -31,6 +31,7 @@ import {
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
 import VendorPricingManagement from '../../components/vendor/VendorPricingManagement';
+import { CurrentPlanTab, UpgradePlansTab, UsageStatsTab, BillingHistoryTab } from '../../components/vendor/VendorMembership';
 
 const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
   const [activeSection, setActiveSection] = useState(initialSection || 'services');
@@ -863,6 +864,18 @@ const VendorDashboardPage = () => {
       ]
     },
     { 
+      name: 'Membership', 
+      section: 'membership',
+      icon: CreditCard,
+      description: 'Plans & Benefits',
+      tabs: [
+        { name: 'Current Plan', tab: 'current-plan' },
+        { name: 'Upgrade Plans', tab: 'upgrade-plans' },
+        { name: 'Usage Stats', tab: 'usage-stats' },
+        { name: 'Billing History', tab: 'billing-history' }
+      ]
+    },
+    { 
       name: 'Account', 
       section: 'account',
       icon: User,
@@ -1173,6 +1186,14 @@ const VendorDashboardPage = () => {
           <p className="text-gray-600">Communication tools coming soon...</p>
         </div>
       );
+    }
+
+    // Membership Section
+    if (activeSection === 'membership') {
+      if (activeTab === 'current-plan') return <CurrentPlanTab />;
+      if (activeTab === 'upgrade-plans') return <UpgradePlansTab />;
+      if (activeTab === 'usage-stats') return <UsageStatsTab />;
+      if (activeTab === 'billing-history') return <BillingHistoryTab />;
     }
 
     // Account Section  

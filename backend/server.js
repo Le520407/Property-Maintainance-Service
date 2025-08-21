@@ -17,6 +17,8 @@ const cmsRoutes = require('./routes/cms');
 const adminRoutes = require('./routes/admin');
 const referralRoutes = require('./routes/referral');
 const vendorRoutes = require('./routes/vendor');
+const vendorMembershipRoutes = require('./routes/vendorMembership');
+const customerSubscriptionRoutes = require('./routes/customerSubscriptions');
 const announcementRoutes = require('./routes/announcements');
 
 const app = express();
@@ -66,6 +68,8 @@ app.use('/api/cms', cmsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/referral', referralRoutes);
 app.use('/api/vendor', vendorRoutes);
+app.use('/api/vendor/membership', vendorMembershipRoutes);
+app.use('/api/subscriptions', customerSubscriptionRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/upload', require('./routes/upload'));
 

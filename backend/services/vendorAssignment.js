@@ -20,54 +20,86 @@ class VendorAssignmentService {
         maxDistance = 50 // km
       } = options;
 
-      console.log(`🔍 Finding best vendors for job: ${job.jobNumber}`);
-      console.log(`📍 Job location: ${job.location?.city}, Category: ${job.category}`);
-
-      // Step 1: Get all active vendors who can handle this service category
-      const baseQuery = {
-        isActive: true,
-        verificationStatus: 'VERIFIED',
-        serviceCategories: { $in: [job.category] }
-      };
-
-      // Add location filter if job has location
-      if (job.location?.city) {
-        baseQuery.serviceArea = new RegExp(job.location.city, 'i');
-      }
-
-      const vendors = await Vendor.find(baseQuery)
-        .populate('userId', 'firstName lastName email phone')
-        .lean();
-
-      console.log(`📊 Found ${vendors.length} potential vendors`);
-
-      if (vendors.length === 0) {
-        return [];
-      }
-
-      // Step 2: Calculate scores for each vendor
-      const scoredVendors = await Promise.all(
-        vendors.map(vendor => this.calculateVendorScore(vendor, job))
-      );
-
-      // Step 3: Filter out unavailable vendors if required
-      let filteredVendors = scoredVendors;
-      if (!includeUnavailable) {
-        filteredVendors = await this.filterAvailableVendors(scoredVendors, job);
-      }
-
-      // Step 4: Sort by total score (highest first)
-      filteredVendors.sort((a, b) => b.totalScore - a.totalScore);
-
-      // Step 5: Return top vendors with detailed scoring
-      const topVendors = filteredVendors.slice(0, limit);
-      
-      console.log(`🏆 Top ${topVendors.length} recommended vendors:`);
-      topVendors.forEach((vendor, index) => {
-        console.log(`${index + 1}. ${vendor.userId.firstName} ${vendor.userId.lastName} - Score: ${vendor.totalScore.toFixed(2)}`);
+      // Add timeout to prevent hanging requests
+      const OPERATION_TIMEOUT = 30000; // 30 seconds
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Operation timed out')), OPERATION_TIMEOUT);
       });
 
-      return topVendors;
+      // Wrap the main operation in a race with timeout
+      const findVendorsOperation = async () => {
+        console.log(`🔍 Finding best vendors for job: ${job.jobNumber}`);
+        console.log(`📍 Job location: ${job.location?.city}, Category: ${job.category}`);
+
+        // Step 1: Get all active vendors who can handle this service category
+        const baseQuery = {
+          isActive: true,
+          verificationStatus: 'VERIFIED',
+          serviceCategories: { $in: [job.category] }
+        };
+
+        // Add location filter if job has location
+        if (job.location?.city) {
+          baseQuery.serviceArea = new RegExp(job.location.city, 'i');
+        }
+
+        const vendors = await Vendor.find(baseQuery)
+          .populate('userId', 'firstName lastName email phone')
+          .limit(50) // Limit initial query to prevent memory issues
+          .lean();
+
+        console.log(`📊 Found ${vendors.length} potential vendors`);
+
+        // Step 1.5: Priority filtering based on membership tiers
+        const priorityVendors = vendors.filter(vendor => vendor.membershipFeatures?.priorityAssignment === true);
+        const regularVendors = vendors.filter(vendor => vendor.membershipFeatures?.priorityAssignment !== true);
+        
+        console.log(`⭐ Priority vendors: ${priorityVendors.length}, Regular vendors: ${regularVendors.length}`);
+
+        if (vendors.length === 0) {
+          return [];
+        }
+
+        // Step 2: Calculate scores for each vendor with concurrent limit
+        const CONCURRENCY_LIMIT = 5;
+        const scoredVendors = [];
+        
+        for (let i = 0; i < vendors.length; i += CONCURRENCY_LIMIT) {
+          const batch = vendors.slice(i, i + CONCURRENCY_LIMIT);
+          const batchResults = await Promise.allSettled(
+            batch.map(vendor => this.calculateVendorScore(vendor, job))
+          );
+          
+          // Only include successful results
+          batchResults.forEach(result => {
+            if (result.status === 'fulfilled') {
+              scoredVendors.push(result.value);
+            }
+          });
+        }
+
+        // Step 3: Filter out unavailable vendors if required
+        let filteredVendors = scoredVendors;
+        if (!includeUnavailable) {
+          filteredVendors = await this.filterAvailableVendors(scoredVendors, job);
+        }
+
+        // Step 4: Sort by total score (highest first)
+        filteredVendors.sort((a, b) => b.totalScore - a.totalScore);
+
+        // Step 5: Return top vendors with detailed scoring
+        const topVendors = filteredVendors.slice(0, limit);
+        
+        console.log(`🏆 Top ${topVendors.length} recommended vendors:`);
+        topVendors.forEach((vendor, index) => {
+          console.log(`${index + 1}. ${vendor.userId.firstName} ${vendor.userId.lastName} - Score: ${vendor.totalScore.toFixed(2)}`);
+        });
+
+        return topVendors;
+      };
+
+      // Race the operation against the timeout
+      return await Promise.race([findVendorsOperation(), timeoutPromise]);
 
     } catch (error) {
       console.error('Error in findBestVendors:', error);
@@ -94,16 +126,18 @@ class VendorAssignmentService {
       const categoryExpertiseScore = this.calculateCategoryExpertiseScore(vendor, job);
       const recentActivityScore = this.calculateRecentActivityScore(vendorStats);
       const priceCompatibilityScore = this.calculatePriceCompatibilityScore(vendor, job);
+      const membershipScore = this.calculateMembershipScore(vendor);
 
       // Weight factors (total should equal 1.0)
       const weights = {
-        rating: 0.25,        // 25% - Customer satisfaction is crucial
-        experience: 0.20,    // 20% - Experience with similar jobs
+        rating: 0.22,        // 22% - Customer satisfaction is crucial
+        experience: 0.18,    // 18% - Experience with similar jobs
         availability: 0.15,  // 15% - Can they do the job when needed
         location: 0.15,      // 15% - Geographic proximity
         categoryExpertise: 0.10, // 10% - Specialization in job category
         recentActivity: 0.10,    // 10% - Recent engagement
-        priceCompatibility: 0.05  // 5% - Price range compatibility
+        priceCompatibility: 0.05, // 5% - Price range compatibility
+        membership: 0.05     // 5% - Membership tier bonus
       };
 
       // Calculate weighted total score
@@ -114,7 +148,8 @@ class VendorAssignmentService {
         (locationScore * weights.location) +
         (categoryExpertiseScore * weights.categoryExpertise) +
         (recentActivityScore * weights.recentActivity) +
-        (priceCompatibilityScore * weights.priceCompatibility);
+        (priceCompatibilityScore * weights.priceCompatibility) +
+        (membershipScore * weights.membership);
 
       // Add scoring breakdown for transparency
       const scoreBreakdown = {
@@ -124,7 +159,8 @@ class VendorAssignmentService {
         location: { score: locationScore, weight: weights.location, weighted: locationScore * weights.location },
         categoryExpertise: { score: categoryExpertiseScore, weight: weights.categoryExpertise, weighted: categoryExpertiseScore * weights.categoryExpertise },
         recentActivity: { score: recentActivityScore, weight: weights.recentActivity, weighted: recentActivityScore * weights.recentActivity },
-        priceCompatibility: { score: priceCompatibilityScore, weight: weights.priceCompatibility, weighted: priceCompatibilityScore * weights.priceCompatibility }
+        priceCompatibility: { score: priceCompatibilityScore, weight: weights.priceCompatibility, weighted: priceCompatibilityScore * weights.priceCompatibility },
+        membership: { score: membershipScore, weight: weights.membership, weighted: membershipScore * weights.membership }
       };
 
       return {
@@ -151,8 +187,11 @@ class VendorAssignmentService {
    */
   static async getVendorStatistics(vendorUserId) {
     try {
-      // Get job statistics
-      const jobStats = await Job.aggregate([
+      // Set timeout for aggregation queries
+      const QUERY_TIMEOUT = 10000; // 10 seconds
+      
+      // Get job statistics with timeout
+      const jobStatsPromise = Job.aggregate([
         { $match: { vendorId: vendorUserId } },
         {
           $group: {
@@ -173,10 +212,10 @@ class VendorAssignmentService {
             }
           }
         }
-      ]);
+      ]).maxTimeMS(QUERY_TIMEOUT);
 
-      // Get rating statistics
-      const ratingStats = await Rating.aggregate([
+      // Get rating statistics with timeout
+      const ratingStatsPromise = Rating.aggregate([
         { $match: { vendorId: vendorUserId } },
         {
           $group: {
@@ -197,10 +236,25 @@ class VendorAssignmentService {
             }
           }
         }
+      ]).maxTimeMS(QUERY_TIMEOUT);
+
+      // Execute both queries with timeout protection
+      const [jobStats, ratingStats] = await Promise.allSettled([
+        jobStatsPromise,
+        ratingStatsPromise
       ]);
 
-      const stats = jobStats[0] || {};
-      const ratings = ratingStats[0] || {};
+      // Extract results from settled promises
+      const stats = (jobStats.status === 'fulfilled' && jobStats.value[0]) || {};
+      const ratings = (ratingStats.status === 'fulfilled' && ratingStats.value[0]) || {};
+
+      // Log any failed queries
+      if (jobStats.status === 'rejected') {
+        console.warn(`Failed to get job stats for vendor ${vendorUserId}:`, jobStats.reason);
+      }
+      if (ratingStats.status === 'rejected') {
+        console.warn(`Failed to get rating stats for vendor ${vendorUserId}:`, ratingStats.reason);
+      }
 
       return {
         // Job statistics
@@ -317,7 +371,7 @@ class VendorAssignmentService {
       
       if (!hasTimeOverlap) return 40; // Medium score if time doesn't match perfectly
       
-      // Check current workload
+      // Check current workload with timeout
       const currentJobs = await Job.countDocuments({
         vendorId: vendor.userId._id,
         status: { $in: ['ASSIGNED', 'IN_PROGRESS'] },
@@ -325,7 +379,7 @@ class VendorAssignmentService {
           $gte: new Date(),
           $lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // Next 7 days
         }
-      });
+      }).maxTimeMS(5000); // 5 second timeout
       
       // Lower score if vendor is very busy
       let workloadMultiplier = 1;
@@ -491,6 +545,39 @@ class VendorAssignmentService {
     }
     
     return reasons.join(', ');
+  }
+
+  /**
+   * Calculate membership tier bonus score
+   */
+  static calculateMembershipScore(vendor) {
+    try {
+      const membershipTier = vendor.membershipTier || 'BASIC';
+      const membershipFeatures = vendor.membershipFeatures || {};
+      
+      // Base scores for different membership tiers
+      const tierScores = {
+        'BASIC': 0,
+        'PROFESSIONAL': 25,
+        'PREMIUM': 50,
+        'ENTERPRISE': 75
+      };
+      
+      let score = tierScores[membershipTier] || 0;
+      
+      // Bonus points for specific features
+      if (membershipFeatures.priorityAssignment) score += 15;
+      if (membershipFeatures.emergencyServiceEnabled) score += 10;
+      if (membershipFeatures.featuredListing) score += 10;
+      if (membershipFeatures.advancedAnalytics) score += 5;
+      if (membershipFeatures.prioritySupport) score += 5;
+      
+      // Cap at 100
+      return Math.min(score, 100);
+    } catch (error) {
+      console.error('Error calculating membership score:', error);
+      return 0;
+    }
   }
 
   /**

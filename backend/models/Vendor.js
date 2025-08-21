@@ -254,7 +254,29 @@ const vendorSchema = new mongoose.Schema({
     trim: true
   },
   
-  // Subscription and Status
+  // Membership Integration
+  membershipTier: {
+    type: String,
+    enum: ['BASIC', 'PROFESSIONAL', 'PREMIUM', 'ENTERPRISE'],
+    default: 'BASIC'
+  },
+  membershipStatus: {
+    type: String,
+    enum: ['ACTIVE', 'INACTIVE', 'PENDING', 'CANCELLED', 'SUSPENDED'],
+    default: 'ACTIVE'
+  },
+  membershipFeatures: {
+    priorityAssignment: { type: Boolean, default: false },
+    emergencyServiceEnabled: { type: Boolean, default: false },
+    featuredListing: { type: Boolean, default: false },
+    maxPortfolioImages: { type: Number, default: 5 },
+    customPackagesAllowed: { type: Boolean, default: false },
+    advancedAnalytics: { type: Boolean, default: false },
+    prioritySupport: { type: Boolean, default: false },
+    platformCommissionRate: { type: Number, default: 15 }
+  },
+  
+  // Legacy field for backward compatibility
   subscriptionPlan: {
     type: String,
     enum: ['BASIC', 'PREMIUM', 'ENTERPRISE'],
@@ -377,6 +399,70 @@ vendorSchema.methods.isAvailableAtTime = function(dayOfWeek, time) {
     
     return checkTime >= startTime && checkTime <= endTime;
   });
+};
+
+// Membership-related methods
+vendorSchema.methods.hasFeature = function(featureName) {
+  return this.membershipFeatures[featureName] === true;
+};
+
+vendorSchema.methods.getCommissionRate = function() {
+  return this.membershipFeatures.platformCommissionRate || 15;
+};
+
+vendorSchema.methods.canCreateCustomPackages = function() {
+  return this.membershipFeatures.customPackagesAllowed;
+};
+
+vendorSchema.methods.getMaxPortfolioImages = function() {
+  return this.membershipFeatures.maxPortfolioImages || 5;
+};
+
+vendorSchema.methods.isPriorityVendor = function() {
+  return this.membershipFeatures.priorityAssignment;
+};
+
+vendorSchema.methods.upgradeMembership = function(newTier) {
+  // This will be called by the membership service
+  this.membershipTier = newTier;
+  
+  // Update features based on tier
+  switch(newTier) {
+    case 'PROFESSIONAL':
+      this.membershipFeatures.maxPortfolioImages = 15;
+      this.membershipFeatures.customPackagesAllowed = true;
+      this.membershipFeatures.platformCommissionRate = 12;
+      break;
+    case 'PREMIUM':
+      this.membershipFeatures.priorityAssignment = true;
+      this.membershipFeatures.emergencyServiceEnabled = true;
+      this.membershipFeatures.maxPortfolioImages = 30;
+      this.membershipFeatures.customPackagesAllowed = true;
+      this.membershipFeatures.advancedAnalytics = true;
+      this.membershipFeatures.platformCommissionRate = 10;
+      break;
+    case 'ENTERPRISE':
+      this.membershipFeatures.priorityAssignment = true;
+      this.membershipFeatures.emergencyServiceEnabled = true;
+      this.membershipFeatures.featuredListing = true;
+      this.membershipFeatures.maxPortfolioImages = -1; // unlimited
+      this.membershipFeatures.customPackagesAllowed = true;
+      this.membershipFeatures.advancedAnalytics = true;
+      this.membershipFeatures.prioritySupport = true;
+      this.membershipFeatures.platformCommissionRate = 8;
+      break;
+    default: // BASIC
+      this.membershipFeatures.priorityAssignment = false;
+      this.membershipFeatures.emergencyServiceEnabled = false;
+      this.membershipFeatures.featuredListing = false;
+      this.membershipFeatures.maxPortfolioImages = 5;
+      this.membershipFeatures.customPackagesAllowed = false;
+      this.membershipFeatures.advancedAnalytics = false;
+      this.membershipFeatures.prioritySupport = false;
+      this.membershipFeatures.platformCommissionRate = 15;
+  }
+  
+  return this.save();
 };
 
 // Virtual for completion rate
