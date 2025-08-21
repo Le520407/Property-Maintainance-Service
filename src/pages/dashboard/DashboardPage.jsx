@@ -422,7 +422,7 @@ const CustomerDashboard = () => {
     // Check if order is already cancelled to prevent duplicate actions
     const orderToCancel = dashboardData.recentOrders.find(order => order._id === orderId);
     if (orderToCancel?.status === 'CANCELLED') {
-      toast.info('Order is already cancelled');
+      toast('Order is already cancelled');
       return;
     }
     

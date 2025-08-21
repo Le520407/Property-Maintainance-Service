@@ -48,15 +48,18 @@ class VendorAssignmentService {
           .limit(50) // Limit initial query to prevent memory issues
           .lean();
 
-        console.log(`📊 Found ${vendors.length} potential vendors`);
+        // Filter out vendors without valid userId
+        const validVendors = vendors.filter(vendor => vendor.userId);
+
+        console.log(`📊 Found ${validVendors.length} potential vendors (${vendors.length - validVendors.length} excluded for missing user data)`);
 
         // Step 1.5: Priority filtering based on membership tiers
-        const priorityVendors = vendors.filter(vendor => vendor.membershipFeatures?.priorityAssignment === true);
-        const regularVendors = vendors.filter(vendor => vendor.membershipFeatures?.priorityAssignment !== true);
+        const priorityVendors = validVendors.filter(vendor => vendor.membershipFeatures?.priorityAssignment === true);
+        const regularVendors = validVendors.filter(vendor => vendor.membershipFeatures?.priorityAssignment !== true);
         
         console.log(`⭐ Priority vendors: ${priorityVendors.length}, Regular vendors: ${regularVendors.length}`);
 
-        if (vendors.length === 0) {
+        if (validVendors.length === 0) {
           return [];
         }
 

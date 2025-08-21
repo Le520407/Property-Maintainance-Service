@@ -800,12 +800,15 @@ router.get('/vendors', auth, async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
+    // Filter out vendors without valid userId (to prevent null reference errors)
+    vendors = vendors.filter(vendor => vendor.userId);
+
     // Apply search filter if provided
     if (search) {
       vendors = vendors.filter(vendor => 
-        vendor.userId.firstName.toLowerCase().includes(search.toLowerCase()) ||
-        vendor.userId.lastName.toLowerCase().includes(search.toLowerCase()) ||
-        vendor.userId.email.toLowerCase().includes(search.toLowerCase()) ||
+        vendor.userId?.firstName?.toLowerCase().includes(search.toLowerCase()) ||
+        vendor.userId?.lastName?.toLowerCase().includes(search.toLowerCase()) ||
+        vendor.userId?.email?.toLowerCase().includes(search.toLowerCase()) ||
         vendor.companyName?.toLowerCase().includes(search.toLowerCase())
       );
     }

@@ -33,7 +33,7 @@ const SubscriptionPlans = ({ tiers, currentSubscription, onSubscriptionSuccess }
 
   const handleSelectPlan = (tier) => {
     if (currentSubscription?.propertyType === tier.propertyType) {
-      toast.info('You are already subscribed to this plan');
+      toast('You are already subscribed to this plan');
       return;
     }
     

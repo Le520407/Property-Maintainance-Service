@@ -199,7 +199,7 @@ const OrderManagement = () => {
       
       // Check if response has the expected structure
       if (response?.assignedVendor?.userId) {
-        toast.success(`Job auto-assigned to ${response.assignedVendor.userId.firstName} ${response.assignedVendor.userId.lastName}!`);
+        toast.success(`Job auto-assigned to ${response.assignedVendor.userId?.firstName || 'Unknown'} ${response.assignedVendor.userId?.lastName || 'User'}!`);
         if (response.recommendationReason) {
           toast.success(`Reason: ${response.recommendationReason}`);
         }
@@ -543,14 +543,26 @@ const OrderManagement = () => {
   const AssignmentModal = () => {
     const [modalVendors, setModalVendors] = useState([]);
     const [isLoadingVendors, setIsLoadingVendors] = useState(false);
-    const availableVendors = modalVendors.length > 0 ? getVendorsForJob(selectedJob, modalVendors) : getVendorsForJob(selectedJob);
+    
+    // Memoize availableVendors to prevent unnecessary re-renders
+    const availableVendors = React.useMemo(() => {
+      return modalVendors.length > 0 ? getVendorsForJob(selectedJob, modalVendors) : getVendorsForJob(selectedJob);
+    }, [selectedJob, modalVendors]);
+
+    // Memoize vendor items with stable IDs to prevent re-renders
+    const vendorItems = React.useMemo(() => {
+      return availableVendors.map(vendor => ({
+        ...vendor,
+        stableId: vendor.userId?._id || vendor.userId || vendor._id
+      }));
+    }, [availableVendors]);
 
     // Fetch recommended vendors when modal opens
     React.useEffect(() => {
       let isMounted = true;
       
       const fetchVendorsForModal = async () => {
-        if (selectedJob && showAssignModal && !isLoadingVendors) {
+        if (selectedJob && showAssignModal && modalVendors.length === 0 && !isLoadingVendors) {
           setIsLoadingVendors(true);
           try {
             const response = await api.get(`/jobs/${selectedJob._id}/recommended-vendors?limit=10`);
@@ -595,7 +607,7 @@ const OrderManagement = () => {
       return () => {
         isMounted = false;
       };
-    }, [selectedJob?._id, showAssignModal]); // Only depend on selectedJob._id to prevent infinite loops
+    }, [selectedJob?._id, showAssignModal, modalVendors.length, isLoadingVendors]); // Prevent infinite loops and unnecessary re-fetches
 
     // Reset modal state when modal closes
     React.useEffect(() => {
@@ -718,10 +730,10 @@ const OrderManagement = () => {
                 Get AI Recommendations
               </button>
             </div>
-            {availableVendors.length > 0 ? (
+            {vendorItems.length > 0 ? (
               <div className="space-y-3 max-h-60 overflow-y-auto">
-                {availableVendors.map((vendor) => {
-                  const vendorId = vendor.userId?._id || vendor.userId;
+                {vendorItems.map((vendor) => {
+                  const vendorId = vendor.stableId;
                   const hasAIScore = vendor.totalScore !== undefined;
                   
                   return (
@@ -744,7 +756,7 @@ const OrderManagement = () => {
                           <div>
                             <div className="flex items-center">
                               <div className="font-medium">
-                                {vendor.userId.firstName} {vendor.userId.lastName}
+                                {vendor.userId?.firstName || vendor.firstName || 'Unknown'} {vendor.userId?.lastName || vendor.lastName || 'User'}
                               </div>
                               {hasAIScore && (
                                 <div className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
@@ -891,7 +903,7 @@ const OrderManagement = () => {
           <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
             <div className="flex justify-between items-center">
               <div className="text-sm text-gray-600">
-                {availableVendors.length} vendor{availableVendors.length !== 1 ? 's' : ''} available
+                {vendorItems.length} vendor{vendorItems.length !== 1 ? 's' : ''} available
               </div>
               <div className="flex space-x-3">
                 <button
@@ -1262,7 +1274,7 @@ const OrderManagement = () => {
                       <button
                         onClick={() => {
                           // Bulk assign logic would go here
-                          toast.info('Bulk assignment feature coming soon!');
+                          toast('Bulk assignment feature coming soon!');
                         }}
                         className="px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors flex items-center"
                       >
@@ -1272,7 +1284,7 @@ const OrderManagement = () => {
                       <button
                         onClick={() => {
                           // Bulk export logic would go here
-                          toast.info('Bulk export feature coming soon!');
+                          toast('Bulk export feature coming soon!');
                         }}
                         className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center"
                       >
@@ -1297,10 +1309,10 @@ const OrderManagement = () => {
                     onClick={() => {
                       const pendingJobs = jobs.filter(job => job.status === 'PENDING');
                       if (pendingJobs.length > 0) {
-                        toast.info(`Auto-assigning ${pendingJobs.length} pending orders...`);
+                        toast(`Auto-assigning ${pendingJobs.length} pending orders...`);
                         // Bulk auto-assign logic would go here
                       } else {
-                        toast.info('No pending orders to assign');
+                        toast('No pending orders to assign');
                       }
                     }}
                     className="px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"

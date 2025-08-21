@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { SubscriptionTier, CustomerSubscription } = require('../models/CustomerSubscription');
-const { protect, authorize } = require('../middleware/auth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
 // Get all subscription tiers
@@ -24,7 +24,7 @@ router.get('/tiers', async (req, res) => {
 });
 
 // Get user's current subscription
-router.get('/current', protect, async (req, res) => {
+router.get('/current', authenticateToken, async (req, res) => {
   try {
     const subscription = await CustomerSubscription.findOne({
       customer: req.user._id,
@@ -54,7 +54,7 @@ router.get('/current', protect, async (req, res) => {
 
 // Subscribe to a plan
 router.post('/subscribe', 
-  protect,
+  authenticateToken,
   [
     body('propertyType').isIn(['HDB', 'CONDOMINIUM', 'LANDED', 'COMMERCIAL'])
       .withMessage('Valid property type required'),
@@ -141,7 +141,7 @@ router.post('/subscribe',
 
 // Update subscription
 router.put('/update/:id', 
-  protect,
+  authenticateToken,
   [
     body('propertyType').optional().isIn(['HDB', 'CONDOMINIUM', 'LANDED', 'COMMERCIAL']),
     body('paymentMethod.type').optional().isIn(['CARD', 'BANK_TRANSFER', 'PAYPAL']),
@@ -212,7 +212,7 @@ router.put('/update/:id',
 );
 
 // Cancel subscription
-router.post('/cancel/:id', protect, async (req, res) => {
+router.post('/cancel/:id', authenticateToken, async (req, res) => {
   try {
     const { reason } = req.body;
 
@@ -251,7 +251,7 @@ router.post('/cancel/:id', protect, async (req, res) => {
 });
 
 // Use free service (social impact)
-router.post('/use-free-service/:id', protect, async (req, res) => {
+router.post('/use-free-service/:id', authenticateToken, async (req, res) => {
   try {
     const subscription = await CustomerSubscription.findOne({
       _id: req.params.id,
@@ -297,7 +297,7 @@ router.post('/use-free-service/:id', protect, async (req, res) => {
 });
 
 // Record paid service (for social impact calculation)
-router.post('/record-service/:id', protect, async (req, res) => {
+router.post('/record-service/:id', authenticateToken, async (req, res) => {
   try {
     const subscription = await CustomerSubscription.findOne({
       _id: req.params.id,
@@ -335,7 +335,7 @@ router.post('/record-service/:id', protect, async (req, res) => {
 });
 
 // Get subscription analytics (admin only)
-router.get('/analytics', protect, authorize('admin'), async (req, res) => {
+router.get('/analytics', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const totalSubscriptions = await CustomerSubscription.countDocuments({ status: 'ACTIVE' });
     const totalRevenue = await CustomerSubscription.aggregate([
