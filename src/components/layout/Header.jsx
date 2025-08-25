@@ -32,18 +32,23 @@ const Header = () => {
     { name: t('home'), href: '/' },
     { name: t('services'), href: '/services' },
     { name: t('products'), href: '/products' },
-    { name: 'Announcements', href: '/announcements' },
+    // { name: 'Announcements', href: '/announcements' }, // Hidden temporarily
     { name: 'FAQ', href: '/faq' },
     { name: t('about'), href: '/about' },
     { name: t('contact'), href: '/contact' },
   ];
+
+  // Customer-specific navigation items (only show for customers)
+  const customerNavigation = user?.role === 'customer' ? [
+    { name: 'Membership', href: '/membership/plans', badge: 'Premium' }
+  ] : [];
 
   // Admin navigation items (only show for admin users)
   const adminNavigation = user?.role === 'admin' ? [
     { name: 'Admin Panel', href: '/dashboard', isDropdown: true, items: [
       { name: 'Order Management', href: '/admin/orders' },
       { name: 'User Management', href: '/admin/users' },
-      { name: 'Announcement Management', href: '/admin/announcements' },
+      // { name: 'Announcement Management', href: '/admin/announcements' }, // Hidden temporarily
       { name: 'FAQ Management', href: '/admin/faqs' },
     ]}
   ] : [];
@@ -91,6 +96,24 @@ const Header = () => {
                 }`}
               >
                 {item.name}
+              </Link>
+            ))}
+            
+            {/* Customer Navigation */}
+            {customerNavigation.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`relative inline-flex items-center text-gray-700 hover:text-orange-600 transition-colors pr-12 ${
+                  location.pathname.startsWith('/membership') ? 'text-orange-600 font-medium' : ''
+                }`}
+              >
+                {item.name}
+                {item.badge && (
+                  <span className="absolute -top-4 right-4 bg-orange-100 text-orange-800 text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             ))}
             
@@ -199,6 +222,18 @@ const Header = () => {
                     >
                       {t('dashboard')} {user.role === 'vendor' && '(Vendor)'}
                     </Link>
+                    
+                    {/* Customer-specific menu items */}
+                    {user.role === 'customer' && (
+                      <Link
+                        to="/membership/plans"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        👑 Membership Plans
+                      </Link>
+                    )}
+                    
                     {user.role !== 'vendor' && (
                       <>
                         <Link
@@ -277,6 +312,26 @@ const Header = () => {
                   {item.name}
                 </Link>
               ))}
+              
+              {/* Customer Navigation - Mobile */}
+              {customerNavigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`flex items-center justify-between text-gray-700 hover:text-orange-600 transition-colors ${
+                    location.pathname.startsWith('/membership') ? 'text-orange-600 font-medium' : ''
+                  }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {item.name}
+                  {item.badge && (
+                    <span className="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              ))}
+              
               {!user && (
                 <div className="flex flex-col space-y-2 pt-4 border-t">
                   <Link

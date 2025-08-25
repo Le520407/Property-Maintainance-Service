@@ -1,6 +1,6 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { MembershipTier } = require('../models/VendorMembership');
+const { VendorVendorMembershipTier } = require('../models/VendorMembership');
 
 const connectDB = async () => {
   try {
@@ -155,19 +155,19 @@ const membershipTiers = [
   }
 ];
 
-const seedMembershipTiers = async () => {
+const seedVendorMembershipTiers = async () => {
   try {
     await connectDB();
     
     console.log('Seeding membership tiers...');
     
     // Clear existing tiers
-    await MembershipTier.deleteMany({});
+    await VendorMembershipTier.deleteMany({});
     console.log('Cleared existing membership tiers');
     
     // Insert new tiers
     for (const tierData of membershipTiers) {
-      const tier = new MembershipTier(tierData);
+      const tier = new VendorMembershipTier(tierData);
       await tier.save();
       console.log(`✅ Created tier: ${tier.displayName} (${tier.name})`);
     }
@@ -197,4 +197,4 @@ const seedMembershipTiers = async () => {
 };
 
 // Run the seed function
-seedMembershipTiers();
+seedVendorMembershipTiers();

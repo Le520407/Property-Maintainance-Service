@@ -76,7 +76,17 @@ export const CurrentPlanTab = () => {
     );
   }
 
-  const { membership: membershipData, tierDetails, vendorFeatures } = membership;
+  const { membership: membershipData, tierDetails, vendorFeatures } = membership || {};
+
+  if (!membershipData || !tierDetails || !vendorFeatures) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-center">
+          <p className="text-gray-500">Unable to load membership data</p>
+        </div>
+      </div>
+    );
+  }
 
   const getTierColor = (tier) => {
     switch (tier) {

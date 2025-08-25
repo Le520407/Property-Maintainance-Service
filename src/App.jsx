@@ -41,6 +41,10 @@ import NotFoundPage from './pages/NotFoundPage.jsx';
 import ApiTest from './components/ApiTest.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 
+// Membership Components
+import MembershipPlans from './components/customer/MembershipPlans.jsx';
+import MembershipDashboard from './components/customer/MembershipDashboard.jsx';
+
 // Context
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
@@ -153,6 +157,19 @@ function App() {
                           <VendorDashboardPage />
                         </ProtectedRoute>
                       } />
+                      
+                      {/* Membership Routes */}
+                      <Route path="/membership/plans" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <MembershipPlans />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/membership/dashboard" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <MembershipDashboard />
+                        </ProtectedRoute>
+                      } />
+                      
                       <Route path="/subscription" element={<SubscriptionPage />} />
                       <Route path="/api-test" element={<ApiTest />} />
                       <Route path="*" element={<NotFoundPage />} />

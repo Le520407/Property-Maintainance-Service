@@ -245,7 +245,6 @@ const vendorMembershipSchema = new mongoose.Schema({
 });
 
 // Indexes
-vendorMembershipSchema.index({ vendorId: 1 });
 vendorMembershipSchema.index({ currentTier: 1 });
 vendorMembershipSchema.index({ subscriptionStatus: 1 });
 vendorMembershipSchema.index({ nextBillingDate: 1 });
@@ -298,7 +297,7 @@ vendorMembershipSchema.set('toJSON', {
   }
 });
 
-const MembershipTier = mongoose.model('MembershipTier', membershipTierSchema);
+const VendorMembershipTier = mongoose.model('VendorMembershipTier', membershipTierSchema);
 const VendorMembership = mongoose.model('VendorMembership', vendorMembershipSchema);
 
-module.exports = { MembershipTier, VendorMembership };
+module.exports = { VendorMembershipTier, VendorMembership };

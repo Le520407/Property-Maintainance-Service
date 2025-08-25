@@ -20,6 +20,7 @@ const vendorRoutes = require('./routes/vendor');
 const vendorMembershipRoutes = require('./routes/vendorMembership');
 const customerSubscriptionRoutes = require('./routes/customerSubscriptions');
 const announcementRoutes = require('./routes/announcements');
+const membershipRoutes = require('./routes/membership');
 
 const app = express();
 
@@ -71,6 +72,7 @@ app.use('/api/vendor', vendorRoutes);
 app.use('/api/vendor/membership', vendorMembershipRoutes);
 app.use('/api/subscriptions', customerSubscriptionRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/membership', membershipRoutes);
 app.use('/api/upload', require('./routes/upload'));
 
 // Global error handler

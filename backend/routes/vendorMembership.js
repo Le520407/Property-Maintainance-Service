@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { MembershipTier, VendorMembership } = require('../models/VendorMembership');
+const { VendorVendorMembershipTier, VendorMembership } = require('../models/VendorMembership');
 const Vendor = require('../models/Vendor');
 const { auth, requireRole } = require('../middleware/auth');
 
 // Get all membership tiers (public)
 router.get('/tiers', async (req, res) => {
   try {
-    const tiers = await MembershipTier.find({ isActive: true })
+    const tiers = await VendorMembershipTier.find({ isActive: true })
       .sort({ sortOrder: 1 });
     
     res.json({ 
@@ -24,7 +24,7 @@ router.get('/tiers', async (req, res) => {
 router.get('/tiers/:tierName', async (req, res) => {
   try {
     const { tierName } = req.params;
-    const tier = await MembershipTier.findOne({ 
+    const tier = await VendorMembershipTier.findOne({ 
       name: tierName.toUpperCase(), 
       isActive: true 
     });
@@ -64,7 +64,7 @@ router.get('/my-membership', auth, requireRole(['vendor']), async (req, res) => 
     }
 
     // Get current tier details
-    const tierDetails = await MembershipTier.findOne({ 
+    const tierDetails = await VendorMembershipTier.findOne({ 
       name: membership.currentTier,
       isActive: true 
     });
@@ -137,7 +137,7 @@ router.post('/upgrade', auth, requireRole(['vendor']), async (req, res) => {
     }
 
     // Get target tier details
-    const targetTierDetails = await MembershipTier.findOne({ 
+    const targetTierDetails = await VendorMembershipTier.findOne({ 
       name: targetTier,
       isActive: true 
     });
@@ -290,7 +290,7 @@ router.post('/admin/tiers', auth, requireRole(['admin']), async (req, res) => {
       });
     }
 
-    let tier = await MembershipTier.findOne({ name: tierData.name.toUpperCase() });
+    let tier = await VendorMembershipTier.findOne({ name: tierData.name.toUpperCase() });
     
     if (tier) {
       // Update existing tier
@@ -298,7 +298,7 @@ router.post('/admin/tiers', auth, requireRole(['admin']), async (req, res) => {
       tier.name = tierData.name.toUpperCase();
     } else {
       // Create new tier
-      tier = new MembershipTier({
+      tier = new VendorMembershipTier({
         ...tierData,
         name: tierData.name.toUpperCase()
       });

@@ -5,8 +5,7 @@ const pricingSchema = new mongoose.Schema({
   vendorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
-    index: true
+    required: true
   },
   name: {
     type: String,

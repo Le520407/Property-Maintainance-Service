@@ -18,7 +18,9 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(cp:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(move \"src\\controllers\\membershipController.js\" \"backend\\controllers\"\")",
+      "Bash(copy .env.example .env)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
