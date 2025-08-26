@@ -569,21 +569,7 @@ const OrderSubmissionPage = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      // Auto-fill from user profile
-                      if (user.address) {
-                        handleInputChange('location.streetAddress', user.address);
-                        handleInputChange('location.address', user.address); // For backward compatibility
-                      }
-                      if (user.city) {
-                        handleInputChange('location.city', user.city);
-                      }
-                      if (user.state) {
-                        handleInputChange('location.state', user.state);
-                      }
-                      if (user.zipCode) {
-                        handleInputChange('location.zipCode', user.zipCode);
-                      }
-                      toast.success('Address auto-filled from your profile');
+                      navigate('/dashboard/profile');
                     }}
                     className="ml-3 text-sm text-green-600 hover:text-green-800 underline"
                   >

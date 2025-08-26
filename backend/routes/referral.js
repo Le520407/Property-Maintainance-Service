@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { Referral, Commission, Payout, COMMISSION_RATES } = require('../models/Referral');
+const { ReferralClick, ReferralLink, FraudDetection, ReferralAnalytics } = require('../models/ReferralTracking');
 const User = require('../models/User');
 const { authenticateToken: auth } = require('../middleware/auth');
+const referralService = require('../services/referralService');
 
 // Generate or get user's referral code
 router.post('/generate-code', auth, async (req, res) => {
@@ -389,6 +391,448 @@ router.get('/share-link', auth, async (req, res) => {
     
   } catch (error) {
     console.error('Get share link error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==== ENHANCED REFERRAL TRACKING ENDPOINTS ====
+
+// Generate advanced referral links with tracking
+router.post('/generate-link', auth, async (req, res) => {
+  try {
+    const { campaign, source, medium, content, term, expiresAt } = req.body;
+    
+    const linkData = await referralService.generateReferralLink(req.user._id, {
+      campaign,
+      source,
+      medium,
+      content,
+      term,
+      expiresAt: expiresAt ? new Date(expiresAt) : null
+    });
+    
+    res.json({
+      success: true,
+      message: 'Referral link generated successfully',
+      data: linkData
+    });
+    
+  } catch (error) {
+    console.error('Generate referral link error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Track referral link click
+router.get('/r/:shortUrl', async (req, res) => {
+  try {
+    const { shortUrl } = req.params;
+    
+    const trackingData = await referralService.trackClick(shortUrl, req);
+    
+    if (trackingData.success) {
+      // Set session cookie for conversion tracking
+      res.cookie('referral_session', trackingData.sessionId, {
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production'
+      });
+      
+      // Redirect to original URL
+      res.redirect(trackingData.redirectUrl);
+    } else {
+      res.status(404).json({ message: 'Referral link not found' });
+    }
+    
+  } catch (error) {
+    console.error('Track click error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Track signup conversion (called during user registration)
+router.post('/track-signup', async (req, res) => {
+  try {
+    const { referralCode, userId, sessionId } = req.body;
+    
+    if (!referralCode || !userId) {
+      return res.status(400).json({ 
+        message: 'Referral code and user ID are required' 
+      });
+    }
+    
+    const result = await referralService.trackSignupConversion(referralCode, userId, sessionId);
+    
+    res.json(result);
+    
+  } catch (error) {
+    console.error('Track signup error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Track purchase conversion (called after order completion)
+router.post('/track-purchase', auth, async (req, res) => {
+  try {
+    const { orderId, orderAmount, customerId } = req.body;
+    
+    if (!orderId || !orderAmount || !customerId) {
+      return res.status(400).json({ 
+        message: 'Order ID, amount, and customer ID are required' 
+      });
+    }
+    
+    const result = await referralService.trackPurchaseConversion(orderId, orderAmount, customerId);
+    
+    res.json(result);
+    
+  } catch (error) {
+    console.error('Track purchase error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get advanced referral analytics
+router.get('/analytics', auth, async (req, res) => {
+  try {
+    const { period = 'DAILY', startDate, endDate } = req.query;
+    
+    let query = {
+      referrerId: req.user._id,
+      period: period.toUpperCase()
+    };
+    
+    if (startDate || endDate) {
+      query.periodDate = {};
+      if (startDate) query.periodDate.$gte = new Date(startDate);
+      if (endDate) query.periodDate.$lte = new Date(endDate);
+    }
+    
+    const analytics = await ReferralAnalytics.find(query)
+      .sort({ periodDate: -1 })
+      .limit(30);
+    
+    // Get overall stats
+    const overallStats = await referralService.getUserReferralStats(req.user._id);
+    
+    res.json({
+      analytics,
+      overallStats,
+      period: period.toUpperCase()
+    });
+    
+  } catch (error) {
+    console.error('Get analytics error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get referral links created by user
+router.get('/links', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, isActive } = req.query;
+    
+    let query = { referrerId: req.user._id };
+    if (isActive !== undefined) {
+      query.isActive = isActive === 'true';
+    }
+    
+    const links = await ReferralLink.find(query)
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+    
+    const total = await ReferralLink.countDocuments(query);
+    
+    res.json({
+      links,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      total
+    });
+    
+  } catch (error) {
+    console.error('Get referral links error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update referral link status
+router.patch('/links/:linkId', auth, async (req, res) => {
+  try {
+    const { linkId } = req.params;
+    const { isActive, expiresAt } = req.body;
+    
+    const updateData = {};
+    if (isActive !== undefined) updateData.isActive = isActive;
+    if (expiresAt) updateData.expiresAt = new Date(expiresAt);
+    
+    const link = await ReferralLink.findOneAndUpdate(
+      { linkId, referrerId: req.user._id },
+      updateData,
+      { new: true }
+    );
+    
+    if (!link) {
+      return res.status(404).json({ message: 'Referral link not found' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Referral link updated successfully',
+      link
+    });
+    
+  } catch (error) {
+    console.error('Update referral link error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get click tracking data for a specific link
+router.get('/links/:linkId/clicks', auth, async (req, res) => {
+  try {
+    const { linkId } = req.params;
+    const { page = 1, limit = 20, startDate, endDate } = req.query;
+    
+    // Verify link belongs to user
+    const link = await ReferralLink.findOne({ linkId, referrerId: req.user._id });
+    if (!link) {
+      return res.status(404).json({ message: 'Referral link not found' });
+    }
+    
+    let query = { referralCode: link.referralCode };
+    
+    if (startDate || endDate) {
+      query.clickedAt = {};
+      if (startDate) query.clickedAt.$gte = new Date(startDate);
+      if (endDate) query.clickedAt.$lte = new Date(endDate);
+    }
+    
+    const clicks = await ReferralClick.find(query)
+      .select('ipAddress device location source clickedAt converted convertedAt riskScore')
+      .sort({ clickedAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+    
+    const total = await ReferralClick.countDocuments(query);
+    
+    // Get summary stats
+    const stats = await ReferralClick.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalClicks: { $sum: 1 },
+          conversions: { $sum: { $cond: ['$converted', 1, 0] } },
+          avgRiskScore: { $avg: '$riskScore' },
+          uniqueCountries: { $addToSet: '$location.country' }
+        }
+      }
+    ]);
+    
+    res.json({
+      clicks,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      total,
+      stats: stats[0] || {
+        totalClicks: 0,
+        conversions: 0,
+        avgRiskScore: 0,
+        uniqueCountries: []
+      }
+    });
+    
+  } catch (error) {
+    console.error('Get link clicks error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==== USER WALLET & EARNINGS ====
+
+// Get user wallet information
+router.get('/wallet', auth, async (req, res) => {
+  try {
+    const stats = await referralService.getUserReferralStats(req.user._id);
+    
+    // Get detailed commission breakdown
+    const commissionBreakdown = await Commission.aggregate([
+      { $match: { referrer: req.user._id } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 },
+          totalAmount: { $sum: '$commissionAmount' }
+        }
+      }
+    ]);
+    
+    // Get recent transactions
+    const recentTransactions = await Commission.find({ referrer: req.user._id })
+      .populate('referredUser', 'firstName lastName')
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('commissionAmount status createdAt approvedAt paidAt referredUser orderAmount commissionRate');
+    
+    // Get payout history
+    const payoutHistory = await Payout.find({ referrer: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(5);
+    
+    res.json({
+      wallet: {
+        totalEarnings: stats.stats.totalEarnings,
+        pendingEarnings: stats.stats.pendingEarnings,
+        availableForPayout: commissionBreakdown
+          .filter(c => c._id === 'APPROVED')
+          .reduce((sum, c) => sum + c.totalAmount, 0),
+        totalPaid: commissionBreakdown
+          .filter(c => c._id === 'PAID')
+          .reduce((sum, c) => sum + c.totalAmount, 0)
+      },
+      commissionBreakdown,
+      recentTransactions,
+      payoutHistory,
+      minimumPayout: process.env.MINIMUM_PAYOUT_AMOUNT || 50
+    });
+    
+  } catch (error) {
+    console.error('Get wallet error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==== FRAUD DETECTION & ADMIN ====
+
+// Get fraud alerts for user's referrals
+router.get('/fraud-alerts', auth, async (req, res) => {
+  try {
+    const alerts = await FraudDetection.find({
+      'affectedUsers.userId': req.user._id,
+      status: { $in: ['DETECTED', 'INVESTIGATING'] }
+    })
+    .sort({ createdAt: -1 })
+    .limit(10);
+    
+    res.json({ alerts });
+    
+  } catch (error) {
+    console.error('Get fraud alerts error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==== ADMIN ENDPOINTS (Protected) ====
+
+// Admin: Get referral system overview
+router.get('/admin/overview', auth, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin' && req.user.role !== 'superAdmin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const overview = await referralService.getAdminReferralStats();
+    res.json(overview);
+    
+  } catch (error) {
+    console.error('Admin overview error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Admin: Get fraud detection dashboard
+router.get('/admin/fraud', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin' && req.user.role !== 'superAdmin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const { page = 1, limit = 20, severity, status } = req.query;
+    
+    let query = {};
+    if (severity) query.severity = severity;
+    if (status) query.status = status;
+    
+    const fraudCases = await FraudDetection.find(query)
+      .populate('affectedUsers.userId', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+    
+    const total = await FraudDetection.countDocuments(query);
+    
+    // Get fraud stats
+    const stats = await FraudDetection.aggregate([
+      {
+        $group: {
+          _id: '$severity',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    res.json({
+      fraudCases,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      total,
+      stats
+    });
+    
+  } catch (error) {
+    console.error('Admin fraud dashboard error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Admin: Process commission approvals
+router.post('/admin/approve-commissions', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin' && req.user.role !== 'superAdmin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const { commissionIds } = req.body;
+    
+    if (!commissionIds || !Array.isArray(commissionIds)) {
+      return res.status(400).json({ message: 'Commission IDs array required' });
+    }
+    
+    const result = await Commission.updateMany(
+      { _id: { $in: commissionIds } },
+      { 
+        status: 'APPROVED',
+        approvedAt: new Date()
+      }
+    );
+    
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} commissions approved`,
+      approvedCount: result.modifiedCount
+    });
+    
+  } catch (error) {
+    console.error('Approve commissions error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Admin: Process payouts
+router.post('/admin/process-payouts', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin' && req.user.role !== 'superAdmin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    const result = await referralService.processPayouts();
+    res.json(result);
+    
+  } catch (error) {
+    console.error('Process payouts error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

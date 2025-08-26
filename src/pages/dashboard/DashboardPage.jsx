@@ -1949,7 +1949,7 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 pt-16">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 pt-24">
       <div className="flex">
         {/* Sidebar */}
         <div className="w-64 bg-white shadow-xl border-r border-gray-200 min-h-screen">

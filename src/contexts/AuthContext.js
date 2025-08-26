@@ -113,6 +113,7 @@ export const AuthProvider = ({ children }) => {
         name: response.user.fullName,
         email: response.user.email,
         role: response.user.role,
+        status: response.user.status || 'ACTIVE',
         avatar: null,
         phone: userData.phone,
         address: userData.address,

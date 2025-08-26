@@ -146,14 +146,14 @@ const RegisterPage = () => {
                     {...register('phone', {
                       required: 'Phone number is required',
                       pattern: {
-                        value: /^\+65\s?\d{8}$/,
-                        message: 'Please enter a valid Singapore phone number'
+                        value: /^[\+]?[1-9][\d]{7,15}$/,
+                        message: 'Please enter a valid phone number (8-16 digits, optionally starting with +)'
                       }
                     })}
                     type="tel"
                     id="phone"
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-                    placeholder="Enter your phone number"
+                    placeholder="Enter your phone number (e.g., +1234567890)"
                   />
                 </div>
                 {errors.phone && (

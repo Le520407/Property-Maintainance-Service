@@ -16,6 +16,7 @@ import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
 import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
 import DashboardPage from './pages/dashboard/DashboardPage.jsx';
+import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import ServiceDetailPage from './pages/ServiceDetailPage.jsx';
@@ -35,7 +36,7 @@ import FAQManagement from './pages/admin/FAQManagement.jsx';
 import UserManagement from './pages/admin/UserManagement.jsx';
 import OrderManagement from './pages/admin/OrderManagement.jsx';
 import OrderSubmissionPage from './pages/OrderSubmissionPage.jsx';
-import MessagesPage from './pages/MessagesPage.jsx';
+import UnifiedMessagesPage from './pages/UnifiedMessagesPage.jsx';
 import PaymentPage from './pages/PaymentPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import ApiTest from './components/ApiTest.jsx';
@@ -59,18 +60,18 @@ function App() {
             <Routes>
               {/* Dashboard and Admin routes (full-page layout) */}
               <Route path="/dashboard/*" element={
-                <div className="min-h-screen bg-gray-50">
-                  <Header />
-                  <main className="pt-16">
-                    <DashboardPage />
-                  </main>
-                </div>
+                <ProtectedRoute>
+                  <div className="min-h-screen bg-gray-50">
+                    <Header />
+                    <SimpleDashboard />
+                  </div>
+                </ProtectedRoute>
               } />
               <Route path="/admin/announcements" element={
                 <ProtectedRoute requiredRole="admin">
                   <div className="min-h-screen bg-gray-50">
                     <Header />
-                    <main className="pt-16">
+                    <main className="pt-24">
                       <AnnouncementManagement />
                     </main>
                   </div>
@@ -80,7 +81,7 @@ function App() {
                 <ProtectedRoute requiredRole="admin">
                   <div className="min-h-screen bg-gray-50">
                     <Header />
-                    <main className="pt-16">
+                    <main className="pt-24">
                       <FAQManagement />
                     </main>
                   </div>
@@ -90,7 +91,7 @@ function App() {
                 <ProtectedRoute requiredRole="admin">
                   <div className="min-h-screen bg-gray-50">
                     <Header />
-                    <main className="pt-16">
+                    <main className="pt-24">
                       <UserManagement />
                     </main>
                   </div>
@@ -100,7 +101,7 @@ function App() {
                 <ProtectedRoute requiredRole="admin">
                   <div className="min-h-screen bg-gray-50">
                     <Header />
-                    <main className="pt-16">
+                    <main className="pt-24">
                       <OrderManagement />
                     </main>
                   </div>
@@ -136,7 +137,7 @@ function App() {
                       } />
                       <Route path="/messages" element={
                         <ProtectedRoute>
-                          <MessagesPage />
+                          <UnifiedMessagesPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/payment/:jobId" element={
