@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 const Banner = require('../models/Banner');
+const HomepageBanner = require('../models/HomepageBanner');
 const Blog = require('../models/Blog');
 const FAQ = require('../models/FAQ');
 const Pricing = require('../models/Pricing');
@@ -61,7 +62,19 @@ router.get('/banners', auth, async (req, res) => {
 // 获取活跃的横幅（公共接口）
 router.get('/banners/active', async (req, res) => {
   try {
-    const { location = 'homepage' } = req.query;
+    const { location = 'homepage', limit } = req.query;
+    
+    // Use HomepageBanner for homepage location
+    if (location === 'homepage') {
+      const banners = await HomepageBanner.getActiveBanners('homepage', limit ? parseInt(limit) : null);
+      
+      // Increment view counts for all returned banners
+      await Promise.all(banners.map(banner => banner.incrementView()));
+      
+      return res.json(banners);
+    }
+    
+    // Fallback to old Banner model for other locations
     const banners = await Banner.find({ 
       isActive: true,
       $or: [
@@ -122,6 +135,233 @@ router.delete('/banners/:id', auth, async (req, res) => {
     res.json({ message: 'Banner deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// ==================== HOMEPAGE BANNER ROUTES ====================
+
+// GET /api/cms/banners/homepage - Get all homepage banners (for admin)
+router.get('/banners/homepage', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    const banners = await HomepageBanner.find({ location: 'homepage' })
+      .populate('createdBy', 'firstName lastName email')
+      .sort({ order: 1, createdAt: -1 });
+    
+    res.json({ success: true, data: banners });
+  } catch (error) {
+    console.error('Error fetching homepage banners:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch banners' });
+  }
+});
+
+// POST /api/cms/banners/homepage - Create new homepage banner
+router.post('/banners/homepage', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const bannerData = {
+      ...req.body,
+      location: 'homepage',
+      createdBy: req.user._id
+    };
+
+    // Auto-assign order if not provided
+    if (!bannerData.order && bannerData.order !== 0) {
+      const lastBanner = await HomepageBanner.findOne({ location: 'homepage' })
+        .sort({ order: -1 });
+      bannerData.order = lastBanner ? lastBanner.order + 1 : 0;
+    }
+
+    const banner = new HomepageBanner(bannerData);
+    await banner.save();
+    
+    await banner.populate('createdBy', 'firstName lastName email');
+    
+    res.status(201).json({ success: true, data: banner });
+  } catch (error) {
+    console.error('Error creating homepage banner:', error);
+    res.status(400).json({ 
+      success: false, 
+      message: 'Failed to create banner',
+      error: error.message 
+    });
+  }
+});
+
+// PUT /api/cms/banners/homepage/:id - Update homepage banner
+router.put('/banners/homepage/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const banner = await HomepageBanner.findByIdAndUpdate(
+      req.params.id,
+      { ...req.body, updatedAt: new Date() },
+      { new: true, runValidators: true }
+    ).populate('createdBy', 'firstName lastName email');
+
+    if (!banner) {
+      return res.status(404).json({ success: false, message: 'Banner not found' });
+    }
+
+    res.json({ success: true, data: banner });
+  } catch (error) {
+    console.error('Error updating homepage banner:', error);
+    res.status(400).json({ 
+      success: false, 
+      message: 'Failed to update banner',
+      error: error.message 
+    });
+  }
+});
+
+// DELETE /api/cms/banners/homepage/:id - Delete homepage banner
+router.delete('/banners/homepage/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const banner = await HomepageBanner.findByIdAndDelete(req.params.id);
+
+    if (!banner) {
+      return res.status(404).json({ success: false, message: 'Banner not found' });
+    }
+
+    res.json({ success: true, message: 'Banner deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting homepage banner:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to delete banner',
+      error: error.message 
+    });
+  }
+});
+
+// PATCH /api/cms/banners/homepage/:id/toggle - Toggle homepage banner active status
+router.patch('/banners/homepage/:id/toggle', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const { isActive } = req.body;
+    
+    const banner = await HomepageBanner.findByIdAndUpdate(
+      req.params.id,
+      { isActive, updatedAt: new Date() },
+      { new: true }
+    ).populate('createdBy', 'firstName lastName email');
+
+    if (!banner) {
+      return res.status(404).json({ success: false, message: 'Banner not found' });
+    }
+
+    res.json({ success: true, data: banner });
+  } catch (error) {
+    console.error('Error toggling homepage banner status:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to toggle banner status',
+      error: error.message 
+    });
+  }
+});
+
+// PATCH /api/cms/banners/homepage/:id/reorder - Reorder homepage banner
+router.patch('/banners/homepage/:id/reorder', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const { newOrder } = req.body;
+    const bannerId = req.params.id;
+
+    const banner = await HomepageBanner.findById(bannerId);
+    if (!banner) {
+      return res.status(404).json({ success: false, message: 'Banner not found' });
+    }
+
+    const oldOrder = banner.order;
+    
+    // Update the target banner's order
+    await HomepageBanner.findByIdAndUpdate(bannerId, { order: newOrder });
+
+    // Update orders of other banners in the same location
+    if (newOrder > oldOrder) {
+      // Moving down: decrease order of banners between oldOrder and newOrder
+      await HomepageBanner.updateMany(
+        {
+          location: 'homepage',
+          order: { $gt: oldOrder, $lte: newOrder },
+          _id: { $ne: bannerId }
+        },
+        { $inc: { order: -1 } }
+      );
+    } else if (newOrder < oldOrder) {
+      // Moving up: increase order of banners between newOrder and oldOrder
+      await HomepageBanner.updateMany(
+        {
+          location: 'homepage',
+          order: { $gte: newOrder, $lt: oldOrder },
+          _id: { $ne: bannerId }
+        },
+        { $inc: { order: 1 } }
+      );
+    }
+
+    res.json({ success: true, message: 'Banner order updated successfully' });
+  } catch (error) {
+    console.error('Error reordering homepage banner:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to reorder banner',
+      error: error.message 
+    });
+  }
+});
+
+// GET /api/cms/services/homepage - Get homepage services (placeholder)
+router.get('/services/homepage', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    // This would be implemented when you have a HomepageService model
+    // For now, return empty array
+    res.json({ success: true, data: [] });
+  } catch (error) {
+    console.error('Error fetching homepage services:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch services' });
+  }
+});
+
+// GET /api/cms/stats/homepage - Get homepage stats (placeholder)
+router.get('/stats/homepage', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    // This would be implemented when you have a HomepageStats model
+    // For now, return mock data
+    const stats = [
+      { _id: '1', number: '500+', label: 'Happy Customers', isActive: true },
+      { _id: '2', number: '50+', label: 'Expert Technicians', isActive: true },
+      { _id: '3', number: '24/7', label: 'Support Available', isActive: true },
+      { _id: '4', number: '4.9', label: 'Average Rating', isActive: true }
+    ];
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Error fetching homepage stats:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch stats' });
   }
 });
 
@@ -448,6 +688,38 @@ router.post('/upload/blog-image', auth, upload.single('image'), (req, res) => {
   } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({ message: 'Failed to upload image' });
+  }
+});
+
+// Banner图片上传路由
+router.post('/upload/banner-image', auth, upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No image file uploaded' });
+    }
+
+    // 只有管理员可以上传图片
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Admin privileges required' });
+    }
+
+    // 返回可访问的图片URL
+    const imageUrl = `/uploads/blog-images/${req.file.filename}`;
+    
+    res.status(200).json({
+      success: true,
+      message: 'Banner image uploaded successfully',
+      data: {
+        imageUrl: imageUrl,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size
+      }
+    });
+
+  } catch (error) {
+    console.error('Banner image upload error:', error);
+    res.status(500).json({ success: false, message: 'Failed to upload banner image' });
   }
 });
 

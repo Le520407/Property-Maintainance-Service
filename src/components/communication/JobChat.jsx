@@ -709,7 +709,6 @@ const JobChat = ({ job, onClose, onJobUpdate, hideHeader = false }) => {
         {messages.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
             <div className="mb-4">💬</div>
-            <p>No messages yet. Start the conversation!</p>
           </div>
         ) : (
           messages.map((message) => (

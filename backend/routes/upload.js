@@ -12,6 +12,12 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// 确保订单附件上传目录存在
+const orderAttachmentsDir = path.join(__dirname, '../uploads/order-attachments');
+if (!fs.existsSync(orderAttachmentsDir)) {
+  fs.mkdirSync(orderAttachmentsDir, { recursive: true });
+}
+
 // 配置 multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -43,6 +49,37 @@ const upload = multer({
   fileFilter: fileFilter
 });
 
+// 配置 multer for order attachments (images and videos)
+const orderAttachmentStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, orderAttachmentsDir);
+  },
+  filename: function (req, file, cb) {
+    // 生成唯一文件名：时间戳 + 随机数 + 原文件扩展名
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'order-' + uniqueSuffix + ext);
+  }
+});
+
+// 文件过滤器 for order attachments (images and videos)
+const orderAttachmentFilter = (req, file, cb) => {
+  // 检查文件类型 - 允许图片和视频
+  if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image and video files are allowed!'), false);
+  }
+};
+
+const orderAttachmentUpload = multer({
+  storage: orderAttachmentStorage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit for videos
+  },
+  fileFilter: orderAttachmentFilter
+});
+
 // 博客图片上传路由
 router.post('/blog-image', auth, upload.single('image'), (req, res) => {
   try {
@@ -72,16 +109,53 @@ router.post('/blog-image', auth, upload.single('image'), (req, res) => {
   }
 });
 
+// 订单附件上传路由 (支持多个文件)
+router.post('/order-attachments', auth, orderAttachmentUpload.array('files', 10), (req, res) => {
+  console.log('📁 Order attachments upload endpoint hit');
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: 'No files uploaded' });
+    }
+
+    // 只有客户可以上传订单附件
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Only customers can upload order attachments' });
+    }
+
+    // 返回上传的文件信息
+    const uploadedFiles = req.files.map(file => ({
+      filename: file.filename,
+      originalName: file.originalname,
+      size: file.size,
+      mimetype: file.mimetype,
+      url: `/uploads/order-attachments/${file.filename}`
+    }));
+    
+    res.status(200).json({
+      message: 'Files uploaded successfully',
+      files: uploadedFiles
+    });
+
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ message: 'Failed to upload files' });
+  }
+});
+
 // 错误处理中间件
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ message: 'File size too large. Maximum size is 5MB.' });
+      return res.status(400).json({ message: 'File size too large. Maximum size is 50MB for videos, 5MB for images.' });
     }
   }
   
   if (error.message === 'Only image files are allowed!') {
     return res.status(400).json({ message: 'Only image files are allowed!' });
+  }
+
+  if (error.message === 'Only image and video files are allowed!') {
+    return res.status(400).json({ message: 'Only image and video files are allowed!' });
   }
   
   res.status(500).json({ message: 'Upload failed', error: error.message });

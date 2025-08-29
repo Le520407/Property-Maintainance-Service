@@ -261,8 +261,17 @@ router.get('/jobs', authenticateToken, requireRole(['vendor']), async (req, res)
   try {
     const { status, page = 1, limit = 10 } = req.query;
     
+    console.log('Vendor jobs request - vendorId:', req.user._id, 'status:', status); // Debug log
+    
     const filter = { vendorId: req.user._id };
-    if (status) filter.status = status;
+    if (status) {
+      // Handle multiple statuses separated by comma
+      if (status.includes(',')) {
+        filter.status = { $in: status.split(',') };
+      } else {
+        filter.status = status;
+      }
+    }
 
     const jobs = await Job.find(filter)
       .populate('customerId', 'firstName lastName phone')
@@ -271,6 +280,8 @@ router.get('/jobs', authenticateToken, requireRole(['vendor']), async (req, res)
       .skip((page - 1) * limit);
 
     const total = await Job.countDocuments(filter);
+    
+    console.log('Found', jobs.length, 'jobs for vendor', req.user._id); // Debug log
 
     res.json({
       jobs,
@@ -320,22 +331,41 @@ router.patch('/jobs/:jobId/respond', authenticateToken, requireRole(['vendor']),
     const { jobId } = req.params;
     const { response, reason } = req.body; // response: 'ACCEPTED' or 'REJECTED'
 
+    console.log('Vendor job response - JobId:', jobId, 'VendorId:', req.user._id, 'Response:', response, 'Reason:', reason);
+
     const job = await Job.findOne({ _id: jobId, vendorId: req.user._id });
     
     if (!job) {
+      console.log('Job not found for vendor response');
       return res.status(404).json({ message: 'Job not found' });
     }
 
+    console.log('Job found - Status:', job.status, 'Assignment attempts:', job.assignmentAttempts.length);
+
     if (job.status !== 'ASSIGNED') {
+      console.log('Job is not in ASSIGNED status, current status:', job.status);
       return res.status(400).json({ message: 'Job is not in assigned status' });
     }
 
+    // Check if there's a pending assignment attempt
+    const pendingAttempt = job.assignmentAttempts.find(
+      attempt => attempt.vendorId.toString() === req.user._id.toString() && 
+                 attempt.response === 'PENDING'
+    );
+
+    if (!pendingAttempt) {
+      console.log('No pending assignment attempt found for vendor');
+      return res.status(400).json({ message: 'No pending assignment found for this vendor' });
+    }
+
+    console.log('Found pending attempt, processing response...');
     await job.vendorResponse(req.user._id, response, reason);
 
     res.json({ message: `Job ${response.toLowerCase()} successfully`, job });
   } catch (error) {
     console.error('Respond to job error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
 

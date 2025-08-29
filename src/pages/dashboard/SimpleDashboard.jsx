@@ -25,7 +25,9 @@ import {
   Mail,
   Phone,
   MapPin,
-  Menu
+  Menu,
+  Camera,
+  Video
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
@@ -36,11 +38,14 @@ const SimpleDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
   const [dashboardData, setDashboardData] = useState({
     stats: {
       activeOrders: 0,
       completedOrders: 0,
-      totalSpent: 0,
       nextAppointment: null
     },
     recentOrders: []
@@ -50,8 +55,53 @@ const SimpleDashboard = () => {
     loadDashboardData();
   }, []);
 
-  const loadDashboardData = () => {
-    // Sample data - replace with API call
+  const loadDashboardData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      // Fetch user's orders from API (customers use /my-orders endpoint)
+      const response = await fetch('/api/jobs/my-orders', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const orders = data.jobs || [];
+
+        const stats = {
+          activeOrders: orders.filter(o => ['PENDING', 'IN_PROGRESS', 'ASSIGNED', 'IN_DISCUSSION', 'QUOTE_SENT', 'QUOTE_ACCEPTED', 'PAID'].includes(o.status)).length,
+          completedOrders: orders.filter(o => o.status === 'COMPLETED').length,
+          nextAppointment: orders.find(o => ['PENDING', 'ASSIGNED', 'PAID'].includes(o.status))
+        };
+
+        setDashboardData({ stats, recentOrders: orders });
+      } else {
+        console.error('Failed to fetch orders:', response.status, response.statusText);
+        if (response.status === 403) {
+          console.log('User might not be a customer or token is invalid');
+        }
+        // Set empty state instead of sample data
+        setDashboardData({ 
+          stats: { activeOrders: 0, completedOrders: 0, nextAppointment: null }, 
+          recentOrders: [] 
+        });
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      // Set empty state instead of sample data
+      setDashboardData({ 
+        stats: { activeOrders: 0, completedOrders: 0, nextAppointment: null }, 
+        recentOrders: [] 
+      });
+    }
+  };
+
+  const loadSampleData = () => {
+    // Sample data - fallback
     const orders = [
       {
         _id: '1',
@@ -60,8 +110,10 @@ const SimpleDashboard = () => {
         status: 'IN_PROGRESS',
         totalAmount: 150,
         scheduledDate: '2024-12-20',
-        vendor: 'John\'s Plumbing',
+        vendorId: { firstName: 'John', lastName: 'Doe' },
         category: 'plumbing',
+        images: ['sample-image-1.jpg', 'sample-image-2.jpg'], // Sample images for testing
+        videos: ['sample-video-1.mp4'], // Sample video for testing
         createdAt: new Date().toISOString()
       },
       {
@@ -71,7 +123,7 @@ const SimpleDashboard = () => {
         status: 'COMPLETED',
         totalAmount: 120,
         scheduledDate: '2024-12-15',
-        vendor: 'Clean Pro',
+        vendorId: { firstName: 'Jane', lastName: 'Smith' },
         category: 'cleaning',
         createdAt: new Date(Date.now() - 86400000).toISOString()
       },
@@ -80,9 +132,9 @@ const SimpleDashboard = () => {
         jobNumber: 'JOB003',
         title: 'Garden Maintenance',
         status: 'PENDING',
-        totalAmount: 80,
+        estimatedBudget: 100,
         scheduledDate: '2024-12-22',
-        vendor: 'Green Thumb',
+        vendorId: null,
         category: 'gardening',
         createdAt: new Date(Date.now() - 172800000).toISOString()
       }
@@ -91,7 +143,6 @@ const SimpleDashboard = () => {
     const stats = {
       activeOrders: orders.filter(o => ['PENDING', 'IN_PROGRESS', 'ASSIGNED'].includes(o.status)).length,
       completedOrders: orders.filter(o => o.status === 'COMPLETED').length,
-      totalSpent: orders.filter(o => o.status === 'COMPLETED').reduce((sum, o) => sum + o.totalAmount, 0),
       nextAppointment: orders.find(o => ['PENDING', 'ASSIGNED'].includes(o.status))
     };
 
@@ -118,12 +169,6 @@ const SimpleDashboard = () => {
       description: 'Account settings'
     },
     { 
-      name: 'Messages', 
-      tab: 'messages',
-      icon: MessageSquare,
-      description: 'Communication'
-    },
-    { 
       name: 'Referrals', 
       tab: 'referrals',
       icon: Gift,
@@ -133,34 +178,115 @@ const SimpleDashboard = () => {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'COMPLETED': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'IN_PROGRESS': return <Clock className="w-4 h-4 text-blue-500" />;
       case 'PENDING': return <AlertCircle className="w-4 h-4 text-yellow-500" />;
+      case 'ASSIGNED': return <User className="w-4 h-4 text-blue-500" />;
+      case 'IN_DISCUSSION': return <MessageSquare className="w-4 h-4 text-purple-500" />;
+      case 'QUOTE_SENT': return <FileText className="w-4 h-4 text-indigo-500" />;
+      case 'QUOTE_ACCEPTED': return <CheckCircle className="w-4 h-4 text-teal-500" />;
+      case 'PAID': return <DollarSign className="w-4 h-4 text-green-600" />;
+      case 'IN_PROGRESS': return <Clock className="w-4 h-4 text-blue-500" />;
+      case 'COMPLETED': return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'CANCELLED': return <X className="w-4 h-4 text-red-500" />;
+      case 'REJECTED': return <X className="w-4 h-4 text-red-400" />;
       default: return <Package className="w-4 h-4 text-gray-500" />;
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'COMPLETED': return 'bg-green-50 text-green-700 border-green-200';
-      case 'IN_PROGRESS': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'PENDING': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+      case 'ASSIGNED': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'IN_DISCUSSION': return 'bg-purple-50 text-purple-700 border-purple-200';
+      case 'QUOTE_SENT': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case 'QUOTE_ACCEPTED': return 'bg-teal-50 text-teal-700 border-teal-200';
+      case 'PAID': return 'bg-green-50 text-green-700 border-green-200';
+      case 'IN_PROGRESS': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'COMPLETED': return 'bg-green-50 text-green-700 border-green-200';
+      case 'CANCELLED': return 'bg-red-50 text-red-700 border-red-200';
+      case 'REJECTED': return 'bg-red-50 text-red-600 border-red-200';
       default: return 'bg-gray-50 text-gray-700 border-gray-200';
     }
+  };
+
+  const getStatusDescription = (status) => {
+    switch (status) {
+      case 'PENDING': return 'Waiting for admin review';
+      case 'ASSIGNED': return 'Assigned to vendor';
+      case 'IN_DISCUSSION': return 'Discussing details with vendor';
+      case 'QUOTE_SENT': return 'Quote sent for approval';
+      case 'QUOTE_ACCEPTED': return 'Quote accepted, awaiting payment';
+      case 'PAID': return 'Payment completed, work scheduled';
+      case 'IN_PROGRESS': return 'Work in progress';
+      case 'COMPLETED': return 'Work completed successfully';
+      case 'CANCELLED': return 'Job cancelled';
+      case 'REJECTED': return 'Vendor rejected assignment';
+      default: return 'Unknown status';
+    }
+  };
+
+  const handleViewDetails = (order) => {
+    setSelectedOrder(order);
+    setShowOrderDetails(true);
+  };
+
+  const handleCloseDetails = () => {
+    setSelectedOrder(null);
+    setShowOrderDetails(false);
+  };
+
+  const handleCancelOrder = () => {
+    setShowCancelConfirmation(true);
+  };
+
+  const confirmCancelOrder = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/jobs/${selectedOrder._id}/cancel`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason: cancelReason })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success('Order cancelled successfully');
+        
+        // Refresh the dashboard data
+        loadDashboardData();
+        
+        // Close modals and reset state
+        setShowCancelConfirmation(false);
+        setShowOrderDetails(false);
+        setSelectedOrder(null);
+        setCancelReason('');
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to cancel order');
+      }
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      toast.error('Failed to cancel order');
+    }
+  };
+
+  const handleCloseCancelConfirmation = () => {
+    setShowCancelConfirmation(false);
+    setCancelReason('');
   };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'orders':
-        return <OrdersTab orders={dashboardData.recentOrders} getStatusIcon={getStatusIcon} getStatusColor={getStatusColor} />;
+        return <OrdersTab orders={dashboardData.recentOrders} getStatusIcon={getStatusIcon} getStatusColor={getStatusColor} getStatusDescription={getStatusDescription} onViewDetails={handleViewDetails} />;
       case 'profile':
         return <ProfileTab user={user} updateUser={updateUser} />;
-      case 'messages':
-        return <MessagesTab />;
       case 'referrals':
         return <ReferralsTab />;
       default:
-        return <OverviewTab dashboardData={dashboardData} getStatusIcon={getStatusIcon} getStatusColor={getStatusColor} />;
+        return <OverviewTab dashboardData={dashboardData} getStatusIcon={getStatusIcon} getStatusColor={getStatusColor} getStatusDescription={getStatusDescription} onViewDetails={handleViewDetails} />;
     }
   };
 
@@ -187,25 +313,45 @@ const SimpleDashboard = () => {
         <div className={`${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0 fixed lg:static top-24 lg:top-auto left-0 lg:left-auto z-40 lg:z-auto w-64 bg-white shadow-lg border-r border-gray-200 h-[calc(100vh-6rem)] lg:h-full overflow-y-auto transition-transform duration-300 ease-in-out`}>
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-8">
+          {/* User Banner */}
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 m-4 rounded-xl shadow-lg">
+            <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-white text-lg font-bold">
-                  {user?.firstName?.[0] || 'U'}
+                <div className="w-14 h-14 bg-white bg-opacity-20 rounded-full flex items-center justify-center text-white text-xl font-bold border-2 border-white border-opacity-30">
+                  {user?.firstName?.[0] || user?.name?.[0] || 'U'}
                 </div>
-                <div className="ml-3">
-                  <h3 className="font-semibold text-gray-900">{user?.firstName} {user?.lastName}</h3>
-                  <p className="text-sm text-gray-600">Customer</p>
+                <div className="ml-4">
+                  <h3 className="font-bold text-lg text-white">
+                    {user?.firstName && user?.lastName 
+                      ? `${user.firstName} ${user.lastName}` 
+                      : user?.name || 'User'}
+                  </h3>
+                  <p className="text-orange-100 text-sm font-medium capitalize">
+                    {user?.role || 'Customer'}
+                  </p>
+                  {user?.status && (
+                    <div className="flex items-center mt-1">
+                      <div className={`w-2 h-2 rounded-full mr-1 ${
+                        user.status === 'ACTIVE' ? 'bg-green-400' : 'bg-yellow-400'
+                      }`}></div>
+                      <span className="text-xs text-orange-100">
+                        {user.status === 'ACTIVE' ? 'Active Account' : 'Pending Verification'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               {/* Close button for mobile */}
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-1 rounded-md hover:bg-gray-100"
+                className="lg:hidden p-2 rounded-md hover:bg-white hover:bg-opacity-20 transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
+          </div>
+
+          <div className="px-6 pb-6">
             
             <nav className="space-y-2">
               {sidebarNavigation.map((item) => {
@@ -251,26 +397,41 @@ const SimpleDashboard = () => {
           {renderContent()}
         </div>
       </div>
+
+      {/* Order Details Modal */}
+      {showOrderDetails && selectedOrder && (
+        <OrderDetailsModal 
+          order={selectedOrder} 
+          onClose={handleCloseDetails}
+          onCancelOrder={handleCancelOrder}
+          getStatusIcon={getStatusIcon}
+          getStatusColor={getStatusColor}
+          getStatusDescription={getStatusDescription}
+        />
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {showCancelConfirmation && selectedOrder && (
+        <CancelConfirmationModal 
+          order={selectedOrder}
+          reason={cancelReason}
+          onReasonChange={setCancelReason}
+          onConfirm={confirmCancelOrder}
+          onClose={handleCloseCancelConfirmation}
+        />
+      )}
+
     </div>
   );
 };
 
 // Overview Tab Component
-const OverviewTab = ({ dashboardData, getStatusIcon, getStatusColor }) => {
+const OverviewTab = ({ dashboardData, getStatusIcon, getStatusColor, getStatusDescription, onViewDetails }) => {
   return (
     <div className="space-y-8">
       {/* Decorative Banner */}
-      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute -top-4 -right-4 w-24 h-24 bg-white rounded-full"></div>
-          <div className="absolute top-8 right-16 w-16 h-16 bg-white rounded-full"></div>
-          <div className="absolute bottom-4 right-8 w-12 h-12 bg-white rounded-full"></div>
-          <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-white rounded-full"></div>
-          <div className="absolute top-12 left-12 w-8 h-8 bg-white rounded-full"></div>
-        </div>
-        
-        <div className="relative z-10">
+      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 rounded-2xl p-8 text-white shadow-lg">
+        <div>
           <div className="flex items-center mb-4">
             <div className="p-3 bg-white bg-opacity-20 rounded-lg mr-4">
               <Home className="w-8 h-8 text-white" />
@@ -282,7 +443,7 @@ const OverviewTab = ({ dashboardData, getStatusIcon, getStatusColor }) => {
           </div>
           
           {/* Quick Stats Preview in Banner */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <div className="bg-white bg-opacity-10 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold">{dashboardData.stats.activeOrders}</div>
               <div className="text-sm text-orange-100">Active Orders</div>
@@ -290,10 +451,6 @@ const OverviewTab = ({ dashboardData, getStatusIcon, getStatusColor }) => {
             <div className="bg-white bg-opacity-10 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold">{dashboardData.stats.completedOrders}</div>
               <div className="text-sm text-orange-100">Completed</div>
-            </div>
-            <div className="bg-white bg-opacity-10 rounded-lg p-3 text-center">
-              <div className="text-2xl font-bold">${dashboardData.stats.totalSpent}</div>
-              <div className="text-sm text-orange-100">Total Spent</div>
             </div>
             <div className="bg-white bg-opacity-10 rounded-lg p-3 text-center">
               <div className="text-2xl font-bold">{dashboardData.stats.nextAppointment ? 'Dec 22' : 'None'}</div>
@@ -304,7 +461,7 @@ const OverviewTab = ({ dashboardData, getStatusIcon, getStatusColor }) => {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -342,23 +499,6 @@ const OverviewTab = ({ dashboardData, getStatusIcon, getStatusColor }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl p-6 shadow-sm border"
-        >
-          <div className="flex items-center">
-            <div className="p-3 bg-purple-50 rounded-lg">
-              <DollarSign className="w-6 h-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-2xl font-bold text-gray-900">${dashboardData.stats.totalSpent}</p>
-              <p className="text-sm text-gray-600">Total Spent</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
           className="bg-white rounded-xl p-6 shadow-sm border"
         >
           <div className="flex items-center">
@@ -429,20 +569,37 @@ const OverviewTab = ({ dashboardData, getStatusIcon, getStatusColor }) => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-start space-x-4">
                       {getStatusIcon(order.status)}
-                      <div>
+                      <div className="flex-1">
                         <h3 className="font-medium text-gray-900">{order.title}</h3>
                         <p className="text-sm text-gray-600">#{order.jobNumber}</p>
                         <div className="flex items-center text-sm text-gray-500 mt-1">
                           <Calendar className="w-4 h-4 mr-1" />
                           {new Date(order.createdAt).toLocaleDateString()}
                         </div>
+                        {/* Vendor Information */}
+                        {order.vendorId && (
+                          <div className="flex items-center text-sm text-blue-600 mt-1">
+                            <User className="w-4 h-4 mr-1" />
+                            <span>Assigned to: {order.vendorId.firstName} {order.vendorId.lastName}</span>
+                          </div>
+                        )}
+                        {/* Status Description */}
+                        <p className="text-xs text-gray-500 mt-1">{getStatusDescription(order.status)}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <span className={`inline-flex px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(order.status)}`}>
                         {order.status.replace('_', ' ')}
                       </span>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">${order.totalAmount}</p>
+                      <p className="text-lg font-semibold text-gray-900 mt-1">
+                        ${order.totalAmount || order.vendorQuote?.amount || 'TBD'}
+                      </p>
+                      <button 
+                        onClick={() => onViewDetails(order)}
+                        className="mt-2 text-orange-600 text-sm hover:text-orange-700"
+                      >
+                        View Details →
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -469,21 +626,12 @@ const OverviewTab = ({ dashboardData, getStatusIcon, getStatusColor }) => {
 };
 
 // Orders Tab Component
-const OrdersTab = ({ orders, getStatusIcon, getStatusColor }) => {
+const OrdersTab = ({ orders, getStatusIcon, getStatusColor, getStatusDescription, onViewDetails }) => {
   return (
     <div className="space-y-6">
       {/* Decorative Banner */}
-      <div className="bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-4 right-8 w-20 h-20 bg-white rounded-full"></div>
-          <div className="absolute -top-8 -right-8 w-32 h-32 bg-white rounded-full"></div>
-          <div className="absolute bottom-8 left-8 w-16 h-16 bg-white rounded-full"></div>
-          <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white rounded-full"></div>
-          <div className="absolute top-16 left-16 w-6 h-6 bg-white rounded-full"></div>
-        </div>
-        
-        <div className="relative z-10">
+      <div className="bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 rounded-2xl p-8 text-white shadow-lg">
+        <div>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="p-3 bg-white bg-opacity-20 rounded-lg mr-4">
@@ -528,23 +676,78 @@ const OrdersTab = ({ orders, getStatusIcon, getStatusColor }) => {
                     </span>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">#{order.jobNumber}</p>
+                  
+                  {/* Status Description */}
+                  <p className="text-xs text-gray-500 mt-1">{getStatusDescription(order.status)}</p>
+                  
                   <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                     <div className="flex items-center">
                       <Calendar className="w-4 h-4 mr-1" />
                       {new Date(order.createdAt).toLocaleDateString()}
                     </div>
-                    {order.vendor && (
-                      <div className="flex items-center">
-                        <User className="w-4 h-4 mr-1" />
-                        {order.vendor}
+                    
+                    {/* Scheduled Date */}
+                    {order.requestedTimeSlot?.date && (
+                      <div className="flex items-center text-sm text-purple-600">
+                        <Calendar className="w-4 h-4 mr-1" />
+                        <span>Scheduled: {new Date(order.requestedTimeSlot.date).toLocaleDateString()}</span>
                       </div>
                     )}
                   </div>
+                  
+                  {/* Vendor Information */}
+                  {order.vendorId ? (
+                    <div className="flex items-center text-sm text-blue-600 mt-2">
+                      <User className="w-4 h-4 mr-1" />
+                      <span>
+                        <strong>Assigned to:</strong> {order.vendorId.firstName} {order.vendorId.lastName}
+                      </span>
+                      {order.vendorId.phone && (
+                        <span className="ml-2 text-gray-500">
+                          • {order.vendorId.phone}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-sm text-yellow-600 mt-2">
+                      <AlertCircle className="w-4 h-4 mr-1" />
+                      <span>No vendor assigned yet</span>
+                    </div>
+                  )}
+                  
+                  {/* Progress Information */}
+                  {order.workProgress?.percentage > 0 && (
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-xs text-gray-600">
+                        <span>Progress</span>
+                        <span>{order.workProgress.percentage}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                        <div 
+                          className="bg-blue-600 h-1.5 rounded-full" 
+                          style={{ width: `${order.workProgress.percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Quote Information */}
+                  {order.vendorQuote?.amount && (
+                    <div className="flex items-center text-sm text-green-600 mt-2">
+                      <DollarSign className="w-4 h-4 mr-1" />
+                      <span>Quote: ${order.vendorQuote.amount}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xl font-bold text-gray-900">${order.totalAmount}</p>
-                <button className="mt-2 text-orange-600 text-sm hover:text-orange-700">
+                <p className="text-xl font-bold text-gray-900">
+                  ${order.totalAmount || order.vendorQuote?.amount || 'TBD'}
+                </p>
+                <button 
+                  onClick={() => onViewDetails(order)}
+                  className="mt-2 text-orange-600 text-sm hover:text-orange-700"
+                >
                   View Details →
                 </button>
               </div>
@@ -612,17 +815,8 @@ const ProfileTab = ({ user, updateUser }) => {
   return (
     <div className="space-y-6">
       {/* Decorative Banner */}
-      <div className="bg-gradient-to-r from-purple-500 via-purple-600 to-pink-600 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-8 right-12 w-18 h-18 bg-white rounded-full"></div>
-          <div className="absolute -top-6 -right-6 w-28 h-28 bg-white rounded-full"></div>
-          <div className="absolute bottom-6 left-12 w-14 h-14 bg-white rounded-full"></div>
-          <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-white rounded-full"></div>
-          <div className="absolute top-20 left-20 w-8 h-8 bg-white rounded-full"></div>
-        </div>
-        
-        <div className="relative z-10">
+      <div className="bg-gradient-to-r from-purple-500 via-purple-600 to-pink-600 rounded-2xl p-8 text-white shadow-lg">
+        <div>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="p-3 bg-white bg-opacity-20 rounded-lg mr-4">
@@ -777,66 +971,6 @@ const ProfileTab = ({ user, updateUser }) => {
   );
 };
 
-// Messages Tab Component
-const MessagesTab = () => {
-  return (
-    <div className="space-y-6">
-      {/* Decorative Banner */}
-      <div className="bg-gradient-to-r from-green-500 via-emerald-600 to-teal-600 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-6 right-10 w-22 h-22 bg-white rounded-full"></div>
-          <div className="absolute -top-4 -right-4 w-24 h-24 bg-white rounded-full"></div>
-          <div className="absolute bottom-10 left-6 w-16 h-16 bg-white rounded-full"></div>
-          <div className="absolute -bottom-6 -left-6 w-28 h-28 bg-white rounded-full"></div>
-          <div className="absolute top-16 left-24 w-10 h-10 bg-white rounded-full"></div>
-        </div>
-        
-        <div className="relative z-10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="p-3 bg-white bg-opacity-20 rounded-lg mr-4">
-                <MessageSquare className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold mb-2">Messages</h1>
-                <p className="text-green-100 text-lg">Communication with service providers</p>
-              </div>
-            </div>
-            
-            {/* Message Status Indicators */}
-            <div className="hidden md:flex space-x-4">
-              <div className="text-center bg-white bg-opacity-10 rounded-lg px-4 py-2">
-                <div className="text-xl font-bold">0</div>
-                <div className="text-xs text-green-100">Unread</div>
-              </div>
-              <div className="text-center bg-white bg-opacity-10 rounded-lg px-4 py-2">
-                <div className="text-xl font-bold">0</div>
-                <div className="text-xs text-green-100">Total</div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Quick Message Actions */}
-          <div className="mt-6 flex space-x-3">
-            <button className="bg-white bg-opacity-20 px-4 py-2 rounded-lg text-sm hover:bg-opacity-30 transition-colors">
-              ✉️ Contact Support
-            </button>
-            <button className="bg-white bg-opacity-20 px-4 py-2 rounded-lg text-sm hover:bg-opacity-30 transition-colors">
-              📞 Emergency Contact
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
-        <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No messages yet</h3>
-        <p className="text-gray-600">Messages from vendors will appear here</p>
-      </div>
-    </div>
-  );
-};
 
 // Referrals Tab Component
 const ReferralsTab = () => {
@@ -1005,18 +1139,8 @@ const ReferralsTab = () => {
   return (
     <div className="space-y-6">
       {/* Decorative Banner */}
-      <div className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-4 right-6 w-20 h-20 bg-white rounded-full"></div>
-          <div className="absolute -top-8 -right-8 w-32 h-32 bg-white rounded-full"></div>
-          <div className="absolute bottom-6 left-8 w-18 h-18 bg-white rounded-full"></div>
-          <div className="absolute -bottom-10 -left-10 w-36 h-36 bg-white rounded-full"></div>
-          <div className="absolute top-20 left-20 w-12 h-12 bg-white rounded-full"></div>
-          <div className="absolute top-12 right-20 w-8 h-8 bg-white rounded-full"></div>
-        </div>
-        
-        <div className="relative z-10">
+      <div className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 rounded-2xl p-8 text-white shadow-lg">
+        <div>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <div className="p-3 bg-white bg-opacity-20 rounded-lg mr-4">
@@ -1364,6 +1488,506 @@ const ReferralsTab = () => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Helper function to check if order can be cancelled
+const canCancelOrder = (order) => {
+  const cancellableStatuses = ['PENDING', 'ASSIGNED', 'IN_DISCUSSION', 'QUOTE_SENT'];
+  return cancellableStatuses.includes(order.status);
+};
+
+// Order Details Modal Component  
+const OrderDetailsModal = ({ order, onClose, onCancelOrder, getStatusIcon, getStatusColor, getStatusDescription }) => {
+  const [zoomedImage, setZoomedImage] = useState(null);
+  
+  const handleImageClick = (imageSrc) => {
+    console.log('OrderDetailsModal - Image clicked:', imageSrc);
+    setZoomedImage(imageSrc);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+      <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            {getStatusIcon(order.status)}
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">{order.title}</h2>
+              <p className="text-gray-600">#{order.jobNumber}</p>
+            </div>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-6 h-6 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Status Banner */}
+        <div className={`rounded-lg p-4 mb-6 border-l-4 ${getStatusColor(order.status)} border-l-current`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-lg">{order.status.replace('_', ' ')}</p>
+              <p className="text-sm opacity-90">{getStatusDescription(order.status)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold">
+                ${order.totalAmount || order.vendorQuote?.amount || 'TBD'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column */}
+          <div className="space-y-6">
+            {/* Job Details */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Job Details</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Description</label>
+                  <p className="text-gray-900">{order.description || 'No description provided'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Category</label>
+                  <p className="text-gray-900 capitalize">{order.category}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Created Date</label>
+                  <p className="text-gray-900">{new Date(order.createdAt).toLocaleDateString()}</p>
+                </div>
+                {order.estimatedBudget && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-600">Your Estimated Budget</label>
+                    <p className="text-gray-900 text-sm">${order.estimatedBudget} <span className="text-gray-500">(for reference only)</span></p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Location */}
+            {order.location && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Service Location</h3>
+                <div className="flex items-start space-x-2">
+                  <MapPin className="w-5 h-5 text-gray-500 mt-0.5" />
+                  <div>
+                    <p className="text-gray-900">{order.location.address}</p>
+                    <p className="text-gray-600">
+                      {order.location.city}
+                      {order.location.state && `, ${order.location.state}`}
+                      {order.location.zipCode && ` ${order.location.zipCode}`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Schedule */}
+            {order.requestedTimeSlot && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Scheduled Time</h3>
+                <div className="flex items-center space-x-2">
+                  <Calendar className="w-5 h-5 text-gray-500" />
+                  <div>
+                    <p className="text-gray-900">
+                      {new Date(order.requestedTimeSlot.date).toLocaleDateString()}
+                    </p>
+                    {order.requestedTimeSlot.startTime && order.requestedTimeSlot.endTime && (
+                      <p className="text-gray-600">
+                        {order.requestedTimeSlot.startTime} - {order.requestedTimeSlot.endTime}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Uploaded Files - Always show section if files array exists (even if empty for debugging) */}
+            {(order.images !== undefined || order.videos !== undefined) && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Uploaded Files
+                  {/* Debug info */}
+                  <span className="text-xs text-gray-500 ml-2">
+                    (Images: {order.images?.length || 0}, Videos: {order.videos?.length || 0})
+                  </span>
+                </h3>
+                
+                {/* Images */}
+                {console.log('Order images:', order.images)}
+                {order.images && order.images.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <Camera className="w-4 h-4 mr-1" />
+                      Photos ({order.images.length})
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {order.images.map((imageName, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={`/uploads/order-attachments/${imageName}`}
+                            alt={`Order attachment ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              console.log('Image clicked:', imageName);
+                              handleImageClick(`/uploads/order-attachments/${imageName}`);
+                            }}
+                            onError={(e) => {
+                              // Fallback if image doesn't exist
+                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiA5VjEzTTEyIDE3SDEyLjAxTTIxIDEyQzIxIDE2Ljk3MDYgMTYuOTcwNiAyMSAxMiAyMUM3LjAyOTQ0IDIxIDMgMTYuOTcwNiAzIDEyQzMgNy4wMjk0NCA3LjAyOTQ0IDMgMTIgM0MxNi45NzA2IDMgMjEgNy4wMjk0NCAyMSAxMloiIHN0cm9rZT0iIzlDQTNBRiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+';
+                              e.target.className = 'w-full h-24 object-contain rounded-lg border border-gray-200 bg-gray-100';
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
+                            <span className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                              Click to view full size
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Videos */}
+                {order.videos && order.videos.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <Video className="w-4 h-4 mr-1" />
+                      Videos ({order.videos.length})
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {order.videos.map((videoName, index) => (
+                        <div key={index} className="relative">
+                          <video
+                            src={`/uploads/order-attachments/${videoName}`}
+                            className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                            controls
+                            preload="metadata"
+                            onError={(e) => {
+                              // Fallback if video doesn't exist
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div className="w-full h-32 bg-gray-100 rounded-lg border border-gray-200 items-center justify-center text-gray-500 text-sm hidden">
+                            <div className="text-center">
+                              <Video className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                              <span>Video not available</span>
+                              <div className="text-xs text-gray-400 mt-1">{videoName}</div>
+                            </div>
+                          </div>
+                          <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                            {videoName}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* No files message */}
+                {(!order.images || order.images.length === 0) && (!order.videos || order.videos.length === 0) && (
+                  <div className="text-center py-4">
+                    <div className="text-gray-400 mb-2">
+                      <Camera className="w-8 h-8 mx-auto" />
+                    </div>
+                    <p className="text-gray-500 text-sm">No files were uploaded with this order</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-6">
+            {/* Vendor Information */}
+            {order.vendorId ? (
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Assigned Vendor</h3>
+                <div className="flex items-start space-x-3">
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white text-lg font-bold">
+                    {order.vendorId.firstName?.[0] || 'V'}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">
+                      {order.vendorId.firstName} {order.vendorId.lastName}
+                    </p>
+                    {order.vendorId.email && (
+                      <p className="text-gray-600 text-sm">{order.vendorId.email}</p>
+                    )}
+                    {order.vendorId.phone && (
+                      <div className="flex items-center mt-1 text-sm text-gray-600">
+                        <Phone className="w-4 h-4 mr-1" />
+                        {order.vendorId.phone}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-yellow-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Vendor Assignment</h3>
+                <div className="flex items-center text-yellow-700">
+                  <AlertCircle className="w-5 h-5 mr-2" />
+                  <span>No vendor assigned yet</span>
+                </div>
+              </div>
+            )}
+
+            {/* Quote Information */}
+            {order.vendorQuote?.amount && (
+              <div className="bg-green-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Vendor Quote</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Quoted Amount</span>
+                    <span className="text-2xl font-bold text-green-600">
+                      ${order.vendorQuote.amount}
+                    </span>
+                  </div>
+                  {order.vendorQuote.description && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Quote Details</label>
+                      <p className="text-gray-900 text-sm">{order.vendorQuote.description}</p>
+                    </div>
+                  )}
+                  {order.vendorQuote.validUntil && (
+                    <p className="text-gray-600 text-sm">
+                      Valid until: {new Date(order.vendorQuote.validUntil).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Work Progress */}
+            {order.workProgress?.percentage > 0 && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Work Progress</h3>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Completion</span>
+                      <span className="font-medium">{order.workProgress.percentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full" 
+                        style={{ width: `${order.workProgress.percentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  {order.workProgress.workNotes && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Progress Notes</label>
+                      <p className="text-gray-900 text-sm">{order.workProgress.workNotes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Payment Information */}
+            {order.payment && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Payment</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Status</span>
+                    <span className={`font-medium ${
+                      order.payment.status === 'PAID' ? 'text-green-600' : 
+                      order.payment.status === 'FAILED' ? 'text-red-600' : 'text-yellow-600'
+                    }`}>
+                      {order.payment.status}
+                    </span>
+                  </div>
+                  {order.payment.method && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Method</span>
+                      <span className="text-gray-900">{order.payment.method}</span>
+                    </div>
+                  )}
+                  {order.payment.paidAt && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Paid On</span>
+                      <span className="text-gray-900">
+                        {new Date(order.payment.paidAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Status History */}
+        {order.statusHistory && order.statusHistory.length > 0 && (
+          <div className="mt-6 bg-gray-50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Status History</h3>
+            <div className="space-y-3">
+              {order.statusHistory.slice().reverse().map((status, index) => (
+                <div key={index} className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-900">
+                        {status.status.replace('_', ' ')}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {new Date(status.timestamp).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {status.notes && (
+                      <p className="text-sm text-gray-600">{status.notes}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex justify-between items-center mt-6 pt-6 border-t">
+          <div>
+            {canCancelOrder(order) && (
+              <button
+                onClick={onCancelOrder}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Cancel Order
+              </button>
+            )}
+          </div>
+          <div className="flex space-x-3">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Close
+            </button>
+            {['QUOTE_SENT', 'QUOTE_ACCEPTED'].includes(order.status) && (
+              <button className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                Accept Quote & Pay
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      
+      {/* Image Zoom Modal - rendered inside OrderDetailsModal */}
+      {zoomedImage && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-90"
+          onClick={() => setZoomedImage(null)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="relative max-w-full max-h-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setZoomedImage(null)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 rounded-full bg-black bg-opacity-50 hover:bg-opacity-70 transition-colors z-10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            {/* Image */}
+            <img
+              src={zoomedImage}
+              alt="Zoomed order attachment"
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              onLoad={() => console.log('Zoomed image loaded successfully')}
+              onError={(e) => console.log('Zoomed image failed to load:', e)}
+            />
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Cancel Confirmation Modal Component
+const CancelConfirmationModal = ({ order, reason, onReasonChange, onConfirm, onClose }) => {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+      <div className="bg-white rounded-xl p-6 w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Cancel Order</h3>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Warning */}
+        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 mr-2" />
+            <div>
+              <h4 className="font-medium text-yellow-800">Cancel Order #{order.jobNumber}?</h4>
+              <p className="text-sm text-yellow-700 mt-1">
+                This action cannot be undone. The order will be permanently cancelled.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Order Details */}
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+          <p className="font-medium text-gray-900">{order.title}</p>
+          <p className="text-sm text-gray-600">Category: {order.category}</p>
+          <p className="text-sm text-gray-600">Status: {order.status.replace('_', ' ')}</p>
+        </div>
+
+        {/* Reason Input */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Reason for cancellation (optional)
+          </label>
+          <textarea
+            value={reason}
+            onChange={(e) => onReasonChange(e.target.value)}
+            placeholder="Please provide a reason for cancelling this order..."
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+          />
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex space-x-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Keep Order
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Cancel Order
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

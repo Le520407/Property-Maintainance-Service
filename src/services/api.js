@@ -478,6 +478,68 @@ export const api = {
       }),
     },
   },
+
+  // Vendor related
+  vendor: {
+    // Get vendor jobs
+    getJobs: (status) => {
+      const params = status ? `?status=${status}` : '';
+      return request(`/vendor/jobs${params}`);
+    },
+    
+    // Respond to job assignment
+    respondToJob: (jobId, response) => request(`/vendor/jobs/${jobId}/respond`, {
+      method: 'PATCH',
+      body: JSON.stringify(response),
+    }),
+    
+    // Update job progress
+    updateJobProgress: (jobId, progressData) => request(`/vendor/jobs/${jobId}/progress`, {
+      method: 'PATCH',
+      body: JSON.stringify(progressData),
+    }),
+    
+    // Update job status
+    updateJobStatus: (jobId, statusData) => request(`/vendor/jobs/${jobId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(statusData),
+    }),
+    
+    // Update vendor profile
+    updateProfile: (profileData) => request('/vendor/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    }),
+    
+    // Get vendor dashboard data
+    getDashboard: () => request('/vendor/dashboard'),
+  },
+
+  // Messages related
+  messages: {
+    // Get conversations for current user
+    getConversations: () => request('/messages/conversations'),
+    
+    // Get messages for a conversation
+    getMessages: (conversationId) => request(`/messages/conversations/${conversationId}/messages`),
+    
+    // Send a message
+    sendMessage: (conversationId, messageData) => request(`/messages/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(messageData),
+    }),
+    
+    // Create a new conversation
+    createConversation: (conversationData) => request('/messages/conversations', {
+      method: 'POST',
+      body: JSON.stringify(conversationData),
+    }),
+    
+    // Mark messages as read
+    markAsRead: (conversationId) => request(`/messages/conversations/${conversationId}/read`, {
+      method: 'PATCH',
+    }),
+  },
 };
 
 // Utility functions

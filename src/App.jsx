@@ -35,6 +35,7 @@ import AnnouncementsPage from './pages/AnnouncementsPage.jsx';
 import FAQManagement from './pages/admin/FAQManagement.jsx';
 import UserManagement from './pages/admin/UserManagement.jsx';
 import OrderManagement from './pages/admin/OrderManagement.jsx';
+import HomepageManagement from './pages/admin/HomepageManagement.jsx';
 import OrderSubmissionPage from './pages/OrderSubmissionPage.jsx';
 import UnifiedMessagesPage from './pages/UnifiedMessagesPage.jsx';
 import PaymentPage from './pages/PaymentPage.jsx';
@@ -50,12 +51,14 @@ import MembershipDashboard from './components/customer/MembershipDashboard.jsx';
 import { AuthProvider } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { MessagesProvider } from './contexts/MessagesContext';
 
 function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
-        <CartProvider>
+        <MessagesProvider>
+          <CartProvider>
           <AnimatePresence mode="wait">
             <Routes>
               {/* Dashboard and Admin routes (full-page layout) */}
@@ -73,6 +76,16 @@ function App() {
                     <Header />
                     <main className="pt-24">
                       <AnnouncementManagement />
+                    </main>
+                  </div>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/homepage" element={
+                <ProtectedRoute requiredRole="admin">
+                  <div className="min-h-screen bg-gray-50">
+                    <Header />
+                    <main className="pt-24">
+                      <HomepageManagement />
                     </main>
                   </div>
                 </ProtectedRoute>
@@ -181,7 +194,8 @@ function App() {
               } />
             </Routes>
           </AnimatePresence>
-        </CartProvider>
+          </CartProvider>
+        </MessagesProvider>
       </AuthProvider>
     </LanguageProvider>
   );

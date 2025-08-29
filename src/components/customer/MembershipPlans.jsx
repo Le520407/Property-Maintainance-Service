@@ -188,15 +188,8 @@ const MembershipPlans = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-orange-600 via-orange-700 to-red-600 text-white py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-black opacity-10"></div>
-        <div className="absolute inset-0 z-0">
-          <div className="absolute top-5 left-5 w-16 h-16 bg-white opacity-5 rounded-full animate-pulse"></div>
-          <div className="absolute bottom-5 right-5 w-24 h-24 bg-yellow-300 opacity-10 rounded-full animate-bounce"></div>
-          <div className="absolute top-3/4 left-1/4 w-12 h-12 bg-orange-300 opacity-15 rounded-full animate-pulse"></div>
-          <div className="absolute top-1/4 right-1/3 w-14 h-14 bg-white opacity-8 rounded-full animate-pulse"></div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 text-center relative z-20">
+      <div className="bg-gradient-to-r from-orange-600 via-orange-700 to-red-600 text-white py-20">
+        <div className="max-w-7xl mx-auto px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}

@@ -12,8 +12,8 @@ router.post('/', auth, async (req, res) => {
   try {
     const customerId = req.user._id;
     
-    // Ensure user is a customer
-    if (req.user.role !== 'customer') {
+    // Ensure user is a customer or creating a support request
+    if (req.user.role !== 'customer' && !req.body.isSupport) {
       return res.status(403).json({ message: 'Only customers can submit job requests' });
     }
 
@@ -153,7 +153,7 @@ router.get('/:id', auth, async (req, res) => {
 // Assign job to vendor (Admin only)
 router.patch('/:id/assign', auth, requireRole('admin'), async (req, res) => {
   try {
-    const { vendorId, assignedTimeSlot } = req.body;
+    const { vendorId } = req.body;
     
     const job = await Job.findById(req.params.id);
     if (!job) {
@@ -173,7 +173,7 @@ router.patch('/:id/assign', auth, requireRole('admin'), async (req, res) => {
     }
 
     // Assign the job
-    await job.assignToVendor(vendorId, assignedTimeSlot);
+    await job.assignToVendor(vendorId);
     await job.populate(['customerId', 'vendorId', 'vendorDetails']);
 
     // Send system messages to both customer and vendor
@@ -350,6 +350,61 @@ router.patch('/:id/accept-quote', auth, async (req, res) => {
   } catch (error) {
     console.error('Error accepting quote:', error);
     res.status(500).json({ message: 'Failed to accept quote' });
+  }
+});
+
+// Cancel order (Customer only)
+router.patch('/:id/cancel', auth, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Only customers can cancel their orders' });
+    }
+
+    const job = await Job.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    if (job.customerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only cancel your own orders' });
+    }
+
+    // Check if order can be cancelled
+    const cancellableStatuses = ['PENDING', 'ASSIGNED', 'IN_DISCUSSION', 'QUOTE_SENT'];
+    if (!cancellableStatuses.includes(job.status)) {
+      return res.status(400).json({ 
+        message: `Cannot cancel order with status: ${job.status}. Orders can only be cancelled when they are: ${cancellableStatuses.join(', ')}`
+      });
+    }
+
+    // Update job status to cancelled
+    job.status = 'CANCELLED';
+    job.cancellationReason = reason || 'Cancelled by customer';
+    job.cancelledBy = req.user._id;
+    job.cancelledAt = new Date();
+    
+    job.statusHistory.push({
+      status: 'CANCELLED',
+      timestamp: new Date(),
+      updatedBy: req.user._id,
+      notes: reason || 'Order cancelled by customer'
+    });
+
+    await job.save();
+    await job.populate(['customerId', 'vendorId']);
+
+    console.log(`❌ Order ${job.jobNumber} cancelled by customer ${req.user.email}`);
+
+    res.json({
+      message: 'Order cancelled successfully',
+      job: job
+    });
+
+  } catch (error) {
+    console.error('Error cancelling order:', error);
+    res.status(500).json({ message: 'Failed to cancel order' });
   }
 });
 
@@ -608,6 +663,53 @@ router.get('/analytics/vendor-performance', auth, requireRole('admin'), async (r
   } catch (error) {
     console.error('Error getting vendor analytics:', error);
     res.status(500).json({ message: 'Failed to get vendor analytics' });
+  }
+});
+
+// Create support conversation (accessible by all authenticated users)
+router.post('/support', auth, async (req, res) => {
+  try {
+    const { description } = req.body;
+    
+    // Create support job
+    const supportJobData = {
+      title: 'Customer Support Request',
+      description: description || `Support request from ${req.user.firstName} ${req.user.lastName}`,
+      category: 'Support',
+      priority: 'HIGH',
+      location: {
+        address: 'Support Request',
+        city: 'Online',
+        state: '',
+        zipCode: ''
+      },
+      items: [], // Empty items for support request
+      subtotal: 0,
+      totalAmount: 0,
+      customerId: req.user._id,
+      isSupport: true,
+      status: 'SUPPORT_PENDING'
+    };
+
+    const supportJob = new Job(supportJobData);
+    await supportJob.save();
+    
+    // Populate customer details
+    await supportJob.populate('customerId', 'firstName lastName email phone');
+
+    console.log(`🆘 Support request created: ${supportJob.jobNumber} by ${req.user.email}`);
+
+    res.status(201).json({
+      message: 'Support request created successfully',
+      job: supportJob
+    });
+
+  } catch (error) {
+    console.error('Error creating support request:', error);
+    res.status(500).json({ 
+      message: 'Failed to create support request',
+      error: error.message 
+    });
   }
 });
 

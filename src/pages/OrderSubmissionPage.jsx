@@ -150,37 +150,67 @@ const OrderSubmissionPage = () => {
     }
   };
 
-  const handleFileUpload = (e, type) => {
+  const handleFileUpload = async (e, type) => {
     const files = Array.from(e.target.files);
     
-    files.forEach(file => {
-      // File size validation
+    if (files.length === 0) return;
+
+    // File size validation
+    for (const file of files) {
       const maxSize = type === 'images' ? 10 * 1024 * 1024 : 50 * 1024 * 1024; // 10MB for images, 50MB for videos
       if (file.size > maxSize) {
         toast.error(`File ${file.name} is too large. Maximum size is ${type === 'images' ? '10MB' : '50MB'}.`);
         return;
       }
+    }
 
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const fileData = {
-          file: file,
-          preview: event.target.result,
-          name: file.name,
-          size: file.size
-        };
+    // Upload files to server
+    const formDataUpload = new FormData();
+    files.forEach(file => {
+      formDataUpload.append('files', file);
+    });
+
+    try {
+      const token = localStorage.getItem('token');
+      toast.loading(`Uploading ${files.length} file(s)...`);
+      
+      const response = await fetch('/api/upload/order-attachments', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formDataUpload
+      });
+
+      toast.dismiss();
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Create file data with server response
+        const uploadedFiles = data.files.map(uploadedFile => ({
+          file: null, // Don't store the actual file object
+          preview: uploadedFile.url, // Use the server URL
+          name: uploadedFile.originalName,
+          serverFilename: uploadedFile.filename, // Store the server filename
+          size: uploadedFile.size,
+          url: uploadedFile.url
+        }));
 
         setFormData(prev => ({
           ...prev,
-          [type]: [...prev[type], fileData]
+          [type]: [...prev[type], ...uploadedFiles]
         }));
-      };
-      reader.readAsDataURL(file);
-    });
 
-    if (files.length > 0) {
-      toast.success(`${files.length} ${type === 'images' ? 'image(s)' : 'video(s)'} uploaded successfully`);
+        toast.success(`${files.length} ${type === 'images' ? 'image(s)' : 'video(s)'} uploaded successfully`);
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to upload files');
+      }
+    } catch (error) {
+      toast.dismiss();
+      console.error('Upload error:', error);
+      toast.error('Failed to upload files. Please try again.');
     }
   };
 
@@ -244,7 +274,7 @@ const OrderSubmissionPage = () => {
         formData.location.state
       ].filter(Boolean).join(', ');
 
-      // Prepare the order data
+      // Prepare the order data (excluding file objects for JSON serialization)
       const orderData = {
         ...formData,
         customerId: user.id || user._id,
@@ -256,6 +286,9 @@ const OrderSubmissionPage = () => {
           ...formData.location,
           address: completeAddress || formData.location.streetAddress // Ensure backward compatibility
         },
+        // Use server filenames for uploaded files
+        images: formData.images.map(img => img.serverFilename || img.name),
+        videos: formData.videos.map(vid => vid.serverFilename || vid.name),
         items: [{
           serviceName: formData.title,
           category: formData.category,
@@ -309,13 +342,41 @@ const OrderSubmissionPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Submit Service Request</h1>
-          <p className="text-lg text-gray-600">Tell us what you need, and we'll connect you with the best professionals</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Banner Header */}
+      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 text-white shadow-lg">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-6">
+              <div className="p-4 bg-white bg-opacity-20 rounded-xl mr-4">
+                <FileText className="w-10 h-10 text-white" />
+              </div>
+              <div className="text-left">
+                <h1 className="text-4xl font-bold mb-2">Submit Service Request</h1>
+                <p className="text-orange-100 text-xl">Tell us what you need, and we'll connect you with the best professionals</p>
+              </div>
+            </div>
+            
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+              <div className="bg-white bg-opacity-10 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold">24/7</div>
+                <div className="text-sm text-orange-100">Emergency Service</div>
+              </div>
+              <div className="bg-white bg-opacity-10 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold">500+</div>
+                <div className="text-sm text-orange-100">Verified Professionals</div>
+              </div>
+              <div className="bg-white bg-opacity-10 rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold">48hrs</div>
+                <div className="text-sm text-orange-100">Average Response Time</div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Progress Steps */}
         <div className="mb-8">
@@ -476,7 +537,7 @@ const OrderSubmissionPage = () => {
                       {formData.images.map((image, index) => (
                         <div key={index} className="relative">
                           <img
-                            src={image.preview}
+                            src={image.url || image.preview}
                             alt={`Preview ${index + 1}`}
                             className="w-full h-20 object-cover rounded-lg"
                           />
@@ -525,7 +586,7 @@ const OrderSubmissionPage = () => {
                       {formData.videos.map((video, index) => (
                         <div key={index} className="relative">
                           <video
-                            src={video.preview}
+                            src={video.url || video.preview}
                             className="w-full h-32 object-cover rounded-lg"
                             controls
                           />
@@ -537,7 +598,7 @@ const OrderSubmissionPage = () => {
                             <X className="w-3 h-3" />
                           </button>
                           <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                            {video.file.name}
+                            {video.name}
                           </div>
                         </div>
                       ))}
@@ -867,7 +928,7 @@ const OrderSubmissionPage = () => {
                     <div className="space-y-2">
                       {formData.images.map((image, index) => (
                         <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                          <span className="text-sm text-gray-600">{image}</span>
+                          <span className="text-sm text-gray-600">{image.name}</span>
                           <button
                             type="button"
                             onClick={() => removeFile(index, 'images')}

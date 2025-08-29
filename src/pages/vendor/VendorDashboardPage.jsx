@@ -26,7 +26,8 @@ import {
   CreditCard,
   MessageSquare,
   Shield,
-  History
+  History,
+  Send
 } from 'lucide-react';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -827,6 +828,17 @@ const VendorDashboardPage = () => {
       ]
     },
     { 
+      name: 'Job Assignments', 
+      section: 'assignments',
+      icon: AlertCircle,
+      description: 'Pending & New Jobs',
+      tabs: [
+        { name: 'Pending Assignments', tab: 'pending' },
+        { name: 'Accepted Jobs', tab: 'accepted' },
+        { name: 'Completed Jobs', tab: 'completed' }
+      ]
+    },
+    { 
       name: 'Business', 
       section: 'business',
       icon: FileText,
@@ -1113,6 +1125,13 @@ const VendorDashboardPage = () => {
       );
     }
 
+    // Job Assignments Section
+    if (activeSection === 'assignments') {
+      if (activeTab === 'pending') return <VendorJobAssignments status="ASSIGNED" />;
+      if (activeTab === 'accepted') return <VendorJobAssignments status="IN_DISCUSSION,QUOTE_SENT,QUOTE_ACCEPTED,PAID,IN_PROGRESS" />;
+      if (activeTab === 'completed') return <VendorJobAssignments status="COMPLETED" />;
+    }
+
     // Business Section
     if (activeSection === 'business') {
       if (activeTab === 'jobs') return (
@@ -1353,5 +1372,190 @@ const VendorDashboardPage = () => {
     </div>
   );
 };
+
+// Vendor Job Assignments Component
+const VendorJobAssignments = ({ status }) => {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadJobs();
+  }, [status]);
+
+  const loadJobs = async () => {
+    try {
+      setLoading(true);
+      console.log('Loading jobs with status:', status); // Debug log
+      console.log('Current user from localStorage token:', localStorage.getItem('token')); // Debug log
+      const response = await api.vendor.getJobs(status);
+      console.log('Jobs response:', response); // Debug log
+      const jobsArray = response.jobs || [];
+      console.log('Setting jobs array length:', jobsArray.length); // Debug log
+      setJobs(jobsArray);
+    } catch (error) {
+      console.error('Error loading jobs:', error);
+      toast.error('Failed to load jobs: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleJobResponse = async (jobId, response, reason = '') => {
+    // If rejecting, ask for a reason
+    if (response === 'REJECTED' && !reason) {
+      const userReason = window.prompt('Please provide a reason for rejecting this job:');
+      if (!userReason) {
+        return; // User cancelled
+      }
+      reason = userReason;
+    }
+
+    try {
+      console.log('Sending response:', { response, reason, jobId }); // Debug log
+      const result = await api.vendor.respondToJob(jobId, { response, reason });
+      console.log('Response result:', result); // Debug log
+      toast.success(`Job ${response.toLowerCase()} successfully!`);
+      loadJobs(); // Reload jobs
+    } catch (error) {
+      console.error('Error responding to job:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      toast.error(`Failed to ${response.toLowerCase()} job: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+          <div className="space-y-3">
+            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="text-lg font-medium text-gray-900">
+            {status === 'ASSIGNED' ? 'Pending Job Assignments' : 
+             status.includes('COMPLETED') ? 'Completed Jobs' : 'Active Jobs'}
+          </h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Status filter: {status} | Found: {jobs.length} jobs
+          </p>
+        </div>
+        <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded">
+          {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'}
+        </span>
+      </div>
+
+      {jobs.length === 0 ? (
+        <div className="text-center py-12">
+          <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
+          <p className="text-gray-600">
+            {status === 'ASSIGNED' ? 'No pending assignments at the moment.' :
+             status.includes('COMPLETED') ? 'No completed jobs yet.' : 'No active jobs currently.'}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {jobs.map((job) => (
+            <motion.div
+              key={job._id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <h4 className="text-lg font-medium text-gray-900">
+                      Job #{job.jobNumber}
+                    </h4>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      job.status === 'ASSIGNED' ? 'bg-yellow-100 text-yellow-800' :
+                      job.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                      'bg-blue-100 text-blue-800'
+                    }`}>
+                      {job.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  
+                  <p className="text-gray-600 mb-2">{job.description}</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Customer</p>
+                      <p className="font-medium">{job.customerId?.firstName} {job.customerId?.lastName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Category</p>
+                      <p className="font-medium capitalize">{job.category}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Location</p>
+                      <p className="font-medium">{job.location?.address}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Preferred Date</p>
+                      <p className="font-medium">
+                        {job.preferredTimeSlots?.[0] ? 
+                          new Date(job.preferredTimeSlots[0].date).toLocaleDateString() : 'Flexible'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {job.status === 'ASSIGNED' && (
+                    <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
+                      <button
+                        onClick={() => handleJobResponse(job._id, 'ACCEPTED')}
+                        className="flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Accept Job
+                      </button>
+                      <button
+                        onClick={() => handleJobResponse(job._id, 'REJECTED')}
+                        className="flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Reject Job
+                      </button>
+                    </div>
+                  )}
+
+                  {(job.status === 'IN_DISCUSSION' || job.status === 'QUOTE_SENT' || job.status === 'QUOTE_ACCEPTED' || job.status === 'PAID' || job.status === 'IN_PROGRESS') && (
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                      <span className="text-sm text-green-700 bg-green-100 px-3 py-2 rounded-full">
+                        ✓ Job Accepted - Use message icon in header to communicate with customer
+                      </span>
+                      <button
+                        onClick={() => {
+                          // Update job status to next stage
+                          console.log('Update job progress for:', job._id);
+                        }}
+                        className="flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Update Status
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 export default VendorDashboardPage;

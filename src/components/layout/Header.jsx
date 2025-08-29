@@ -4,6 +4,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { ShoppingCart, User, Menu, X, Gift, MessageCircle } from 'lucide-react';
+import { api } from '../../services/api';
+
+// Global function to clear messages visited flag (can be called from anywhere)
+export const clearMessagesVisitedFlag = (userId) => {
+  if (userId) {
+    localStorage.removeItem(`header-messages-visited-${userId}`);
+  }
+};
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -12,6 +20,7 @@ const Header = () => {
   const { t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const userMenuRef = useRef(null);
 
   // Close user menu when clicking outside
@@ -46,6 +55,7 @@ const Header = () => {
   // Admin navigation items (only show for admin users)
   const adminNavigation = user?.role === 'admin' ? [
     { name: 'Admin Panel', href: '/dashboard', isDropdown: true, items: [
+      { name: 'Homepage Management', href: '/admin/homepage' },
       { name: 'Order Management', href: '/admin/orders' },
       { name: 'User Management', href: '/admin/users' },
       // { name: 'Announcement Management', href: '/admin/announcements' }, // Hidden temporarily
@@ -53,9 +63,114 @@ const Header = () => {
     ]}
   ] : [];
 
+  // Cache for API responses
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const [cachedUnreadCount, setCachedUnreadCount] = useState(0);
+  const CACHE_DURATION = 60000; // 1 minute cache
+  
+  // Fetch unread messages count with caching
+  const fetchUnreadCount = async (forceRefresh = false) => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
+
+    console.log('🔍 Header fetchUnreadCount - User:', user.role, 'ID:', user.id);
+
+    // Check if user has visited messages page - if so, don't bother fetching
+    const hasVisitedMessages = localStorage.getItem(`header-messages-visited-${user.id}`) === 'true';
+    console.log('📍 Has visited messages flag:', hasVisitedMessages);
+    
+    if (hasVisitedMessages && !forceRefresh) {
+      console.log('⚠️ Skip fetch - user has visited messages page');
+      setUnreadCount(0);
+      return;
+    }
+
+    // Use cached data if available and not expired
+    const now = Date.now();
+    if (!forceRefresh && (now - lastFetchTime < CACHE_DURATION)) {
+      setUnreadCount(cachedUnreadCount);
+      return;
+    }
+
+    try {
+      console.log('📡 Fetching unread count from API...');
+      let response;
+      if (user.role === 'admin') {
+        response = await api.get('/messages/support/conversations');
+        console.log('👑 Admin response:', response);
+      } else {
+        response = await api.messages.getConversations();
+        console.log('👤 User response:', response);
+      }
+      
+      const conversations = response.conversations || [];
+      const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+      
+      console.log('💬 Conversations:', conversations.length, 'Total unread:', totalUnread);
+      console.log('🔢 Individual unread counts:', conversations.map(c => ({ name: c.customer?.firstName || c.vendor?.firstName, unread: c.unreadCount })));
+      
+      // Update cache
+      setCachedUnreadCount(totalUnread);
+      setLastFetchTime(now);
+      setUnreadCount(totalUnread);
+      
+      console.log('✅ Header unread count set to:', totalUnread);
+      
+    } catch (error) {
+      console.error('Failed to fetch unread count:', error);
+      // Use cached data on error if available
+      if (cachedUnreadCount > 0) {
+        setUnreadCount(cachedUnreadCount);
+      }
+    }
+  };
+
+  // Mark messages as visited when clicking the messages link
+  const handleMessagesClick = () => {
+    if (user) {
+      localStorage.setItem(`header-messages-visited-${user.id}`, 'true');
+      setUnreadCount(0);
+    }
+  };
+
   const handleLogout = () => {
     logout();
   };
+
+  // Fetch unread count on mount and periodically (only when page is visible)
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('🚀 Header mounted for user:', user.role, 'ID:', user.id);
+    // Clear visited flag on mount to ensure we fetch unread count
+    clearMessagesVisitedFlag(user.id);
+    fetchUnreadCount(true); // Force refresh on mount
+
+    // Reduced frequency: every 2 minutes instead of 30 seconds
+    const interval = setInterval(() => {
+      // Only fetch if page is visible to reduce server load
+      if (!document.hidden) {
+        fetchUnreadCount();
+      }
+    }, 120000); // 2 minutes
+
+    // Listen for page visibility changes
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Page became visible, fetch fresh data
+        fetchUnreadCount(true); // Force refresh
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user]);
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-white shadow-md">
@@ -144,14 +259,20 @@ const Header = () => {
           {/* Right Side */}
           <div className="flex items-center space-x-4">
             
-            {/* Messages - Only show for logged in customers and vendors */}
-            {user && (user.role === 'customer' || user.role === 'vendor') && (
+            {/* Messages - Show for all logged in users */}
+            {user && (
               <Link
                 to="/messages"
+                onClick={handleMessagesClick}
                 className="relative flex items-center text-gray-700 hover:text-orange-600"
+                title={user.role === 'admin' ? 'Support Messages' : 'Messages'}
               >
                 <MessageCircle className="w-6 h-6" />
-                {/* You can add unread count badge here later */}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full min-w-5 h-5 flex items-center justify-center px-1">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </Link>
             )}
             

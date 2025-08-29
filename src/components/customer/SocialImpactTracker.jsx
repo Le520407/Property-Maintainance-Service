@@ -142,7 +142,7 @@ const SocialImpactTracker = ({ subscription }) => {
               className="bg-gradient-to-r from-green-500 to-blue-500 h-4 rounded-full relative"
             >
               {progressPercentage > 0 && (
-                <div className="absolute right-2 top-0 h-4 w-2 bg-white rounded-full opacity-70" />
+                <div className="absolute right-2 top-0 h-4 w-2 bg-white rounded-sm opacity-70" />
               )}
             </motion.div>
           </div>

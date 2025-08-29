@@ -30,7 +30,9 @@ import {
   Download,
   MoreHorizontal,
   X,
-  Trash2
+  Trash2,
+  Camera,
+  Video
 } from 'lucide-react';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -46,16 +48,12 @@ const OrderManagement = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [jobToDelete, setJobToDelete] = useState(null);
   const [selectedVendor, setSelectedVendor] = useState('');
-  const [assignmentTimeSlot, setAssignmentTimeSlot] = useState({
-    date: '',
-    startTime: '09:00',
-    endTime: '17:00'
-  });
   const [viewMode, setViewMode] = useState('table');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [sortBy, setSortBy] = useState('newest');
+  const [zoomedImage, setZoomedImage] = useState(null);
   const [stats, setStats] = useState({
     pendingOrders: 0,
     assignedOrders: 0,
@@ -69,7 +67,6 @@ const OrderManagement = () => {
   const [filters, setFilters] = useState({
     status: '',
     category: '',
-    priority: '',
     search: '',
     dateRange: '',
     assignmentStatus: ''
@@ -95,12 +92,6 @@ const OrderManagement = () => {
     REJECTED: 'bg-gray-100 text-gray-800'
   };
 
-  const priorityColors = {
-    LOW: 'text-green-600 bg-green-100 border-green-200',
-    MEDIUM: 'text-yellow-600 bg-yellow-100 border-yellow-200',
-    HIGH: 'text-orange-600 bg-orange-100 border-orange-200',
-    EMERGENCY: 'text-red-600 bg-red-100 border-red-200'
-  };
 
   // Status filters
   const statusOptions = [
@@ -116,22 +107,13 @@ const OrderManagement = () => {
     { value: 'CANCELLED', label: 'Cancelled' }
   ];
 
-  // Priority filters
-  const priorityOptions = [
-    { value: '', label: 'All Priorities' },
-    { value: 'EMERGENCY', label: 'Emergency' },
-    { value: 'HIGH', label: 'High' },
-    { value: 'MEDIUM', label: 'Medium' },
-    { value: 'LOW', label: 'Low' }
-  ];
 
   // Sort options
   const sortOptions = [
     { value: 'newest', label: 'Newest First' },
     { value: 'oldest', label: 'Oldest First' },
     { value: 'budget_desc', label: 'Highest Budget' },
-    { value: 'budget_asc', label: 'Lowest Budget' },
-    { value: 'priority', label: 'Priority' }
+    { value: 'budget_asc', label: 'Lowest Budget' }
   ];
 
   useEffect(() => {
@@ -224,8 +206,7 @@ const OrderManagement = () => {
 
     try {
       const assignmentData = {
-        vendorId: selectedVendor,
-        assignedTimeSlot: assignmentTimeSlot
+        vendorId: selectedVendor
       };
 
       await api.patch(`/jobs/${selectedJob._id}/assign`, assignmentData);
@@ -337,17 +318,14 @@ const OrderManagement = () => {
                 <div><strong>Job ID:</strong> {job.jobNumber}</div>
                 <div><strong>Title:</strong> {job.title}</div>
                 <div><strong>Category:</strong> {job.category}</div>
-                <div className="flex items-center">
-                  <strong className="mr-2">Priority:</strong>
-                  <span className={`font-medium ${priorityColors[job.priority]}`}>
-                    {job.priority}
-                  </span>
-                  {job.isEmergency && (
-                    <span className="ml-2 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                {job.isEmergency && (
+                  <div className="flex items-center">
+                    <strong className="mr-2">Emergency:</strong>
+                    <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
                       EMERGENCY
                     </span>
-                  )}
-                </div>
+                  </div>
+                )}
                 <div className="flex items-center">
                   <strong className="mr-2">Status:</strong>
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[job.status]}`}>
@@ -470,6 +448,84 @@ const OrderManagement = () => {
                     <div><strong>Company:</strong> {job.vendorDetails.companyName}</div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Uploaded Files Section */}
+            {(job.images?.length > 0 || job.videos?.length > 0) && (
+              <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-5 border border-gray-100">
+                <h3 className="text-lg font-semibold mb-4 text-gray-900 flex items-center">
+                  <Camera className="w-5 h-5 mr-2 text-gray-600" />
+                  Customer Uploaded Files
+                </h3>
+                
+                {/* Images */}
+                {job.images && job.images.length > 0 && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <Camera className="w-4 h-4 mr-1" />
+                      Photos ({job.images.length})
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {job.images.map((imageName, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={`/uploads/order-attachments/${imageName}`}
+                            alt={`Order attachment ${index + 1}`}
+                            className="w-full h-20 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => setZoomedImage(`/uploads/order-attachments/${imageName}`)}
+                            onError={(e) => {
+                              // Fallback if image doesn't exist
+                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0xMiA5VjEzTTEyIDE3SDEyLjAxTTIxIDEyQzIxIDE2Ljk3MDYgMTYuOTcwNiAyMSAxMiAyMUM3LjAyOTQ0IDIxIDMgMTYuOTcwNiAzIDEyQzMgNy4wMjk0NCA3LjAyOTQ0IDMgMTIgM0MxNi45NzA2IDMgMjEgNy4wMjk0NCAyMSAxMloiIHN0cm9rZT0iIzlDQTNBRiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+';
+                              e.target.className = 'w-full h-20 object-contain rounded-lg border border-gray-200 bg-gray-100';
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center pointer-events-none">
+                            <span className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                              Click to view
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Videos */}
+                {job.videos && job.videos.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <Video className="w-4 h-4 mr-1" />
+                      Videos ({job.videos.length})
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {job.videos.map((videoName, index) => (
+                        <div key={index} className="relative">
+                          <video
+                            src={`/uploads/order-attachments/${videoName}`}
+                            className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                            controls
+                            preload="metadata"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div className="w-full h-24 bg-gray-100 rounded-lg border border-gray-200 items-center justify-center text-gray-500 text-sm hidden">
+                            <div className="text-center">
+                              <Video className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+                              <span>Video not available</span>
+                              <div className="text-xs text-gray-400 mt-1">{videoName}</div>
+                            </div>
+                          </div>
+                          <div className="absolute bottom-1 left-1 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                            {videoName}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -862,37 +918,21 @@ const OrderManagement = () => {
             )}
           </div>
 
-          {/* Assignment Time Slot */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-3">Assignment Schedule</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={assignmentTimeSlot.date}
-                  onChange={(e) => setAssignmentTimeSlot(prev => ({ ...prev, date: e.target.value }))}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                />
+          {/* Assignment Note */}
+          <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-600 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                <input
-                  type="time"
-                  value={assignmentTimeSlot.startTime}
-                  onChange={(e) => setAssignmentTimeSlot(prev => ({ ...prev, startTime: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                <input
-                  type="time"
-                  value={assignmentTimeSlot.endTime}
-                  onChange={(e) => setAssignmentTimeSlot(prev => ({ ...prev, endTime: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                />
+              <div className="ml-3">
+                <h4 className="text-sm font-medium text-blue-800">Assignment Process</h4>
+                <p className="text-sm text-blue-700 mt-1">
+                  The vendor will be notified of this assignment and can accept or reject it. 
+                  Once accepted, they will communicate directly with the customer to discuss 
+                  scheduling, pricing, and project details.
+                </p>
               </div>
             </div>
           </div>
@@ -914,7 +954,7 @@ const OrderManagement = () => {
                 </button>
                 <button
                   onClick={handleAssignJob}
-                  disabled={!selectedVendor || !assignmentTimeSlot.date}
+                  disabled={!selectedVendor}
                   className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
                 >
                   <UserCheck className="w-4 h-4 mr-2" />
@@ -1076,7 +1116,7 @@ const OrderManagement = () => {
             </h2>
             <p className="text-sm text-gray-600 mt-1">Find specific orders using the filters below</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Search */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Search</label>
@@ -1112,26 +1152,10 @@ const OrderManagement = () => {
               </select>
             </div>
 
-            {/* Priority Filter */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Priority</label>
-              <select
-                value={filters.priority}
-                onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value }))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors bg-gray-50 focus:bg-white"
-              >
-                <option value="">All Priorities</option>
-                <option value="EMERGENCY">Emergency</option>
-                <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="LOW">Low</option>
-              </select>
-            </div>
-
             {/* Clear Filters */}
             <div className="flex items-end">
               <button
-                onClick={() => setFilters({ status: '', category: '', priority: '', search: '', dateRange: '', assignmentStatus: '' })}
+                onClick={() => setFilters({ status: '', category: '', search: '', dateRange: '', assignmentStatus: '' })}
                 className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold flex items-center justify-center"
               >
                 <X className="w-4 h-4 mr-2" />
@@ -1471,14 +1495,14 @@ const OrderManagement = () => {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No orders found</h3>
             <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-              {(filters.search || filters.status || filters.priority) 
+              {(filters.search || filters.status) 
                 ? "No orders match your current filters. Try adjusting your search criteria."
                 : "No orders available at the moment. New orders will appear here when customers submit requests."
               }
             </p>
-            {(filters.search || filters.status || filters.priority) && (
+            {(filters.search || filters.status) && (
               <button
-                onClick={() => setFilters({ status: '', category: '', priority: '', search: '', dateRange: '', assignmentStatus: '' })}
+                onClick={() => setFilters({ status: '', category: '', search: '', dateRange: '', assignmentStatus: '' })}
                 className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
               >
                 Clear All Filters
@@ -1513,17 +1537,14 @@ const OrderManagement = () => {
                   </div>
                 </div>
 
-                {/* Priority & Emergency */}
-                <div className="flex items-center space-x-2 mb-4">
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full border ${priorityColors[job.priority]}`}>
-                    {job.priority}
-                  </span>
-                  {job.isEmergency && (
+                {/* Emergency indicator */}
+                {job.isEmergency && (
+                  <div className="flex items-center mb-4">
                     <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-medium">
                       🚨 EMERGENCY
                     </span>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Customer Info */}
                 <div className="space-y-2 mb-4">
@@ -1686,16 +1707,13 @@ const OrderManagement = () => {
                         <div className="text-sm text-gray-500 mb-2">
                           {job.jobNumber} • {job.category}
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${priorityColors[job.priority]}`}>
-                            {job.priority}
-                          </span>
-                          {job.isEmergency && (
+                        {job.isEmergency && (
+                          <div className="flex items-center">
                             <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-medium">
                               🚨 EMERGENCY
                             </span>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -1825,16 +1843,13 @@ const OrderManagement = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2 mb-3">
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${priorityColors[job.priority]}`}>
-                    {job.priority}
-                  </span>
-                  {job.isEmergency && (
+                {job.isEmergency && (
+                  <div className="flex items-center mb-3">
                     <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-medium">
                       🚨 EMERGENCY
                     </span>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 <div className="flex items-center space-x-2">
                   <button
@@ -1931,6 +1946,52 @@ const OrderManagement = () => {
       {showDeleteModal && jobToDelete && (
         <DeleteConfirmationModal />
       )}
+
+      {/* Image Zoom Modal */}
+      <AnimatePresence>
+        {zoomedImage && (
+          <ImageZoomModal 
+            imageSrc={zoomedImage} 
+            onClose={() => setZoomedImage(null)} 
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// Image Zoom Modal Component
+const ImageZoomModal = ({ imageSrc, onClose }) => {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-90">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.8 }}
+        className="relative max-w-full max-h-full"
+      >
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 rounded-full bg-black bg-opacity-50 hover:bg-opacity-70 transition-colors z-10"
+        >
+          <X className="w-6 h-6" />
+        </button>
+        
+        {/* Image */}
+        <img
+          src={imageSrc}
+          alt="Zoomed order attachment"
+          className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        />
+        
+        {/* Click outside to close */}
+        <div 
+          className="absolute inset-0 -z-10"
+          onClick={onClose}
+        />
+      </motion.div>
     </div>
   );
 };

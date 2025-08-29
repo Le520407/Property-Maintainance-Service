@@ -21,13 +21,15 @@
     "express": "^4.21.2",
     "express-rate-limit": "^8.0.1",
     "express-validator": "^7.2.1",
+    "geoip-lite": "^1.4.10",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.17.0",
     "mongoose-paginate-v2": "^1.9.1",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
-    "stripe": "^18.4.0"
+    "stripe": "^18.4.0",
+    "ua-parser-js": "^2.0.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

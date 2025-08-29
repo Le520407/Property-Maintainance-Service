@@ -55,7 +55,7 @@ const jobItemSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['plumbing', 'electrical', 'cleaning', 'gardening', 'painting', 'security', 'hvac', 'general']
+    enum: ['plumbing', 'electrical', 'cleaning', 'gardening', 'painting', 'security', 'hvac', 'general', 'Support']
   },
   description: {
     type: String,
@@ -83,7 +83,7 @@ const jobStatusHistorySchema = new mongoose.Schema({
     type: String,
     enum: [
       'PENDING', 'ASSIGNED', 'IN_DISCUSSION', 'QUOTE_SENT', 'QUOTE_ACCEPTED', 
-      'PAID', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED'
+      'PAID', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED', 'SUPPORT_PENDING'
     ],
     required: true
   },
@@ -136,10 +136,15 @@ const jobSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  
+  // Customer uploaded attachments
+  images: [String], // Array of uploaded image filenames
+  videos: [String], // Array of uploaded video filenames
+  
   category: {
     type: String,
     required: true,
-    enum: ['plumbing', 'electrical', 'cleaning', 'gardening', 'painting', 'security', 'hvac', 'general']
+    enum: ['plumbing', 'electrical', 'cleaning', 'gardening', 'painting', 'security', 'hvac', 'general', 'Support']
   },
   priority: {
     type: String,
@@ -220,6 +225,7 @@ const jobSchema = new mongoose.Schema({
       'PAID',           // Customer paid, ready to start work
       'IN_PROGRESS',    // Work is being done
       'COMPLETED',      // Work finished
+      'SUPPORT_PENDING', // Customer support request
       'CANCELLED',      // Job cancelled
       'REJECTED'        // Vendor rejected assignment
     ],
@@ -384,7 +390,13 @@ const jobSchema = new mongoose.Schema({
     default: false
   },
   followUpDate: Date,
-  followUpNotes: String
+  followUpNotes: String,
+  
+  // Support conversation flag
+  isSupport: {
+    type: Boolean,
+    default: false
+  }
   
 }, {
   timestamps: true
@@ -456,9 +468,8 @@ jobSchema.methods.updateStatus = function(newStatus, updatedBy, notes) {
   return this.save();
 };
 
-jobSchema.methods.assignToVendor = function(vendorId, timeSlot) {
+jobSchema.methods.assignToVendor = function(vendorId) {
   this.vendorId = vendorId;
-  this.assignedTimeSlot = timeSlot;
   this.status = 'ASSIGNED';
   
   this.statusHistory.push({
@@ -477,24 +488,38 @@ jobSchema.methods.assignToVendor = function(vendorId, timeSlot) {
 };
 
 jobSchema.methods.vendorResponse = function(vendorId, response, reason) {
+  console.log('vendorResponse method called - vendorId:', vendorId, 'response:', response);
+  
   const attempt = this.assignmentAttempts.find(
     attempt => attempt.vendorId.toString() === vendorId.toString() && 
                attempt.response === 'PENDING'
   );
+  
+  console.log('Assignment attempt found:', !!attempt);
   
   if (attempt) {
     attempt.response = response;
     attempt.responseAt = new Date();
     if (reason) attempt.rejectionReason = reason;
     
-    this.status = response === 'ACCEPTED' ? 'ACCEPTED' : 'PENDING';
+    // Update job status based on response
+    if (response === 'ACCEPTED') {
+      this.status = 'IN_DISCUSSION'; // Vendor accepted, now they can discuss with customer
+    } else if (response === 'REJECTED') {
+      this.status = 'PENDING'; // Back to pending for reassignment
+      this.vendorId = null; // Remove vendor assignment
+    }
     
     this.statusHistory.push({
       status: this.status,
       timestamp: new Date(),
       updatedBy: vendorId,
-      notes: response === 'ACCEPTED' ? 'Job accepted by vendor' : `Job rejected: ${reason}`
+      notes: response === 'ACCEPTED' ? 'Job accepted by vendor' : `Job rejected: ${reason || 'No reason provided'}`
     });
+    
+    console.log('Job status updated to:', this.status);
+  } else {
+    console.log('No matching assignment attempt found');
   }
   
   return this.save();
