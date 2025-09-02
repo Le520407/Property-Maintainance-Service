@@ -14,16 +14,18 @@ import AboutPage from './pages/AboutPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
+import UnifiedRegisterPage from './pages/auth/UnifiedRegisterPage.jsx';
 import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
+import AgentRegisterPage from './pages/auth/AgentRegisterPage.jsx';
 import DashboardPage from './pages/dashboard/DashboardPage.jsx';
 import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
+import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import ServiceDetailPage from './pages/ServiceDetailPage.jsx';
 import CartPage from './pages/CartPage.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import ReferralPage from './pages/ReferralPage.jsx';
-import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
 import VendorDashboardPage from './pages/vendor/VendorDashboardPage.jsx';
 import SubscriptionPage from './pages/SubscriptionPage.jsx';
 import BlogPage from './pages/BlogPage.jsx';
@@ -48,7 +50,7 @@ import MembershipPlans from './components/customer/MembershipPlans.jsx';
 import MembershipDashboard from './components/customer/MembershipDashboard.jsx';
 
 // Context
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { MessagesProvider } from './contexts/MessagesContext';
@@ -64,10 +66,7 @@ function App() {
               {/* Dashboard and Admin routes (full-page layout) */}
               <Route path="/dashboard/*" element={
                 <ProtectedRoute>
-                  <div className="min-h-screen bg-gray-50">
-                    <Header />
-                    <SimpleDashboard />
-                  </div>
+                  <DashboardRedirect />
                 </ProtectedRoute>
               } />
               <Route path="/admin/announcements" element={
@@ -140,8 +139,9 @@ function App() {
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/login" element={<LoginPage />} />
-                      <Route path="/register" element={<RegisterPage />} />
+                      <Route path="/register" element={<UnifiedRegisterPage />} />
                       <Route path="/vendor-register" element={<VendorRegisterPage />} />
+                      <Route path="/agent-register" element={<AgentRegisterPage />} />
                       <Route path="/booking" element={<BookingPage />} />
                       <Route path="/order-request" element={
                         <ProtectedRoute>
@@ -200,5 +200,42 @@ function App() {
     </LanguageProvider>
   );
 }
+
+// Dashboard redirect component to route users based on their role
+const DashboardRedirect = () => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center pt-24">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect referral agents to specialized dashboard
+  if (user.role === 'referral') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <ReferralDashboardPage />
+      </div>
+    );
+  }
+
+  // Default dashboard for customers, vendors, and other roles
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <SimpleDashboard />
+    </div>
+  );
+};
 
 export default App; 

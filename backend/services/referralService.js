@@ -277,7 +277,7 @@ class ReferralService {
       const referral = await Referral.findOne({
         'referredUsers.user': customerId,
         'referredUsers.status': 'ACTIVE'
-      });
+      }).populate('referrer');
 
       if (!referral) {
         return { success: false, message: 'Customer not referred' };
@@ -288,8 +288,8 @@ class ReferralService {
         return { success: false, message: 'Referred user record not found' };
       }
 
-      // Calculate commission
-      const commissionData = referral.calculateCommission(orderAmount);
+      // Calculate commission with enhanced rates for referral agents
+      const commissionData = await this.calculateEnhancedCommission(referral, orderAmount);
       
       // Create commission record
       const commission = new Commission({
@@ -309,6 +309,19 @@ class ReferralService {
       // Update referral earnings
       referral.totalCommissionEarned += commissionData.amount;
       referral.pendingCommission += commissionData.amount;
+
+      // Update agent earnings if this is an agent commission
+      if (commissionData.isAgentCommission && referral.referrer) {
+        const agent = await User.findById(referral.referrer._id);
+        if (agent) {
+          agent.totalCommissionEarned += commissionData.amount;
+          agent.pendingCommission += commissionData.amount;
+          await agent.save();
+          
+          // Check for tier upgrade
+          await this.updateAgentTier(agent._id);
+        }
+      }
 
       // Update referred user stats
       referredUser.totalSpent += orderAmount;
@@ -610,6 +623,108 @@ class ReferralService {
 
     } catch (error) {
       throw new Error(`Failed to get user referral stats: ${error.message}`);
+    }
+  }
+
+  // Calculate enhanced commission for referral agents
+  async calculateEnhancedCommission(referral, orderAmount) {
+    const referrer = referral.referrer;
+    
+    // Check if referrer is a referral agent
+    if (referrer.role === 'referral' && referrer.isAgentActive) {
+      // Use agent's custom commission rate
+      const agentRate = referrer.commissionRate || 15.0;
+      
+      // Apply tier multiplier based on agent tier
+      let tierMultiplier = 1.0;
+      switch (referrer.agentTier) {
+        case 'SILVER':
+          tierMultiplier = 1.1; // 10% bonus
+          break;
+        case 'GOLD':
+          tierMultiplier = 1.25; // 25% bonus
+          break;
+        case 'PLATINUM':
+          tierMultiplier = 1.5; // 50% bonus
+          break;
+        default: // BRONZE
+          tierMultiplier = 1.0;
+      }
+      
+      const finalRate = agentRate * tierMultiplier;
+      const commissionAmount = (orderAmount * finalRate) / 100;
+      
+      return {
+        rate: finalRate,
+        amount: commissionAmount,
+        tier: referral.referralTier,
+        tierName: `Agent ${referrer.agentTier}`,
+        isAgentCommission: true,
+        baseRate: agentRate,
+        tierMultiplier: tierMultiplier
+      };
+    } else {
+      // Use standard referral commission calculation
+      return referral.calculateCommission(orderAmount);
+    }
+  }
+
+  // Update agent tier based on performance
+  async updateAgentTier(agentId) {
+    try {
+      const agent = await User.findById(agentId);
+      if (!agent || agent.role !== 'referral') {
+        return { success: false, message: 'Agent not found' };
+      }
+
+      const referral = await Referral.findOne({ referrer: agentId });
+      if (!referral) {
+        return { success: false, message: 'Referral record not found' };
+      }
+
+      // Define tier requirements
+      const tierRequirements = {
+        BRONZE: { minReferrals: 0, minEarnings: 0 },
+        SILVER: { minReferrals: 10, minEarnings: 1000 },
+        GOLD: { minReferrals: 25, minEarnings: 5000 },
+        PLATINUM: { minReferrals: 50, minEarnings: 15000 }
+      };
+
+      const totalReferrals = referral.totalReferrals;
+      const totalEarnings = agent.totalCommissionEarned;
+
+      let newTier = 'BRONZE';
+      if (totalReferrals >= tierRequirements.PLATINUM.minReferrals && totalEarnings >= tierRequirements.PLATINUM.minEarnings) {
+        newTier = 'PLATINUM';
+      } else if (totalReferrals >= tierRequirements.GOLD.minReferrals && totalEarnings >= tierRequirements.GOLD.minEarnings) {
+        newTier = 'GOLD';
+      } else if (totalReferrals >= tierRequirements.SILVER.minReferrals && totalEarnings >= tierRequirements.SILVER.minEarnings) {
+        newTier = 'SILVER';
+      }
+
+      const oldTier = agent.agentTier;
+      if (newTier !== oldTier) {
+        agent.agentTier = newTier;
+        await agent.save();
+
+        return {
+          success: true,
+          tierChanged: true,
+          oldTier,
+          newTier,
+          requirements: tierRequirements[newTier]
+        };
+      }
+
+      return {
+        success: true,
+        tierChanged: false,
+        currentTier: newTier,
+        requirements: tierRequirements
+      };
+
+    } catch (error) {
+      throw new Error(`Failed to update agent tier: ${error.message}`);
     }
   }
 

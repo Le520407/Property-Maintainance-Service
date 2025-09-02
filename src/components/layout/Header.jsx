@@ -341,7 +341,7 @@ const Header = () => {
                         setIsUserMenuOpen(false);
                       }}
                     >
-                      {t('dashboard')} {user.role === 'vendor' && '(Vendor)'}
+                      {t('dashboard')} {user.role === 'vendor' && '(Vendor)'} {user.role === 'referral' && '(Agent)'}
                     </Link>
                     
                     {/* Customer-specific menu items */}
@@ -368,14 +368,16 @@ const Header = () => {
                           <User className="w-4 h-4 inline mr-2" />
                           {t('profile')}
                         </Link>
-                        <Link
-                          to="/dashboard?section=referrals&tab=overview"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          <Gift className="w-4 h-4 inline mr-2" />
-                          Referrals
-                        </Link>
+                        {user.role !== 'referral' && (
+                          <Link
+                            to="/dashboard?section=referrals&tab=overview"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <Gift className="w-4 h-4 inline mr-2" />
+                            Referrals
+                          </Link>
+                        )}
                       </>
                     )}
                     <button
@@ -458,12 +460,14 @@ const Header = () => {
                   <Link
                     to="/login"
                     className="text-gray-700 hover:text-orange-600 transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {t('login')}
                   </Link>
                   <Link
                     to="/register"
                     className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors text-center"
+                    onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {t('register')}
                   </Link>

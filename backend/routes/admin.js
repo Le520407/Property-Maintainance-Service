@@ -5,7 +5,9 @@ const Vendor = require('../models/Vendor');
 const Job = require('../models/Job');
 const Rating = require('../models/Rating');
 const { Referral, Commission, Payout, COMMISSION_RATES } = require('../models/Referral');
+const InviteCode = require('../models/InviteCode');
 const { authenticateToken: auth } = require('../middleware/auth');
+const referralService = require('../services/referralService');
 
 // Create user (Admin permission required)
 router.post('/create-user', auth, async (req, res) => {
@@ -1104,6 +1106,286 @@ router.get('/vendors/:vendorId/ratings', auth, async (req, res) => {
 
   } catch (error) {
     console.error('Get vendor ratings error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== REFERRAL AGENT MANAGEMENT ====================
+
+// Get all referral agents
+router.get('/agents', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { 
+      page = 1, 
+      limit = 20, 
+      tier, 
+      status, 
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    const filter = { role: 'referral' };
+    
+    if (tier) filter.agentTier = tier;
+    if (status === 'active') filter.isAgentActive = true;
+    if (status === 'inactive') filter.isAgentActive = false;
+    if (search) {
+      filter.$or = [
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { agentCode: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const sortDirection = sortOrder === 'desc' ? -1 : 1;
+    const sort = { [sortBy]: sortDirection };
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const [agents, totalCount] = await Promise.all([
+      User.find(filter)
+        .select('-password')
+        .sort(sort)
+        .skip(skip)
+        .limit(parseInt(limit)),
+      User.countDocuments(filter)
+    ]);
+
+    // Get referral stats for each agent
+    const agentsWithStats = await Promise.all(
+      agents.map(async (agent) => {
+        const referral = await Referral.findOne({ referrer: agent._id });
+        return {
+          ...agent.toObject(),
+          referralStats: referral ? {
+            totalReferrals: referral.totalReferrals,
+            activeReferrals: referral.activeReferrals,
+            referralCode: referral.referralCode
+          } : {
+            totalReferrals: 0,
+            activeReferrals: 0,
+            referralCode: null
+          }
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: agentsWithStats,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        totalCount,
+        hasMore: skip + agents.length < totalCount
+      }
+    });
+
+  } catch (error) {
+    console.error('Get agents error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get agent details
+router.get('/agents/:agentId', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const agent = await User.findById(req.params.agentId).select('-password');
+    if (!agent || agent.role !== 'referral') {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    // Get referral stats
+    const referralStats = await referralService.getUserReferralStats(agent._id);
+
+    // Get commission history
+    const commissions = await Commission.find({ referrer: agent._id })
+      .populate('referredUser', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    res.json({
+      success: true,
+      data: {
+        agent: agent.toObject(),
+        referralStats,
+        recentCommissions: commissions
+      }
+    });
+
+  } catch (error) {
+    console.error('Get agent details error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update agent status
+router.patch('/agents/:agentId/status', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { isAgentActive } = req.body;
+    
+    const agent = await User.findById(req.params.agentId);
+    if (!agent || agent.role !== 'referral') {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    agent.isAgentActive = isAgentActive;
+    await agent.save();
+
+    res.json({
+      success: true,
+      message: `Agent ${isAgentActive ? 'activated' : 'deactivated'} successfully`,
+      data: { isAgentActive }
+    });
+
+  } catch (error) {
+    console.error('Update agent status error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update agent commission rate
+router.patch('/agents/:agentId/commission', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { commissionRate } = req.body;
+    
+    if (commissionRate < 0 || commissionRate > 50) {
+      return res.status(400).json({ message: 'Commission rate must be between 0 and 50%' });
+    }
+
+    const agent = await User.findById(req.params.agentId);
+    if (!agent || agent.role !== 'referral') {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    const oldRate = agent.commissionRate;
+    agent.commissionRate = commissionRate;
+    await agent.save();
+
+    res.json({
+      success: true,
+      message: 'Commission rate updated successfully',
+      data: {
+        oldRate,
+        newRate: commissionRate
+      }
+    });
+
+  } catch (error) {
+    console.error('Update commission rate error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Manual tier upgrade
+router.patch('/agents/:agentId/tier', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { tier } = req.body;
+    
+    if (!['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'].includes(tier)) {
+      return res.status(400).json({ message: 'Invalid tier' });
+    }
+
+    const agent = await User.findById(req.params.agentId);
+    if (!agent || agent.role !== 'referral') {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    const oldTier = agent.agentTier;
+    agent.agentTier = tier;
+    await agent.save();
+
+    res.json({
+      success: true,
+      message: 'Agent tier updated successfully',
+      data: {
+        oldTier,
+        newTier: tier
+      }
+    });
+
+  } catch (error) {
+    console.error('Update agent tier error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get agent analytics overview
+router.get('/agents/analytics/overview', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('view_analytics')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const totalAgents = await User.countDocuments({ role: 'referral' });
+    const activeAgents = await User.countDocuments({ role: 'referral', isAgentActive: true });
+
+    const tierBreakdown = await User.aggregate([
+      { $match: { role: 'referral' } },
+      {
+        $group: {
+          _id: '$agentTier',
+          count: { $sum: 1 },
+          totalEarnings: { $sum: '$totalCommissionEarned' },
+          avgEarnings: { $avg: '$totalCommissionEarned' }
+        }
+      }
+    ]);
+
+    const topPerformers = await User.find({ role: 'referral' })
+      .select('firstName lastName email agentCode agentTier totalCommissionEarned')
+      .sort({ totalCommissionEarned: -1 })
+      .limit(10);
+
+    const totalCommissionsPaid = await User.aggregate([
+      { $match: { role: 'referral' } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$totalCommissionPaid' },
+          pending: { $sum: '$pendingCommission' }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        overview: {
+          totalAgents,
+          activeAgents,
+          inactiveAgents: totalAgents - activeAgents
+        },
+        tierBreakdown,
+        topPerformers,
+        commissions: totalCommissionsPaid[0] || { total: 0, pending: 0 }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get agent analytics error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

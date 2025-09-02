@@ -54,7 +54,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['customer', 'vendor', 'admin'],
+    enum: ['customer', 'vendor', 'admin', 'referral'],
     default: 'customer'
   },
   status: {
@@ -132,6 +132,44 @@ const userSchema = new mongoose.Schema({
   referralCode: {
     type: String,
     default: null
+  },
+  
+  // Referral agent specific fields
+  agentCode: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  inviteCode: {
+    type: String,
+    trim: true
+  },
+  commissionRate: {
+    type: Number,
+    default: 15.0,
+    min: 0,
+    max: 50
+  },
+  totalCommissionEarned: {
+    type: Number,
+    default: 0
+  },
+  totalCommissionPaid: {
+    type: Number,
+    default: 0
+  },
+  pendingCommission: {
+    type: Number,
+    default: 0
+  },
+  agentTier: {
+    type: String,
+    enum: ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'],
+    default: 'BRONZE'
+  },
+  isAgentActive: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true
@@ -161,6 +199,10 @@ userSchema.methods.isVendor = function() {
 
 userSchema.methods.isCustomer = function() {
   return this.role === 'customer';
+};
+
+userSchema.methods.isReferralAgent = function() {
+  return this.role === 'referral';
 };
 
 userSchema.methods.hasPermission = function(permission) {
