@@ -102,7 +102,7 @@ const HomePage = () => {
               {/* 背景图片 */}
               <div 
                 className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                style={{ backgroundImage: `url(${banner.imageUrl})` }}
+                style={{ backgroundImage: `url(${banner.backgroundImage || banner.imageUrl})` }}
               >
                 <div className="absolute inset-0 bg-black bg-opacity-40"></div>
               </div>
@@ -128,14 +128,14 @@ const HomePage = () => {
                       {banner.subtitle}
                     </motion.p>
                   )}
-                  {banner.linkUrl && (
+                  {(banner.buttonLink || banner.linkUrl) && (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.8, delay: 0.4 }}
                     >
                       <Link
-                        to={banner.linkUrl}
+                        to={banner.buttonLink || banner.linkUrl}
                         className="bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors inline-flex items-center"
                       >
                         {banner.buttonText}
