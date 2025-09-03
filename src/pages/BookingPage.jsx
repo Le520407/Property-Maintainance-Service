@@ -2,11 +2,6 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Phone, 
-  Mail, 
   User, 
   FileText,
   CheckCircle,
@@ -29,12 +24,12 @@ const BookingPage = () => {
   } = useForm();
 
   const services = [
-    { id: 'plumbing', name: '管道维修', price: '¥200-500', duration: '2-4小时' },
-    { id: 'electrical', name: '电气维修', price: '¥150-400', duration: '1-3小时' },
-    { id: 'cleaning', name: '清洁服务', price: '¥100-300', duration: '2-6小时' },
-    { id: 'gardening', name: '园艺维护', price: '¥200-600', duration: '3-8小时' },
-    { id: 'painting', name: '油漆装饰', price: '¥300-800', duration: '4-12小时' },
-    { id: 'hvac', name: '空调维修', price: '¥250-600', duration: '2-5小时' }
+    { id: 'plumbing', name: '管道维修', specialty: 'Emergency available', certification: 'Licensed' },
+    { id: 'electrical', name: '电气维修', specialty: 'Safety certified', certification: 'Qualified' },
+    { id: 'cleaning', name: '清洁服务', specialty: 'Eco-friendly', certification: 'Insured' },
+    { id: 'gardening', name: '园艺维护', specialty: 'Plant care expert', certification: 'Experienced' },
+    { id: 'painting', name: '油漆装饰', specialty: 'Premium paints', certification: 'Professional' },
+    { id: 'hvac', name: '空调维修', specialty: 'All brands', certification: 'Certified tech' }
   ];
 
   const timeSlots = [
@@ -142,7 +137,7 @@ const BookingPage = () => {
                         <div>
                           <h3 className="font-semibold text-lg">{service.name}</h3>
                           <p className="text-gray-600 text-sm mt-1">
-                            价格: {service.price} | 时长: {service.duration}
+                            {service.specialty} | {service.certification}
                           </p>
                         </div>
                         {selectedService === service.id && (
@@ -328,7 +323,7 @@ const BookingPage = () => {
                   <p className="mb-2"><strong>预约确认：</strong>我们会在2小时内与您联系确认</p>
                 </div>
                 <div>
-                  <p className="mb-2"><strong>价格说明：</strong>最终价格根据实际情况确定</p>
+                  <p className="mb-2"><strong>质量保证：</strong>所有服务提供质量保障</p>
                   <p className="mb-2"><strong>取消政策：</strong>提前24小时取消不收取费用</p>
                 </div>
               </div>

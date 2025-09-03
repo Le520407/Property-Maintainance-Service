@@ -21,6 +21,7 @@ const vendorMembershipRoutes = require('./routes/vendorMembership');
 const customerSubscriptionRoutes = require('./routes/customerSubscriptions');
 const announcementRoutes = require('./routes/announcements');
 const membershipRoutes = require('./routes/membership');
+const imageRoutes = require('./routes/images');
 
 const app = express();
 
@@ -37,7 +38,11 @@ const limiter = rateLimit({
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002'
+  ],
   credentials: true
 }));
 app.use(morgan('combined'));
@@ -73,6 +78,7 @@ app.use('/api/vendor/membership', vendorMembershipRoutes);
 app.use('/api/subscriptions', customerSubscriptionRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/membership', membershipRoutes);
+app.use('/api/images', imageRoutes);
 app.use('/api/upload', require('./routes/upload'));
 
 // Global error handler
