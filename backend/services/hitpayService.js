@@ -12,7 +12,8 @@ class HitPayService {
                   this.apiKey === 'test_9b6b83ea014999e2507e35a8e644a4a9df2c85055f2c5f44cf7efadf46b9328c' ||
                   this.apiKey === 'demo_api_key_for_development' ||
                   this.apiKey.startsWith('demo_') ||
-                  this.apiKey.startsWith('test_');
+                  this.apiKey.startsWith('test_') ||
+                  process.env.NODE_ENV === 'development'; // Force demo mode in development
     
     if (this.isDemo) {
       console.log('🚀 HitPay Service initialized in DEMO MODE');

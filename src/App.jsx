@@ -49,6 +49,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 import MembershipPlans from './components/customer/MembershipPlans.jsx';
 import MembershipDashboard from './components/customer/MembershipDashboard.jsx';
 import MembershipSuccess from './pages/MembershipSuccess.jsx';
+import VendorMembership from './components/vendor/VendorMembership.jsx';
 
 // Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -187,6 +188,13 @@ function App() {
                       <Route path="/membership/success" element={
                         <ProtectedRoute requiredRole="customer">
                           <MembershipSuccess />
+                        </ProtectedRoute>
+                      } />
+                      
+                      {/* Vendor Membership Routes */}
+                      <Route path="/vendor/membership" element={
+                        <ProtectedRoute requiredRole="vendor">
+                          <VendorMembership />
                         </ProtectedRoute>
                       } />
                       

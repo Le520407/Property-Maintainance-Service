@@ -21,6 +21,10 @@ const changePlanValidation = [
   body('newTierId')
     .isMongoId()
     .withMessage('Valid new tier ID is required'),
+  body('billingCycle')
+    .optional()
+    .isIn(['MONTHLY', 'YEARLY'])
+    .withMessage('Billing cycle must be MONTHLY or YEARLY'),
   body('immediate')
     .optional()
     .isBoolean()
@@ -40,7 +44,14 @@ router.post('/subscribe', (req, res, next) => {
   console.log('POST /api/membership/subscribe - Request received:', req.body);
   next();
 }, subscriptionValidation, membershipController.subscribe);
-router.put('/change-plan', changePlanValidation, membershipController.changePlan);
+router.put('/change-plan', (req, res, next) => {
+  console.log('PUT /api/membership/change-plan - Request received:', {
+    body: req.body,
+    user: req.user?.email,
+    userId: req.user?._id
+  });
+  next();
+}, changePlanValidation, membershipController.changePlan);
 router.put('/cancel', membershipController.cancel);
 
 // Membership benefits and usage
