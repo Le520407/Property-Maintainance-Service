@@ -1,0 +1,610 @@
+const express = require('express');
+const router = express.Router();
+const hitpayService = require('../services/hitpayService');
+const { CustomerSubscription, SubscriptionTier } = require('../models/CustomerSubscription');
+const CustomerMembership = require('../models/CustomerMembership');
+const User = require('../models/User');
+const Payment = require('../models/Payment');
+const { auth } = require('../middleware/auth');
+
+/**
+ * Demo success handler for development testing
+ */
+router.get('/demo/success', async (req, res) => {
+  try {
+    const { payment_id, recurring_billing_id, status } = req.query;
+    
+    console.log('Demo success handler called:', { payment_id, recurring_billing_id, status });
+    
+    // For demo mode, we simulate successful payment processing
+    if (recurring_billing_id && recurring_billing_id.startsWith('demo_billing_')) {
+      // Find and activate the pending membership
+      const membership = await CustomerMembership.findOne({
+        hitpayRecurringBillingId: recurring_billing_id,
+        status: 'PENDING'
+      });
+      
+      if (membership) {
+        membership.status = 'ACTIVE';
+        membership.lastPaymentDate = new Date();
+        await membership.save();
+        
+        console.log('Demo: Membership activated:', membership._id);
+      }
+    }
+    
+    res.redirect(`${process.env.FRONTEND_URL}/membership/success?demo=true&status=completed`);
+  } catch (error) {
+    console.error('Demo success handler error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/membership/error?error=demo_processing_failed`);
+  }
+});
+
+/**
+ * Create HitPay recurring subscription
+ */
+router.post('/create-subscription', auth, async (req, res) => {
+  try {
+    const { propertyType, billingCycle = 'MONTHLY' } = req.body;
+    const userId = req.user._id;
+
+    // Validate billing cycle
+    if (!['MONTHLY', 'YEARLY'].includes(billingCycle)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid billing cycle. Must be MONTHLY or YEARLY'
+      });
+    }
+
+    // Check if user already has active subscription
+    const existingSubscription = await CustomerSubscription.findOne({
+      customer: userId,
+      status: 'ACTIVE'
+    });
+
+    if (existingSubscription) {
+      return res.status(400).json({
+        success: false,
+        message: 'You already have an active subscription'
+      });
+    }
+
+    // Get subscription tier
+    const tier = await SubscriptionTier.findOne({
+      propertyType,
+      isActive: true
+    });
+
+    if (!tier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subscription tier not found'
+      });
+    }
+
+    // Calculate pricing based on billing cycle
+    const basePrice = tier.monthlyPrice;
+    const actualPrice = billingCycle === 'YEARLY' ? tier.yearlyPrice || (basePrice * 10) : basePrice;
+    const cycle = billingCycle === 'YEARLY' ? 'yearly' : 'monthly';
+
+    // Get user details
+    const user = await User.findById(userId);
+
+    // Create HitPay recurring plan
+    const planData = {
+      name: `${tier.displayName} - ${propertyType} - ${billingCycle}`,
+      amount: actualPrice,
+      currency: 'SGD',
+      cycle: cycle,
+      iterations: null, // Infinite
+      reference: `plan_${propertyType.toLowerCase()}_${billingCycle.toLowerCase()}_${Date.now()}`
+    };
+
+    const hitpayPlan = await hitpayService.createRecurringPlan(planData);
+
+    // Subscribe customer to the plan
+    const customerData = {
+      email: user.email,
+      name: user.fullName || `${user.firstName} ${user.lastName}`,
+      reference: `sub_${userId}_${billingCycle.toLowerCase()}_${Date.now()}`
+    };
+
+    const hitpaySubscription = await hitpayService.subscribeCustomer(
+      hitpayPlan.id,
+      customerData
+    );
+
+    // Calculate next billing date based on cycle
+    const nextBillingDate = new Date();
+    if (billingCycle === 'YEARLY') {
+      nextBillingDate.setFullYear(nextBillingDate.getFullYear() + 1);
+    } else {
+      nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+    }
+
+    // Create pending subscription in our database
+    const subscription = new CustomerSubscription({
+      customer: userId,
+      propertyType,
+      billingCycle,
+      monthlyPrice: basePrice,
+      actualPrice: actualPrice,
+      status: 'PENDING',
+      startDate: new Date(),
+      nextBillingDate: nextBillingDate,
+      paymentMethod: {
+        type: 'HITPAY'
+      },
+      paymentGateway: 'HITPAY',
+      hitpayData: {
+        subscriptionId: hitpaySubscription.id,
+        planId: hitpayPlan.id,
+        reference: customerData.reference
+      }
+    });
+
+    await subscription.save();
+
+    res.json({
+      success: true,
+      message: 'Subscription created successfully',
+      data: {
+        subscriptionId: subscription._id,
+        paymentUrl: hitpaySubscription.url,
+        hitpaySubscriptionId: hitpaySubscription.id,
+        billingCycle: billingCycle,
+        actualPrice: actualPrice,
+        savings: billingCycle === 'YEARLY' ? (basePrice * 12 - actualPrice) : 0
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating HitPay subscription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create subscription',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Create HitPay one-time payment
+ */
+router.post('/create-payment', auth, async (req, res) => {
+  try {
+    const { amount, purpose, jobId } = req.body;
+    const userId = req.user._id;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid amount is required'
+      });
+    }
+
+    const user = await User.findById(userId);
+
+    const paymentData = {
+      amount: parseFloat(amount),
+      currency: 'SGD',
+      name: user.fullName || `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      purpose: purpose || 'Property Maintenance Service',
+      reference: `payment_${jobId || userId}_${Date.now()}`,
+      redirectUrl: `${process.env.FRONTEND_URL}/payment/success`
+    };
+
+    const hitpayPayment = await hitpayService.createPayment(paymentData);
+
+    // Create payment record in our database
+    if (jobId) {
+      const payment = new Payment({
+        jobId,
+        customerId: userId,
+        totalAmount: amount,
+        platformCommission: amount * 0.1, // 10% platform commission
+        vendorAmount: amount * 0.9,
+        status: 'PENDING',
+        paymentMethod: 'HITPAY',
+        paymentGateway: 'HITPAY',
+        paymentId: `HITPAY_${Date.now()}`,
+        hitpayData: {
+          paymentRequestId: hitpayPayment.id,
+          reference: paymentData.reference
+        }
+      });
+
+      await payment.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Payment created successfully',
+      data: {
+        paymentUrl: hitpayPayment.url,
+        paymentId: hitpayPayment.id,
+        reference: paymentData.reference
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating HitPay payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create payment',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Cancel HitPay subscription
+ */
+router.post('/cancel-subscription', auth, async (req, res) => {
+  try {
+    const { subscriptionId, reason } = req.body;
+    const userId = req.user._id;
+
+    const subscription = await CustomerSubscription.findOne({
+      _id: subscriptionId,
+      customer: userId
+    });
+
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subscription not found'
+      });
+    }
+
+    if (subscription.status === 'CANCELLED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Subscription is already cancelled'
+      });
+    }
+
+    // Cancel subscription in HitPay
+    if (subscription.hitpayData?.subscriptionId) {
+      await hitpayService.cancelSubscription(subscription.hitpayData.subscriptionId);
+    }
+
+    // Update subscription in our database
+    subscription.status = 'CANCELLED';
+    subscription.cancelledAt = new Date();
+    subscription.cancelReason = reason || 'Customer request';
+    subscription.isActive = false;
+
+    await subscription.save();
+
+    res.json({
+      success: true,
+      message: 'Subscription cancelled successfully'
+    });
+
+  } catch (error) {
+    console.error('Error cancelling HitPay subscription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel subscription',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Get subscription status from HitPay
+ */
+router.get('/subscription/:subscriptionId/status', auth, async (req, res) => {
+  try {
+    const { subscriptionId } = req.params;
+    const userId = req.user._id;
+
+    const subscription = await CustomerSubscription.findOne({
+      _id: subscriptionId,
+      customer: userId
+    });
+
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subscription not found'
+      });
+    }
+
+    let hitpayStatus = null;
+    if (subscription.hitpayData?.subscriptionId) {
+      try {
+        hitpayStatus = await hitpayService.getSubscription(
+          subscription.hitpayData.subscriptionId
+        );
+      } catch (error) {
+        console.error('Error fetching HitPay subscription status:', error);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        localSubscription: subscription,
+        hitpaySubscription: hitpayStatus
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting subscription status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get subscription status',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * HitPay webhook handler (supports both JSON and URL-encoded formats)
+ */
+router.post('/webhook', express.raw({ type: ['application/json', 'application/x-www-form-urlencoded'] }), async (req, res) => {
+  try {
+    let webhookData;
+    const contentType = req.headers['content-type'];
+
+    // Handle JSON webhook (recurring billing)
+    if (contentType && contentType.includes('application/json')) {
+      const signature = req.headers['x-signature'];
+      const payload = JSON.parse(req.body);
+
+      // Verify webhook signature
+      if (!hitpayService.verifyWebhookSignature(payload, signature)) {
+        console.error('Invalid webhook signature');
+        return res.status(400).send('Invalid signature');
+      }
+
+      webhookData = hitpayService.processWebhook(payload);
+    }
+    // Handle URL-encoded webhook (payment-requests)
+    else {
+      const rawData = req.body.toString();
+      console.log('Raw webhook data:', rawData);
+
+      // Verify URL webhook signature
+      if (!hitpayService.verifyUrlWebhookSignature(rawData)) {
+        console.error('Invalid URL webhook signature');
+        return res.status(400).send('Invalid signature');
+      }
+
+      webhookData = hitpayService.processUrlWebhook(rawData);
+    }
+
+    console.log('HitPay webhook received:', webhookData);
+
+    // Handle subscription payments
+    if (webhookData.subscriptionId || webhookData.billingId) {
+      await handleSubscriptionWebhook(webhookData);
+    }
+    // Handle one-time payments
+    else if (webhookData.paymentId) {
+      await handlePaymentWebhook(webhookData);
+    }
+
+    res.status(200).send('OK');
+
+  } catch (error) {
+    console.error('Error processing HitPay webhook:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+/**
+ * Handle subscription webhook
+ */
+async function handleSubscriptionWebhook(webhookData) {
+  try {
+    const subscription = await CustomerSubscription.findOne({
+      'hitpayData.subscriptionId': webhookData.subscriptionId
+    });
+
+    if (!subscription) {
+      console.error('Subscription not found for HitPay subscription ID:', webhookData.subscriptionId);
+      return;
+    }
+
+    const paymentStatus = hitpayService.getPaymentStatusMapping(webhookData.status);
+    const subscriptionStatus = hitpayService.getSubscriptionStatusMapping(webhookData.status);
+
+    // Add billing history entry
+    subscription.billingHistory.push({
+      date: new Date(),
+      amount: webhookData.amount,
+      status: paymentStatus,
+      paymentMethod: 'HITPAY',
+      transactionId: webhookData.paymentId,
+      hitpayPaymentId: webhookData.paymentId,
+      hitpayReference: webhookData.reference,
+      paymentGateway: 'HITPAY'
+    });
+
+    // Update subscription status based on payment status
+    if (webhookData.status === 'completed') {
+      subscription.status = 'ACTIVE';
+      subscription.updateNextBillingDate();
+    } else if (webhookData.status === 'failed') {
+      subscription.status = 'PAUSED';
+    } else if (webhookData.status === 'canceled') {
+      subscription.status = 'CANCELLED';
+      subscription.cancelledAt = new Date();
+      subscription.isActive = false;
+    }
+
+    await subscription.save();
+
+    console.log(`Subscription ${subscription._id} updated with payment status: ${webhookData.status}`);
+
+  } catch (error) {
+    console.error('Error handling subscription webhook:', error);
+    throw error;
+  }
+}
+
+/**
+ * Handle one-time payment webhook
+ */
+async function handlePaymentWebhook(webhookData) {
+  try {
+    const payment = await Payment.findOne({
+      'hitpayData.reference': webhookData.reference
+    });
+
+    if (!payment) {
+      console.error('Payment not found for HitPay reference:', webhookData.reference);
+      return;
+    }
+
+    const paymentStatus = hitpayService.getPaymentStatusMapping(webhookData.status);
+
+    // Update payment status
+    payment.status = paymentStatus;
+    payment.transactionId = webhookData.paymentId;
+    payment.hitpayData.paymentId = webhookData.paymentId;
+
+    if (webhookData.status === 'completed') {
+      payment.completedAt = new Date();
+    }
+
+    await payment.save();
+
+    console.log(`Payment ${payment._id} updated with status: ${webhookData.status}`);
+
+  } catch (error) {
+    console.error('Error handling payment webhook:', error);
+    throw error;
+  }
+}
+
+/**
+ * HitPay recurring billing webhook handler
+ */
+router.post('/webhook/recurring', express.raw({ type: 'application/x-www-form-urlencoded' }), async (req, res) => {
+  try {
+    console.log('HitPay recurring billing webhook received');
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body.toString());
+
+    // Parse form data
+    const params = new URLSearchParams(req.body.toString());
+    const webhookData = {};
+    for (const [key, value] of params) {
+      webhookData[key] = value;
+    }
+
+    console.log('Parsed webhook data:', webhookData);
+
+    const { payment_id, recurring_billing_id, amount, currency, status, hmac } = webhookData;
+
+    // Validate webhook signature
+    if (!hitpayService.validateRecurringWebhook(webhookData, hmac)) {
+      console.error('Invalid recurring billing webhook signature');
+      return res.status(400).send('Invalid signature');
+    }
+
+    console.log('Webhook signature validated successfully');
+
+    // Parse webhook data
+    const parsedData = hitpayService.parseRecurringWebhook(webhookData);
+    console.log('Parsed recurring billing webhook:', parsedData);
+
+    // Find the membership by HitPay recurring billing ID
+    const membership = await CustomerMembership.findOne({
+      hitpayRecurringBillingId: recurring_billing_id
+    }).populate('tier');
+
+    if (!membership) {
+      console.error('Membership not found for recurring billing ID:', recurring_billing_id);
+      return res.status(404).send('Membership not found');
+    }
+
+    console.log('Found membership:', membership._id);
+
+    // Update membership status based on payment status
+    if (status === 'succeeded') {
+      membership.status = 'ACTIVE';
+      
+      // Calculate next billing date
+      const nextBilling = new Date();
+      if (membership.billingCycle === 'YEARLY') {
+        nextBilling.setFullYear(nextBilling.getFullYear() + 1);
+      } else {
+        nextBilling.setMonth(nextBilling.getMonth() + 1);
+      }
+      membership.nextBillingDate = nextBilling;
+
+      console.log('Membership activated:', membership._id);
+    } else if (status === 'failed') {
+      membership.status = 'SUSPENDED';
+      console.log('Membership suspended due to payment failure:', membership._id);
+    }
+
+    await membership.save();
+
+    // Log the payment in our records
+    console.log(`Recurring payment processed: ${payment_id} - ${status} - ${amount} ${currency}`);
+
+    res.status(200).send('OK');
+
+  } catch (error) {
+    console.error('Error processing recurring billing webhook:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+/**
+ * Demo-only: Simulate HitPay recurring billing webhook to activate membership
+ * This helps in development when real HitPay webhooks are not configured.
+ */
+router.post('/simulate/recurring', async (req, res) => {
+  try {
+    // Only allow in demo mode
+    if (!hitpayService.isDemo) {
+      return res.status(403).json({ success: false, message: 'Not allowed' });
+    }
+
+    const { payment_id, recurring_billing_id, amount, currency = 'SGD', status = 'completed' } = req.body || {};
+
+    if (!recurring_billing_id) {
+      return res.status(400).json({ success: false, message: 'recurring_billing_id is required' });
+    }
+
+    const membership = await CustomerMembership.findOne({
+      hitpayRecurringBillingId: recurring_billing_id
+    }).populate('tier');
+
+    if (!membership) {
+      return res.status(404).json({ success: false, message: 'Membership not found for recurring billing id' });
+    }
+
+    if (status === 'completed' || status === 'succeeded') {
+      membership.status = 'ACTIVE';
+      const nextBilling = new Date();
+      if (membership.billingCycle === 'YEARLY') {
+        nextBilling.setFullYear(nextBilling.getFullYear() + 1);
+      } else {
+        nextBilling.setMonth(nextBilling.getMonth() + 1);
+      }
+      membership.nextBillingDate = nextBilling;
+    } else if (status === 'failed') {
+      membership.status = 'SUSPENDED';
+    }
+
+    await membership.save();
+
+    console.log(`Simulated recurring payment processed: ${payment_id} - ${status} - ${amount} ${currency}`);
+
+    return res.json({ success: true, membership });
+  } catch (error) {
+    console.error('Error simulating recurring webhook:', error);
+    return res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+});
+
+module.exports = router;

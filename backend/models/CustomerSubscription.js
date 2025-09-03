@@ -15,6 +15,13 @@ const subscriptionTierSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  yearlyPrice: {
+    type: Number,
+    required: true,
+    default: function() {
+      return this.monthlyPrice * 10; // 10x monthly price (2 months free)
+    }
+  },
   description: {
     type: String,
     required: true
@@ -41,9 +48,22 @@ const customerSubscriptionSchema = new mongoose.Schema({
     required: true,
     enum: ['HDB', 'CONDOMINIUM', 'LANDED', 'COMMERCIAL']
   },
+  billingCycle: {
+    type: String,
+    enum: ['MONTHLY', 'YEARLY'],
+    required: true,
+    default: 'MONTHLY'
+  },
   monthlyPrice: {
     type: Number,
     required: true
+  },
+  actualPrice: {
+    type: Number,
+    required: true,
+    default: function() {
+      return this.billingCycle === 'YEARLY' ? this.monthlyPrice * 10 : this.monthlyPrice;
+    }
   },
   status: {
     type: String,
@@ -61,13 +81,27 @@ const customerSubscriptionSchema = new mongoose.Schema({
   paymentMethod: {
     type: {
       type: String,
-      enum: ['CARD', 'BANK_TRANSFER', 'PAYPAL'],
+      enum: ['CARD', 'BANK_TRANSFER', 'PAYPAL', 'HITPAY'],
       required: true
     },
     last4: String,
     brand: String,
     expiryMonth: Number,
     expiryYear: Number
+  },
+  // HitPay specific fields
+  hitpayData: {
+    subscriptionId: String,
+    planId: String,
+    paymentRequestId: String,
+    reference: String,
+    webhookId: String
+  },
+  // Payment gateway used
+  paymentGateway: {
+    type: String,
+    enum: ['STRIPE', 'HITPAY', 'MOCK'],
+    default: 'STRIPE'
   },
   billingHistory: [{
     date: {
@@ -84,7 +118,15 @@ const customerSubscriptionSchema = new mongoose.Schema({
       default: 'PAID'
     },
     paymentMethod: String,
-    transactionId: String
+    transactionId: String,
+    // HitPay specific fields
+    hitpayPaymentId: String,
+    hitpayReference: String,
+    paymentGateway: {
+      type: String,
+      enum: ['STRIPE', 'HITPAY', 'MOCK'],
+      default: 'STRIPE'
+    }
   }],
   usageStats: {
     servicesUsed: {
@@ -172,7 +214,13 @@ customerSubscriptionSchema.methods.isOverdue = function() {
 customerSubscriptionSchema.methods.updateNextBillingDate = function() {
   const currentDate = new Date();
   const nextBilling = new Date(this.nextBillingDate);
-  nextBilling.setMonth(nextBilling.getMonth() + 1);
+  
+  if (this.billingCycle === 'YEARLY') {
+    nextBilling.setFullYear(nextBilling.getFullYear() + 1);
+  } else {
+    nextBilling.setMonth(nextBilling.getMonth() + 1);
+  }
+  
   this.nextBillingDate = nextBilling;
 };
 

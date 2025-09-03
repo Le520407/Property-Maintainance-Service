@@ -71,13 +71,14 @@ const paymentSchema = new mongoose.Schema({
       'PAYPAL',
       'BANK_TRANSFER',
       'WALLET',
-      'CRYPTO'
+      'CRYPTO',
+      'HITPAY'
     ],
     required: true
   },
   paymentGateway: {
     type: String,
-    enum: ['STRIPE', 'PAYPAL', 'RAZORPAY', 'SQUARE', 'MOCK'], // MOCK for testing
+    enum: ['STRIPE', 'PAYPAL', 'RAZORPAY', 'SQUARE', 'HITPAY', 'MOCK'], // MOCK for testing
     required: true
   },
   
@@ -196,6 +197,15 @@ const paymentSchema = new mongoose.Schema({
       postalCode: String,
       country: String
     }
+  },
+  
+  // HitPay specific fields
+  hitpayData: {
+    paymentRequestId: String,
+    paymentId: String,
+    reference: String,
+    webhookId: String,
+    phone: String
   },
   
   // Timestamps

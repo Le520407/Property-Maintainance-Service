@@ -1,23 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import {
-  CheckCircle,
-  Star,
-  Crown,
-  Zap,
-  Clock,
-  Shield,
-  Users,
-  CreditCard,
-  Home,
+  Briefcase,
   Building,
   Building2,
-  Briefcase,
-  XCircle
+  CheckCircle,
+  Clock,
+  CreditCard,
+  Crown,
+  Home,
+  Shield,
+  Star,
+  Users,
+  XCircle,
+  Zap
 } from 'lucide-react';
-import { api } from '../../services/api';
-import toast from 'react-hot-toast';
+import React, { useEffect, useState } from 'react';
+
 import TempPaymentMethodModal from './TempPaymentMethodModal';
+import { api } from '../../services/api';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const MembershipPlans = () => {
   const [tiers, setTiers] = useState([]);
@@ -68,36 +69,61 @@ const MembershipPlans = () => {
       
       let response;
       if (isUpgrade) {
-        // Use change plan endpoint for upgrades
+        // Use change plan endpoint for upgrades - this will also redirect to HitPay
         response = await api.put('/membership/change-plan', {
           newTierId: selectedTier._id,
-          immediate: true
+          billingCycle: billingCycle
         });
         
-        if (response.success) {
+        if (response.success && response.checkoutUrl) {
+          // Close the modal first
+          setShowPaymentModal(false);
+          setSelectedTier(null);
+          
+          // Show loading message
+          toast.loading('Redirecting to payment gateway for upgrade...', { id: 'redirect' });
+          
+          // Redirect to HitPay checkout
+          setTimeout(() => {
+            window.location.href = response.checkoutUrl;
+          }, 1000);
+        } else if (response.success) {
           toast.success('Membership plan upgraded successfully!');
+          setCurrentMembership(response.membership);
+          setShowPaymentModal(false);
+          setSelectedTier(null);
         }
       } else {
-        // Use subscribe endpoint for new subscriptions
+        // Use subscribe endpoint for new subscriptions - this will redirect to HitPay
         response = await api.post('/membership/subscribe', {
           tierId: selectedTier._id,
           billingCycle,
           paymentMethodId
         });
         
-        if (response.success) {
+        if (response.success && response.checkoutUrl) {
+          // Close the modal first
+          setShowPaymentModal(false);
+          setSelectedTier(null);
+          
+          // Show loading message
+          toast.loading('Redirecting to payment gateway...', { id: 'redirect' });
+          
+          // Redirect to HitPay checkout
+          setTimeout(() => {
+            window.location.href = response.checkoutUrl;
+          }, 1000);
+        } else if (response.success) {
           toast.success('Membership activated successfully!');
+          setCurrentMembership(response.membership);
+          setShowPaymentModal(false);
+          setSelectedTier(null);
         }
       }
 
-      if (response.success) {
-        setCurrentMembership(response.membership);
-        setShowPaymentModal(false);
-        setSelectedTier(null);
-      }
     } catch (error) {
       console.error(isUpgrade ? 'Plan upgrade failed:' : 'Subscription failed:', error);
-      toast.error(error.response?.data?.message || (isUpgrade ? 'Failed to upgrade plan' : 'Failed to activate membership'));
+      toast.error(error.message || (isUpgrade ? 'Failed to upgrade plan' : 'Failed to activate membership'));
     } finally {
       setSubscribing(false);
     }
@@ -116,7 +142,7 @@ const MembershipPlans = () => {
       }
     } catch (error) {
       console.error('Plan change failed:', error);
-      toast.error(error.response?.data?.message || 'Failed to update plan');
+      toast.error(error.message || 'Failed to update plan');
     }
   };
 
@@ -136,7 +162,7 @@ const MembershipPlans = () => {
       }
     } catch (error) {
       console.error('Cancellation failed:', error);
-      toast.error(error.response?.data?.message || 'Failed to cancel membership');
+      toast.error(error.message || 'Failed to cancel membership');
     }
   };
 
