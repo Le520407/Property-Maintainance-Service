@@ -15,7 +15,6 @@ import ContactPage from './pages/ContactPage.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
 import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
-import DashboardPage from './pages/dashboard/DashboardPage.jsx';
 import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
