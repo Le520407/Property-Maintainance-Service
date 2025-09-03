@@ -1,6 +1,7 @@
 const express = require('express');
 const User = require('../models/User');
 const { Referral } = require('../models/Referral');
+const InviteCode = require('../models/InviteCode');
 const { generateToken } = require('../utils/jwt');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -105,6 +106,135 @@ router.post('/register', async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Register referral agent with invite code
+router.post('/register-agent', async (req, res) => {
+  try {
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      password, 
+      phone,
+      address,
+      city, 
+      country,
+      inviteCode
+    } = req.body;
+
+    // Validation
+    if (!firstName || !lastName || !email || !password || !inviteCode) {
+      return res.status(400).json({ 
+        message: 'First name, last name, email, password, and invite code are required' 
+      });
+    }
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists with this email' });
+    }
+
+    // Validate invite code
+    const inviteCodeDoc = await InviteCode.findOne({ 
+      code: inviteCode.toUpperCase().trim(),
+      userType: 'referral'
+    });
+
+    if (!inviteCodeDoc) {
+      return res.status(400).json({ message: 'Invalid invite code for agent registration' });
+    }
+
+    const validation = inviteCodeDoc.isValid();
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.reason });
+    }
+
+    // Generate unique agent code
+    let agentCode;
+    let isUniqueAgentCode = false;
+    let attempts = 0;
+    
+    while (!isUniqueAgentCode && attempts < 10) {
+      agentCode = `AGT-${firstName.substring(0, 2).toUpperCase()}${lastName.substring(0, 2).toUpperCase()}-${Date.now().toString().slice(-6)}`;
+      const existing = await User.findOne({ agentCode });
+      if (!existing) {
+        isUniqueAgentCode = true;
+      }
+      attempts++;
+    }
+
+    if (!isUniqueAgentCode) {
+      return res.status(500).json({ message: 'Failed to generate unique agent code' });
+    }
+
+    // Create referral agent user
+    const user = await User.create({
+      firstName,
+      lastName,
+      fullName: `${firstName} ${lastName}`,
+      email,
+      password,
+      phone,
+      address,
+      city,
+      country,
+      role: 'referral',
+      status: 'ACTIVE',
+      agentCode,
+      inviteCode: inviteCode.toUpperCase(),
+      commissionRate: 15.0,
+      agentTier: 'BRONZE',
+      isAgentActive: true
+    });
+
+    // Use the invite code
+    await inviteCodeDoc.useCode(user._id, {
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+
+    // Create referral record for the new agent
+    const newReferral = new Referral({
+      referralCode: `${firstName.substring(0, 2).toUpperCase()}${lastName.substring(0, 2).toUpperCase()}${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+      referrer: user._id,
+      referralTier: 1,
+      isActive: true
+    });
+    await newReferral.save();
+
+    // Update user with referral code
+    user.referralCode = newReferral.referralCode;
+    await user.save();
+
+    // Generate token
+    const token = generateToken({ userId: user._id, email: user.email, role: user.role });
+
+    res.status(201).json({
+      message: 'Referral agent registered successfully',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        city: user.city,
+        country: user.country,
+        role: user.role,
+        status: user.status,
+        agentCode: user.agentCode,
+        referralCode: user.referralCode,
+        agentTier: user.agentTier,
+        commissionRate: user.commissionRate
+      }
+    });
+
+  } catch (error) {
+    console.error('Agent registration error:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 });
 

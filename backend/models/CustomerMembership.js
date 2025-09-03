@@ -47,14 +47,17 @@ const customerMembershipSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['ACTIVE', 'SUSPENDED', 'CANCELLED', 'EXPIRED'],
-    default: 'ACTIVE'
+    enum: ['ACTIVE', 'SUSPENDED', 'CANCELLED', 'EXPIRED', 'PENDING'],
+    default: 'PENDING'
   },
   billingCycle: {
     type: String,
     enum: ['MONTHLY', 'YEARLY'],
     default: 'MONTHLY'
   },
+  monthlyPrice: Number,
+  yearlyPrice: Number,
+  currentPrice: Number,
   startDate: {
     type: Date,
     required: true
@@ -65,8 +68,18 @@ const customerMembershipSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  paymentMethod: {
+    type: String,
+    enum: ['STRIPE', 'HITPAY', 'MANUAL'],
+    default: 'HITPAY'
+  },
+  // Stripe fields (legacy)
   stripeCustomerId: String,
   stripeSubscriptionId: String,
+  // HitPay fields
+  hitpayPlanId: String,
+  hitpayRecurringBillingId: String,
+  hitpayCustomerId: String,
   currentUsage: {
     month: String, // Format: 'YYYY-MM'
     serviceRequestsUsed: { type: Number, default: 0 },

@@ -308,6 +308,42 @@ export const api = {
     
     // Get share link
     getShareLink: () => request('/referral/share-link'),
+
+    // Get wallet information
+    getWallet: () => request('/referral/wallet'),
+
+    // Get fraud alerts
+    getFraudAlerts: () => request('/referral/fraud-alerts'),
+
+    // Generate advanced referral link
+    generateAdvancedLink: (linkData) => request('/referral/generate-link', {
+      method: 'POST',
+      body: JSON.stringify(linkData),
+    }),
+
+    // Get referral links
+    getLinks: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return request(`/referral/links?${queryString}`);
+    },
+
+    // Update referral link
+    updateLink: (linkId, updateData) => request(`/referral/links/${linkId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updateData),
+    }),
+
+    // Get link clicks
+    getLinkClicks: (linkId, params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return request(`/referral/links/${linkId}/clicks?${queryString}`);
+    },
+
+    // Get analytics
+    getAnalytics: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return request(`/referral/analytics?${queryString}`);
+    },
   },
   
   // Service related

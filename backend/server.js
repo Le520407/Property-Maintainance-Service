@@ -16,11 +16,13 @@ const paymentRoutes = require('./routes/payments');
 const cmsRoutes = require('./routes/cms');
 const adminRoutes = require('./routes/admin');
 const referralRoutes = require('./routes/referral');
+const inviteCodeRoutes = require('./routes/inviteCodes');
 const vendorRoutes = require('./routes/vendor');
 const vendorMembershipRoutes = require('./routes/vendorMembership');
 const customerSubscriptionRoutes = require('./routes/customerSubscriptions');
 const announcementRoutes = require('./routes/announcements');
 const membershipRoutes = require('./routes/membership');
+const hitpayRoutes = require('./routes/hitpay');
 const imageRoutes = require('./routes/images');
 
 const app = express();
@@ -37,12 +39,9 @@ const limiter = rateLimit({
 
 // Middleware
 app.use(helmet());
+app.set('trust proxy', 1); // Trust first proxy for rate limiting
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://localhost:3001',
-    'http://localhost:3002'
-  ],
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:5001', 'http://localhost:5002'],
   credentials: true
 }));
 app.use(morgan('combined'));
@@ -73,11 +72,13 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/cms', cmsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/referral', referralRoutes);
+app.use('/api/invite-codes', inviteCodeRoutes);
 app.use('/api/vendor', vendorRoutes);
 app.use('/api/vendor/membership', vendorMembershipRoutes);
 app.use('/api/subscriptions', customerSubscriptionRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/membership', membershipRoutes);
+app.use('/api/hitpay', hitpayRoutes);
 app.use('/api/images', imageRoutes);
 app.use('/api/upload', require('./routes/upload'));
 

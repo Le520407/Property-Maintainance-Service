@@ -10,9 +10,23 @@ router.get('/tiers', async (req, res) => {
     const tiers = await SubscriptionTier.find({ isActive: true })
       .sort({ monthlyPrice: 1 });
     
+    // Add calculated yearly pricing and savings for each tier
+    const tiersWithYearlyPricing = tiers.map(tier => {
+      const tierObj = tier.toObject();
+      const yearlyPrice = tierObj.yearlyPrice || (tierObj.monthlyPrice * 10);
+      const yearlySavings = (tierObj.monthlyPrice * 12) - yearlyPrice;
+      
+      return {
+        ...tierObj,
+        yearlyPrice: yearlyPrice,
+        yearlySavings: yearlySavings,
+        yearlyPercentageDiscount: Math.round((yearlySavings / (tierObj.monthlyPrice * 12)) * 100)
+      };
+    });
+    
     res.json({
       success: true,
-      data: tiers
+      data: tiersWithYearlyPricing
     });
   } catch (error) {
     console.error('Error fetching subscription tiers:', error);

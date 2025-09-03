@@ -29,9 +29,16 @@ import {
   Award,
   DollarSign,
   Briefcase,
-  MoreHorizontal
+  MoreHorizontal,
+  Gift,
+  Copy,
+  ToggleLeft,
+  ToggleRight,
+  TrendingUp,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const UserManagement = () => {
@@ -50,6 +57,18 @@ const UserManagement = () => {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [sortBy, setSortBy] = useState('newest');
   const [editingUser, setEditingUser] = useState(null);
+  
+  // Agent and invite code management states
+  const [showInviteCodes, setShowInviteCodes] = useState(false);
+  const [inviteCodes, setInviteCodes] = useState([]);
+  const [showCreateInviteCode, setShowCreateInviteCode] = useState(false);
+  const [inviteCodeForm, setInviteCodeForm] = useState({
+    userType: 'referral',
+    maxUses: 1,
+    expiresInDays: 30,
+    description: '',
+    campaign: ''
+  });
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -72,6 +91,7 @@ const UserManagement = () => {
     { value: '', label: 'All Roles' },
     { value: 'customer', label: 'Customer', color: 'blue' },
     { value: 'vendor', label: 'Vendor', color: 'purple' },
+    { value: 'referral', label: 'Agent', color: 'violet' },
     { value: 'admin', label: 'Admin', color: 'orange' }
   ];
 
@@ -135,6 +155,68 @@ const UserManagement = () => {
     }
   };
 
+  // 获取邀请码列表
+  const fetchInviteCodes = async () => {
+    try {
+      const response = await api.get('/invite-codes');
+      if (response.success) {
+        setInviteCodes(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching invite codes:', error);
+      toast.error('Failed to load invite codes');
+    }
+  };
+
+  // 生成邀请码
+  const generateInviteCode = async () => {
+    try {
+      const response = await api.post('/invite-codes/generate', inviteCodeForm);
+      if (response.success) {
+        toast.success(`Invite code generated: ${response.data.code}`);
+        setShowCreateInviteCode(false);
+        setInviteCodeForm({
+          userType: 'referral',
+          maxUses: 1,
+          expiresInDays: 30,
+          description: '',
+          campaign: ''
+        });
+        fetchInviteCodes();
+      }
+    } catch (error) {
+      toast.error(error.message || 'Failed to generate code');
+    }
+  };
+
+  // 更新代理状态
+  const updateAgentStatus = async (userId, isActive) => {
+    try {
+      await api.patch(`/api/admin/agents/${userId}/status`, { isAgentActive: isActive });
+      toast.success(`Agent ${isActive ? 'activated' : 'deactivated'}`);
+      fetchUsers();
+    } catch (error) {
+      toast.error('Failed to update agent status');
+    }
+  };
+
+  // 更新代理佣金率
+  const updateAgentCommission = async (userId, rate) => {
+    try {
+      await api.patch(`/api/admin/agents/${userId}/commission`, { commissionRate: rate });
+      toast.success('Commission rate updated');
+      fetchUsers();
+    } catch (error) {
+      toast.error('Failed to update commission rate');
+    }
+  };
+
+  // 复制到剪贴板
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard!');
+  };
+
   // 获取统计数据
   const fetchStats = async () => {
     try {
@@ -159,6 +241,13 @@ const UserManagement = () => {
       fetchStats();
     }
   }, [user, currentPage, selectedRole, selectedStatus, searchQuery]);
+
+  // Fetch invite codes when the invite codes section is shown
+  useEffect(() => {
+    if (showInviteCodes) {
+      fetchInviteCodes();
+    }
+  }, [showInviteCodes]);
 
   // 处理搜索
   const handleSearch = (query) => {
@@ -435,6 +524,67 @@ const UserManagement = () => {
         </div>
       )}
 
+      {userData.role === 'referral' && (
+        <div className="bg-purple-50 rounded-lg p-3 mb-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Agent Code</p>
+              <p className="text-sm font-mono font-medium text-purple-600">{userData.agentCode || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Agent Tier</p>
+              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                userData.agentTier === 'BRONZE' ? 'bg-orange-100 text-orange-800' :
+                userData.agentTier === 'SILVER' ? 'bg-gray-100 text-gray-800' :
+                userData.agentTier === 'GOLD' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-purple-100 text-purple-800'
+              }`}>
+                {userData.agentTier || 'BRONZE'}
+              </span>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Commission Rate</p>
+              <p className="text-sm font-medium">{userData.commissionRate || 15}%</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Total Earnings</p>
+              <p className="text-sm font-medium">${(userData.totalCommissionEarned || 0).toFixed(2)}</p>
+            </div>
+            <div className="col-span-2 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Status</p>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => updateAgentStatus(userData._id, !userData.isAgentActive)}
+                    className={`p-1 rounded ${userData.isAgentActive ? 'text-green-600 hover:bg-green-50' : 'text-red-600 hover:bg-red-50'}`}
+                    title={userData.isAgentActive ? 'Deactivate agent' : 'Activate agent'}
+                  >
+                    {userData.isAgentActive ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                  </button>
+                  <span className={`text-xs font-medium ${userData.isAgentActive ? 'text-green-600' : 'text-red-600'}`}>
+                    {userData.isAgentActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <button
+                  onClick={() => {
+                    const newRate = prompt('Enter new commission rate (%):', userData.commissionRate || 15);
+                    if (newRate && !isNaN(newRate)) {
+                      updateAgentCommission(userData._id, parseFloat(newRate));
+                    }
+                  }}
+                  className="text-purple-600 hover:bg-purple-50 p-1 rounded"
+                  title="Update commission rate"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
         <span>Joined: {new Date(userData.createdAt).toLocaleDateString()}</span>
         <span>
@@ -568,7 +718,39 @@ const UserManagement = () => {
         </div>
       </section>
 
+      {/* Tabs */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex space-x-8">
+            <button
+              onClick={() => setShowInviteCodes(false)}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                !showInviteCodes
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Users className="inline w-4 h-4 mr-2" />
+              Users ({users.length})
+            </button>
+            <button
+              onClick={() => setShowInviteCodes(true)}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                showInviteCodes
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Gift className="inline w-4 h-4 mr-2" />
+              Invite Codes ({inviteCodes.length})
+            </button>
+          </nav>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {!showInviteCodes ? (
+          <>
         {/* Statistics Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
           <motion.div
@@ -1093,6 +1275,164 @@ const UserManagement = () => {
             </motion.div>
           )}
         </AnimatePresence>
+          </>
+        ) : (
+          /* Invite Codes Section */
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">Invite Code Management</h2>
+              <button
+                onClick={() => setShowCreateInviteCode(true)}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Generate Code
+              </button>
+            </div>
+
+            {/* Invite Codes List */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6">
+                {inviteCodes.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Gift className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>No invite codes generated yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {inviteCodes.map((code) => (
+                      <div key={code._id} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <code className="text-lg font-mono font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded">
+                                {code.code}
+                              </code>
+                              <button
+                                onClick={() => copyToClipboard(code.code)}
+                                className="text-gray-400 hover:text-gray-600"
+                                title="Copy to clipboard"
+                              >
+                                <Copy className="w-4 h-4" />
+                              </button>
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                code.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                                code.status === 'EXPIRED' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {code.status}
+                              </span>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                              <div>
+                                <span className="font-medium">Uses:</span>
+                                <span className="ml-2">{code.currentUses}/{code.maxUses}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium">Expires:</span>
+                                <span className="ml-2">{new Date(code.expiresAt).toLocaleDateString()}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium">Created:</span>
+                                <span className="ml-2">{new Date(code.createdAt).toLocaleDateString()}</span>
+                              </div>
+                              <div>
+                                <span className="font-medium">Type:</span>
+                                <span className="ml-2 capitalize">{code.userType}</span>
+                              </div>
+                            </div>
+                            
+                            {code.metadata?.description && (
+                              <p className="mt-2 text-sm text-gray-600">{code.metadata.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Generate Invite Code Modal */}
+            {showCreateInviteCode && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white rounded-lg max-w-md w-full p-6"
+                >
+                  <h3 className="text-lg font-semibold mb-4">Generate Invite Code</h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">User Type</label>
+                      <select
+                        value={inviteCodeForm.userType}
+                        onChange={(e) => setInviteCodeForm(prev => ({ ...prev, userType: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      >
+                        <option value="referral">Referral Agent</option>
+                        <option value="vendor">Vendor</option>
+                        <option value="customer">Customer</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Max Uses</label>
+                      <input
+                        type="number"
+                        value={inviteCodeForm.maxUses}
+                        onChange={(e) => setInviteCodeForm(prev => ({ ...prev, maxUses: parseInt(e.target.value) }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        min="1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Expires In (Days)</label>
+                      <input
+                        type="number"
+                        value={inviteCodeForm.expiresInDays}
+                        onChange={(e) => setInviteCodeForm(prev => ({ ...prev, expiresInDays: parseInt(e.target.value) }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        min="1"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                      <input
+                        type="text"
+                        value={inviteCodeForm.description}
+                        onChange={(e) => setInviteCodeForm(prev => ({ ...prev, description: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        placeholder="Optional description"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end space-x-3 mt-6">
+                    <button
+                      onClick={() => setShowCreateInviteCode(false)}
+                      className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={generateInviteCode}
+                      className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+                    >
+                      Generate Code
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
