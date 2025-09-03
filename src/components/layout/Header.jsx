@@ -400,34 +400,12 @@ const Header = () => {
                 >
                   {t('login')}
                 </Link>
-                <div className="relative group">
-                  <button className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors flex items-center">
-                    {t('register')}
-                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-[9999] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border border-gray-200">
-                    <Link
-                      to="/register"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      👤 Customer Registration
-                    </Link>
-                    <Link
-                      to="/vendor-register"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      🔧 Vendor Registration
-                    </Link>
-                    <Link
-                      to="/agent-register"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      🏢 Property Agent Registration
-                    </Link>
-                  </div>
-                </div>
+                <Link
+                  to="/register"
+                  className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
+                >
+                  {t('register')}
+                </Link>
               </div>
             )}
 
@@ -486,27 +464,12 @@ const Header = () => {
                   >
                     {t('login')}
                   </Link>
-                  <div className="text-sm text-gray-600 font-medium">Registration Options:</div>
                   <Link
                     to="/register"
                     className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors text-center"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    👤 Customer Registration
-                  </Link>
-                  <Link
-                    to="/vendor-register"
-                    className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors text-center"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    🔧 Vendor Registration
-                  </Link>
-                  <Link
-                    to="/agent-register"
-                    className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors text-center"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    🏢 Property Agent Registration
+                    {t('register')}
                   </Link>
                 </div>
               )}
