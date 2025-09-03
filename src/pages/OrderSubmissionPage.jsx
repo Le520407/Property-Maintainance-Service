@@ -69,7 +69,34 @@ const OrderSubmissionPage = () => {
 
   // Handle pre-filled data from service detail page and auto-fill address
   useEffect(() => {
-    if (location.state?.prefilledData && !hasShownPrefilledToast.current) {
+    // Check for URL parameters first
+    const searchParams = new URLSearchParams(location.search);
+    const serviceId = searchParams.get('service');
+    const serviceTitle = searchParams.get('title');
+    const serviceCategory = searchParams.get('category');
+    
+    // Handle URL parameter prefilling
+    if (serviceTitle && serviceCategory && !hasShownPrefilledToast.current) {
+      // Map categories that don't exist in backend to valid ones
+      const categoryMapping = {
+        // Keep original mappings for consistency
+      };
+      
+      const mappedCategory = categoryMapping[serviceCategory] || serviceCategory;
+      
+      setFormData(prev => ({
+        ...prev,
+        title: decodeURIComponent(serviceTitle),
+        category: mappedCategory,
+        description: `Request for ${decodeURIComponent(serviceTitle)} service`,
+      }));
+      
+      // Show success message only once
+      toast.success(`Pre-filled with ${decodeURIComponent(serviceTitle)} service details`);
+      hasShownPrefilledToast.current = true;
+    }
+    // Fallback to location.state for backward compatibility
+    else if (location.state?.prefilledData && !hasShownPrefilledToast.current) {
       const { prefilledData } = location.state;
       
       // Map categories that don't exist in backend to valid ones
@@ -106,17 +133,22 @@ const OrderSubmissionPage = () => {
         }
       }));
     }
-  }, [location.state, user]);
+  }, [location.search, location.state, user]);
 
   const serviceCategories = [
+    { value: 'maintenance', label: 'Home Repairs', icon: '🛠️' },
     { value: 'plumbing', label: 'Plumbing', icon: '🔧' },
     { value: 'electrical', label: 'Electrical', icon: '⚡' },
     { value: 'cleaning', label: 'Cleaning', icon: '🧽' },
-    { value: 'gardening', label: 'Gardening', icon: '🌱' },
     { value: 'painting', label: 'Painting', icon: '🎨' },
     { value: 'security', label: 'Security', icon: '🔒' },
     { value: 'hvac', label: 'HVAC', icon: '🌡️' },
-    { value: 'general', label: 'General Maintenance', icon: '🛠️' }
+    { value: 'gardening', label: 'Gardening', icon: '🌱' },
+    { value: 'flooring', label: 'Flooring', icon: '🏠' },
+    { value: 'installation', label: 'Installation', icon: '📦' },
+    { value: 'assembly', label: 'Assembly', icon: '🔩' },
+    { value: 'moving', label: 'Moving', icon: '📦' },
+    { value: 'renovation', label: 'Renovation', icon: '🏗️' }
   ];
 
 
@@ -468,34 +500,194 @@ const OrderSubmissionPage = () => {
                   Detailed Description *
                 </label>
                 <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h4 className="text-sm font-medium text-blue-800 mb-2">📝 What to include for {formData.category === 'general' ? 'General Maintenance' : serviceCategories.find(c => c.value === formData.category)?.label || 'your'} services:</h4>
+                  <h4 className="text-sm font-medium text-blue-800 mb-2">📝 What to include for {serviceCategories.find(c => c.value === formData.category)?.label || 'your'} services:</h4>
                   <div className="text-sm text-blue-700">
-                    {formData.category === 'general' ? (
-                      <ul className="list-disc list-inside space-y-1">
-                        <li>Please describe the maintenance work needed</li>
-                        <li>Type of repair or maintenance required</li>
-                        <li>Location and extent of work</li>
-                        <li>Current condition or problem</li>
-                        <li>Any safety concerns</li>
-                        <li>Timeline requirements</li>
-                      </ul>
-                    ) : (
-                      <ul className="list-disc list-inside space-y-1">
-                        <li>Specific problem or issue you're experiencing</li>
-                        <li>When the problem started</li>
-                        <li>Location and extent of the issue</li>
-                        <li>Any attempted fixes or troubleshooting</li>
-                        <li>Safety concerns (if any)</li>
-                        <li>Preferred timeline</li>
-                      </ul>
-                    )}
+                    {(() => {
+                      switch(formData.category) {
+                        case 'plumbing':
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Location of plumbing issue (kitchen, bathroom, etc.)</li>
+                              <li>Type of problem (leak, clog, no water pressure, etc.)</li>
+                              <li>When did the problem start?</li>
+                              <li>Is water currently shut off?</li>
+                              <li>Any water damage or flooding?</li>
+                              <li>Urgency level (emergency, routine repair)</li>
+                            </ul>
+                          );
+                        case 'electrical':
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Location of electrical issue</li>
+                              <li>Type of problem (no power, flickering lights, outlet not working)</li>
+                              <li>Which circuit breaker or fuse is affected?</li>
+                              <li>Is this an emergency or safety concern?</li>
+                              <li>Any burning smell or sparks?</li>
+                              <li>When did the problem start?</li>
+                            </ul>
+                          );
+                        case 'cleaning':
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Type of cleaning service needed (regular, deep clean, post-construction)</li>
+                              <li>Size of space (rooms, square footage)</li>
+                              <li>Specific areas to focus on</li>
+                              <li>Any special requirements (eco-friendly products, pet-friendly)</li>
+                              <li>Preferred cleaning schedule</li>
+                              <li>Any access restrictions or special instructions</li>
+                            </ul>
+                          );
+                        case 'painting':
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Interior or exterior painting?</li>
+                              <li>Rooms/areas to be painted</li>
+                              <li>Current wall condition (holes, cracks, peeling paint)</li>
+                              <li>Preferred colors or color consultation needed?</li>
+                              <li>Type of paint finish desired</li>
+                              <li>Timeline and any access restrictions</li>
+                            </ul>
+                          );
+                        case 'hvac':
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Type of HVAC system (central air, split unit, etc.)</li>
+                              <li>Issue description (not cooling/heating, strange noise, high bills)</li>
+                              <li>When did you last service the system?</li>
+                              <li>Age and brand of the system</li>
+                              <li>Any error codes or warning lights?</li>
+                              <li>Urgency level (emergency, routine maintenance)</li>
+                            </ul>
+                          );
+                        case 'security':
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Type of security system needed (cameras, alarms, locks)</li>
+                              <li>Property type and size</li>
+                              <li>Areas requiring security coverage</li>
+                              <li>Current security setup (if any)</li>
+                              <li>Budget range for security equipment</li>
+                              <li>Timeline for installation</li>
+                            </ul>
+                          );
+                        case 'gardening':
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Type of gardening service (maintenance, landscaping, planting)</li>
+                              <li>Garden/yard size and condition</li>
+                              <li>Specific tasks needed (trimming, weeding, lawn care)</li>
+                              <li>Plant preferences or existing plants to maintain</li>
+                              <li>Seasonal requirements or ongoing maintenance</li>
+                              <li>Access to water and tools</li>
+                            </ul>
+                          );
+                        case 'flooring':
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Type of flooring (hardwood, tile, carpet, laminate, etc.)</li>
+                              <li>Room size and current flooring condition</li>
+                              <li>Installation or repair needed?</li>
+                              <li>Subfloor condition and any preparation required</li>
+                              <li>Color and style preferences</li>
+                              <li>Timeline and any furniture moving needs</li>
+                            </ul>
+                          );
+                        case 'installation':
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>What type of appliance needs installation?</li>
+                              <li>Brand and model of the appliance</li>
+                              <li>Current utility connections (water, gas, electrical)</li>
+                              <li>Space measurements and accessibility</li>
+                              <li>Any special requirements or modifications needed</li>
+                              <li>Disposal of old appliance required?</li>
+                            </ul>
+                          );
+                        case 'assembly':
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Type and brand of furniture to assemble</li>
+                              <li>Number of items and complexity level</li>
+                              <li>Do you have all parts and hardware?</li>
+                              <li>Assembly location and space constraints</li>
+                              <li>Any special tools or equipment needed</li>
+                              <li>Preferred timeline for completion</li>
+                            </ul>
+                          );
+                        case 'moving':
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Type of move (local, long-distance, office, residential)</li>
+                              <li>Size of property and inventory list</li>
+                              <li>Moving date and preferred time</li>
+                              <li>Packing services needed or self-packed?</li>
+                              <li>Special items (piano, artwork, fragile items)</li>
+                              <li>Parking and access conditions at both locations</li>
+                            </ul>
+                          );
+                        case 'renovation':
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Scope of renovation (kitchen, bathroom, full home, etc.)</li>
+                              <li>Current condition and specific issues to address</li>
+                              <li>Design preferences and style vision</li>
+                              <li>Budget range and timeline expectations</li>
+                              <li>Permits required and structural changes needed</li>
+                              <li>Living arrangements during renovation</li>
+                            </ul>
+                          );
+                        case 'maintenance':
+                        default:
+                          return (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>Describe the maintenance work needed</li>
+                              <li>Type of repair or maintenance required</li>
+                              <li>Location and extent of work</li>
+                              <li>Current condition or problem</li>
+                              <li>Any safety concerns</li>
+                              <li>Timeline requirements</li>
+                            </ul>
+                          );
+                      }
+                    })()}
                   </div>
                 </div>
                 <textarea
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   rows={6}
-                  placeholder="Professional carpentry and woodwork services with custom solutions, quality materials, and expert craftsmanship for all your woodworking needs."
+                  placeholder={(() => {
+                    switch(formData.category) {
+                      case 'plumbing':
+                        return "Example: Kitchen faucet is leaking from the base, started 2 days ago. Water is dripping constantly and there's minor water damage to the cabinet below. This is not an emergency but needs attention soon.";
+                      case 'electrical':
+                        return "Example: Living room outlets stopped working this morning. Circuit breaker hasn't tripped. No burning smell or sparks observed. Need electrician to diagnose and fix the issue.";
+                      case 'cleaning':
+                        return "Example: Need deep cleaning for 3-bedroom apartment before moving in. Focus on kitchen and bathrooms. Prefer eco-friendly cleaning products. Property is empty and accessible anytime.";
+                      case 'painting':
+                        return "Example: Interior painting for master bedroom and hallway. Walls have minor nail holes and scuff marks. Looking for neutral colors and consultation on paint selection. Timeline is flexible.";
+                      case 'hvac':
+                        return "Example: Central air conditioning unit not cooling properly. System is 5 years old, last serviced 6 months ago. No error codes showing. Temperature difference is about 5 degrees from set point.";
+                      case 'security':
+                        return "Example: Install security cameras for front door and backyard of single-story house. Need night vision capability and smartphone monitoring. Budget around $800-1200.";
+                      case 'gardening':
+                        return "Example: Monthly garden maintenance for medium-sized backyard. Need hedge trimming, lawn mowing, and weed removal. Some flower beds need replanting for spring season.";
+                      case 'flooring':
+                        return "Example: Install hardwood flooring in 200 sq ft living room. Current carpet is worn and needs removal. Looking for medium oak finish. No major subfloor issues expected.";
+                      case 'installation':
+                        return "Example: Install new Samsung dishwasher in kitchen. Current plumbing and electrical connections available. Need removal of old dishwasher. Standard under-counter installation.";
+                      case 'assembly':
+                        return "Example: Assemble IKEA bedroom set including bed frame, dresser, and nightstand. All parts and hardware included. Assembly needed in second floor bedroom.";
+                      case 'moving':
+                        return "Example: Local move from 2-bedroom apartment to 3-bedroom house. Need packing services for fragile items. Have piano and large furniture. Moving date is flexible.";
+                      case 'renovation':
+                        return "Example: Kitchen renovation including new cabinets, countertops, and appliances. Current kitchen is 10x12 feet. Looking for modern design. Budget around $25,000-35,000.";
+                      case 'maintenance':
+                        return "Example: General home maintenance including fixing loose door handles, patching wall holes, and minor plumbing repairs. Property is 15 years old and needs regular upkeep.";
+                      default:
+                        return "Please provide detailed information about the service you need, including the specific problem, location, timeline, and any special requirements or concerns.";
+                    }
+                  })()}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                 />
               </div>
