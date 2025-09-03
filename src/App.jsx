@@ -20,6 +20,7 @@ import AgentRegisterPage from './pages/auth/AgentRegisterPage.jsx';
 import DashboardPage from './pages/dashboard/DashboardPage.jsx';
 import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
 import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
+import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import ServiceDetailPage from './pages/ServiceDetailPage.jsx';
@@ -53,6 +54,7 @@ import VendorMembership from './components/vendor/VendorMembership.jsx';
 
 // Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { CartProvider } from './contexts/CartContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { MessagesProvider } from './contexts/MessagesContext';
@@ -68,6 +70,7 @@ function App() {
               {/* Dashboard and Admin routes (full-page layout) */}
               <Route path="/dashboard/*" element={
                 <ProtectedRoute>
+                  <DashboardRedirect />
                   <DashboardRedirect />
                 </ProtectedRoute>
               } />
@@ -214,6 +217,43 @@ function App() {
     </LanguageProvider>
   );
 }
+
+// Dashboard redirect component to route users based on their role
+const DashboardRedirect = () => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center pt-24">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect referral agents to specialized dashboard
+  if (user.role === 'referral') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <ReferralDashboardPage />
+      </div>
+    );
+  }
+
+  // Default dashboard for customers, vendors, and other roles
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <SimpleDashboard />
+    </div>
+  );
+};
 
 // Dashboard redirect component to route users based on their role
 const DashboardRedirect = () => {
