@@ -53,13 +53,12 @@ const MembershipPlans = () => {
     }
   };
 
-  const handleSubscribe = (tier) => {
-    setSelectedTier(tier);
-    setShowPaymentModal(true);
-  };
-
-  const handlePaymentSuccess = async (paymentMethodId) => {
-    if (!selectedTier) return;
+  const handleSubscribe = async (tier) => {
+    // Check if user is already subscribed to this tier
+    if (currentMembership?.tier._id === tier._id) {
+      toast('You are already subscribed to this plan');
+      return;
+    }
 
     // Check if this is an upgrade or new subscription
     const isUpgrade = currentMembership && currentMembership.status === 'ACTIVE';
@@ -67,60 +66,104 @@ const MembershipPlans = () => {
     try {
       setSubscribing(true);
       
+      // Show loading message
+      toast.loading(isUpgrade ? 'Preparing plan upgrade...' : 'Preparing your membership...', { 
+        id: 'preparing' 
+      });
+
       let response;
       if (isUpgrade) {
-        // Use change plan endpoint for upgrades - this will also redirect to HitPay
+        // Use change plan endpoint for upgrades
+        response = await api.put('/membership/change-plan', {
+          newTierId: tier._id,
+          billingCycle: billingCycle
+        });
+      } else {
+        // Use membership payment endpoint for new subscriptions
+        response = await api.post('/membership/payment', {
+          tierId: tier._id,
+          billingCycle: billingCycle
+        });
+      }
+
+      // Dismiss loading toast
+      toast.dismiss('preparing');
+
+      if (response.paymentUrl) {
+        // Show redirect message
+        toast.success(
+          isUpgrade 
+            ? 'Redirecting to payment gateway for plan upgrade...' 
+            : 'Redirecting to HitPay payment gateway...', 
+          { duration: 2000 }
+        );
+        
+        // Small delay for better UX, then redirect to HitPay
+        setTimeout(() => {
+          window.location.href = response.paymentUrl;
+        }, 1500);
+        
+      } else if (response.success) {
+        // If no payment URL, membership was activated directly (shouldn't happen in normal flow)
+        toast.success(isUpgrade ? 'Plan upgraded successfully!' : 'Membership activated successfully!');
+        setCurrentMembership(response.membership);
+      } else {
+        throw new Error('Unexpected response format');
+      }
+
+    } catch (error) {
+      toast.dismiss('preparing');
+      console.error('Membership subscription error:', error);
+      
+      if (error.response?.status === 401) {
+        toast.error('Please log in to subscribe to a membership plan');
+        // Optional: redirect to login page
+        // window.location.href = '/login';
+      } else {
+        toast.error(
+          error.response?.data?.message || 
+          error.message || 
+          (isUpgrade ? 'Failed to upgrade membership plan' : 'Failed to create membership payment')
+        );
+      }
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (paymentMethodId) => {
+    // This method is now deprecated in favor of direct HitPay integration
+    // Kept for backward compatibility with existing payment modal component
+    if (!selectedTier) return;
+
+    const isUpgrade = currentMembership && currentMembership.status === 'ACTIVE';
+    
+    try {
+      setSubscribing(true);
+      let response;
+      
+      if (isUpgrade) {
         response = await api.put('/membership/change-plan', {
           newTierId: selectedTier._id,
           billingCycle: billingCycle
         });
-        
-        if (response.success && response.checkoutUrl) {
-          // Close the modal first
-          setShowPaymentModal(false);
-          setSelectedTier(null);
-          
-          // Show loading message
-          toast.loading('Redirecting to payment gateway for upgrade...', { id: 'redirect' });
-          
-          // Redirect to HitPay checkout
-          setTimeout(() => {
-            window.location.href = response.checkoutUrl;
-          }, 1000);
-        } else if (response.success) {
-          toast.success('Membership plan upgraded successfully!');
-          setCurrentMembership(response.membership);
-          setShowPaymentModal(false);
-          setSelectedTier(null);
-        }
       } else {
-        // Use subscribe endpoint for new subscriptions - this will redirect to HitPay
-        response = await api.post('/membership/subscribe', {
+        response = await api.post('/membership/payment', {
           tierId: selectedTier._id,
-          billingCycle,
-          paymentMethodId
+          billingCycle: billingCycle
         });
-        
-        if (response.success && response.checkoutUrl) {
-          // Close the modal first
-          setShowPaymentModal(false);
-          setSelectedTier(null);
-          
-          // Show loading message
-          toast.loading('Redirecting to payment gateway...', { id: 'redirect' });
-          
-          // Redirect to HitPay checkout
-          setTimeout(() => {
-            window.location.href = response.checkoutUrl;
-          }, 1000);
-        } else if (response.success) {
-          toast.success('Membership activated successfully!');
-          setCurrentMembership(response.membership);
-          setShowPaymentModal(false);
-          setSelectedTier(null);
-        }
       }
 
+      if (response.paymentUrl) {
+        setShowPaymentModal(false);
+        setSelectedTier(null);
+        window.location.href = response.paymentUrl;
+      } else if (response.success) {
+        toast.success(isUpgrade ? 'Plan upgraded!' : 'Membership activated!');
+        setCurrentMembership(response.membership);
+        setShowPaymentModal(false);
+        setSelectedTier(null);
+      }
     } catch (error) {
       console.error(isUpgrade ? 'Plan upgrade failed:' : 'Subscription failed:', error);
       toast.error(error.message || (isUpgrade ? 'Failed to upgrade plan' : 'Failed to activate membership'));
@@ -459,9 +502,9 @@ const MembershipPlans = () => {
 
                 <button
                   onClick={() => {
-                    if (isCurrentPlan) return null;
-                    if (currentMembership && currentMembership.status === 'CANCELLED') return null;
-                    return handleSubscribe(tier); // Always show payment modal for confirmation
+                    if (isCurrentPlan) return;
+                    if (currentMembership && currentMembership.status === 'CANCELLED') return;
+                    handleSubscribe(tier); // Direct HitPay integration - no modal needed
                   }}
                   disabled={isCurrentPlan || subscribing || (currentMembership && currentMembership.status === 'CANCELLED')}
                   className={`w-full py-4 px-6 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 ${
@@ -477,16 +520,22 @@ const MembershipPlans = () => {
                   {subscribing ? (
                     <div className="flex items-center justify-center">
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Processing...
+                      Redirecting to HitPay...
                     </div>
                   ) : isCurrentPlan ? (
                     '✓ Current Plan'
                   ) : currentMembership && currentMembership.status === 'CANCELLED' ? (
                     'Plan Cancelled'
                   ) : currentMembership ? (
-                    'Upgrade Plan'
+                    <>
+                      <CreditCard className="h-5 w-5 mr-2 inline" />
+                      Upgrade & Pay with HitPay
+                    </>
                   ) : (
-                    'Get Started'
+                    <>
+                      <CreditCard className="h-5 w-5 mr-2 inline" />
+                      Subscribe & Pay with HitPay
+                    </>
                   )}
                 </button>
               </motion.div>

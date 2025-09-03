@@ -41,6 +41,72 @@ router.get('/demo/success', async (req, res) => {
 });
 
 /**
+ * Create HitPay payment request - Basic API endpoint
+ * POST /api/hitpay/payment-request
+ * Mandatory fields: amount, currency
+ */
+router.post('/payment-request', async (req, res) => {
+  try {
+    const {
+      email,
+      redirect_url,
+      reference_number,
+      webhook,
+      currency,
+      amount,
+      name,
+      purpose,
+      send_email,
+      payment_methods
+    } = req.body;
+
+    // Validate mandatory fields
+    if (!amount || !currency) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing mandatory fields: amount and currency are required'
+      });
+    }
+
+    // Prepare payment data
+    const paymentData = {
+      amount: parseFloat(amount),
+      currency: currency,
+      email: email,
+      redirect_url: redirect_url,
+      reference_number: reference_number,
+      webhook: webhook,
+      name: name,
+      purpose: purpose,
+      send_email: send_email,
+      payment_methods: payment_methods
+    };
+
+    console.log('🚀 Creating HitPay payment request via /payment-request endpoint');
+    
+    // Create payment request using HitPay service
+    const hitpayResponse = await hitpayService.createPayment(paymentData);
+
+    // Return payment_request_id and URL as specified
+    res.json({
+      success: true,
+      message: 'Payment request created successfully',
+      payment_request_id: hitpayResponse.id || hitpayResponse.payment_request_id,
+      url: hitpayResponse.url,
+      data: hitpayResponse
+    });
+
+  } catch (error) {
+    console.error('Error creating HitPay payment request:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create payment request',
+      error: error.message
+    });
+  }
+});
+
+/**
  * Create HitPay recurring subscription
  */
 router.post('/create-subscription', auth, async (req, res) => {
@@ -452,29 +518,69 @@ async function handleSubscriptionWebhook(webhookData) {
  */
 async function handlePaymentWebhook(webhookData) {
   try {
+    // Check for regular payment records first
     const payment = await Payment.findOne({
       'hitpayData.reference': webhookData.reference
     });
 
-    if (!payment) {
-      console.error('Payment not found for HitPay reference:', webhookData.reference);
+    if (payment) {
+      const paymentStatus = hitpayService.getPaymentStatusMapping(webhookData.status);
+
+      // Update payment status
+      payment.status = paymentStatus;
+      payment.transactionId = webhookData.paymentId;
+      payment.hitpayData.paymentId = webhookData.paymentId;
+
+      if (webhookData.status === 'completed') {
+        payment.completedAt = new Date();
+      }
+
+      await payment.save();
+      console.log(`Payment ${payment._id} updated with status: ${webhookData.status}`);
       return;
     }
 
-    const paymentStatus = hitpayService.getPaymentStatusMapping(webhookData.status);
+    // Check for membership payment records
+    const membership = await CustomerMembership.findOne({
+      hitpayRecurringBillingId: webhookData.reference
+    }).populate('tier');
 
-    // Update payment status
-    payment.status = paymentStatus;
-    payment.transactionId = webhookData.paymentId;
-    payment.hitpayData.paymentId = webhookData.paymentId;
+    if (membership) {
+      console.log('Found membership payment record:', membership._id);
 
-    if (webhookData.status === 'completed') {
-      payment.completedAt = new Date();
+      if (webhookData.status === 'completed' || webhookData.status === 'succeeded') {
+        // Activate the membership
+        membership.status = 'ACTIVE';
+        membership.startDate = new Date();
+        
+        // Set next billing date (for one-time payments, this is the end date)
+        const endDate = new Date();
+        if (membership.billingCycle === 'YEARLY') {
+          endDate.setFullYear(endDate.getFullYear() + 1);
+        } else {
+          endDate.setMonth(endDate.getMonth() + 1);
+        }
+        membership.endDate = endDate;
+        membership.nextBillingDate = endDate;
+
+        // Initialize usage tracking
+        await membership.resetMonthlyUsage();
+
+        console.log(`Membership ${membership._id} activated for user ${membership.customer}`);
+      } else if (webhookData.status === 'failed') {
+        membership.status = 'SUSPENDED';
+        console.log(`Membership payment failed for ${membership._id}`);
+      } else if (webhookData.status === 'cancelled') {
+        membership.status = 'CANCELLED';
+        console.log(`Membership payment cancelled for ${membership._id}`);
+      }
+
+      await membership.save();
+      console.log(`Membership ${membership._id} updated with payment status: ${webhookData.status}`);
+      return;
     }
 
-    await payment.save();
-
-    console.log(`Payment ${payment._id} updated with status: ${webhookData.status}`);
+    console.error('Neither Payment nor Membership found for HitPay reference:', webhookData.reference);
 
   } catch (error) {
     console.error('Error handling payment webhook:', error);
@@ -604,6 +710,52 @@ router.post('/simulate/recurring', async (req, res) => {
   } catch (error) {
     console.error('Error simulating recurring webhook:', error);
     return res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+});
+
+/**
+ * Create subscription plan using the exact HitPay API format
+ * POST /api/hitpay/subscription-plan
+ */
+router.post('/subscription-plan', async (req, res) => {
+  try {
+    const { cycle, times_to_be_charged, name, description, amount, currency } = req.body;
+
+    console.log('📋 Creating subscription plan with data:', req.body);
+
+    // Call the new HitPay service method
+    const result = await hitpayService.createSubscriptionPlanV2({
+      cycle,
+      times_to_be_charged,
+      name,
+      description,
+      amount,
+      currency
+    });
+
+    if (result.success) {
+      console.log('✅ Subscription plan created successfully');
+      return res.status(200).json({
+        success: true,
+        message: 'Subscription plan created successfully',
+        data: result.data
+      });
+    } else {
+      console.log('❌ Failed to create subscription plan:', result.error);
+      return res.status(400).json({
+        success: false,
+        message: result.error,
+        data: result.data
+      });
+    }
+
+  } catch (error) {
+    console.error('💥 Error in subscription plan endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
   }
 });
 

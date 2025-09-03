@@ -17,6 +17,15 @@ const subscriptionValidation = [
     .withMessage('Payment method ID is required')
 ];
 
+const paymentValidation = [
+  body('tierId')
+    .isMongoId()
+    .withMessage('Valid tier ID is required'),
+  body('billingCycle')
+    .isIn(['MONTHLY', 'YEARLY'])
+    .withMessage('Billing cycle must be MONTHLY or YEARLY')
+];
+
 const changePlanValidation = [
   body('newTierId')
     .isMongoId()
@@ -44,6 +53,10 @@ router.post('/subscribe', (req, res, next) => {
   console.log('POST /api/membership/subscribe - Request received:', req.body);
   next();
 }, subscriptionValidation, membershipController.subscribe);
+router.post('/payment', (req, res, next) => {
+  console.log('POST /api/membership/payment - Request received:', req.body);
+  next();
+}, paymentValidation, membershipController.createPayment);
 router.put('/change-plan', (req, res, next) => {
   console.log('PUT /api/membership/change-plan - Request received:', {
     body: req.body,
