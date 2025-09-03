@@ -9,8 +9,10 @@ import {
   ThumbsDown,
   Filter,
   MessageSquare,
-  CheckCircle
+  CheckCircle,
+  ArrowRight
 } from 'lucide-react';
+import { api } from '../services/api';
 
 const FAQPage = () => {
   const [faqs, setFaqs] = useState([]);
@@ -36,12 +38,9 @@ const FAQPage = () => {
   useEffect(() => {
     const fetchFAQs = async () => {
       try {
-        const response = await fetch('/api/cms/faqs');
-        if (response.ok) {
-          const data = await response.json();
-          setFaqs(data);
-          setFilteredFaqs(data);
-        }
+        const data = await api.get('/cms/faqs');
+        setFaqs(data);
+        setFilteredFaqs(data);
       } catch (error) {
         console.error('Error fetching FAQs:', error);
       } finally {
@@ -87,27 +86,17 @@ const FAQPage = () => {
     }
 
     try {
-      const response = await fetch(`/api/cms/faqs/${faqId}/vote`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ helpful: isHelpful })
-      });
+      const updatedFaq = await api.post(`/cms/faqs/${faqId}/vote`, { helpful: isHelpful });
+      
+      // 更新本地状态
+      setFaqs(prevFaqs => 
+        prevFaqs.map(faq => 
+          faq._id === faqId ? updatedFaq : faq
+        )
+      );
 
-      if (response.ok) {
-        const updatedFaq = await response.json();
-        
-        // 更新本地状态
-        setFaqs(prevFaqs => 
-          prevFaqs.map(faq => 
-            faq._id === faqId ? updatedFaq : faq
-          )
-        );
-
-        // 标记为已投票
-        setVotedFaqs(prev => new Set(prev).add(faqId));
-      }
+      // 标记为已投票
+      setVotedFaqs(prev => new Set(prev).add(faqId));
     } catch (error) {
       console.error('Error voting on FAQ:', error);
     }
@@ -136,71 +125,134 @@ const FAQPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 页面头部 */}
-      <section className="bg-gradient-to-r from-orange-600 to-orange-800 text-white py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
+      {/* Modern Hero Section - Matching HomePage Style */}
+      <section className="relative overflow-hidden">
+        {/* Background with geometric patterns */}
+        <div className="absolute inset-0 bg-orange-600">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700"></div>
+          {/* Geometric shapes */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500 rounded-full opacity-20 transform translate-x-32 -translate-y-32"></div>
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-orange-700 rounded-full opacity-30 transform -translate-x-24 translate-y-24"></div>
+          <div className="absolute top-1/2 left-1/4 w-64 h-64 bg-white opacity-5 rounded-full"></div>
+          <div className="absolute top-1/4 right-1/3 w-48 h-48 bg-orange-400 rounded-full opacity-10 transform rotate-45"></div>
+        </div>
+        
+        <div className="relative container mx-auto px-4 py-24">
+          <div className="max-w-4xl mx-auto text-center text-white">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6 }}
+              className="mb-6"
+            >
+              <span className="inline-block px-4 py-2 bg-orange-500 bg-opacity-30 rounded-full text-orange-100 text-sm font-medium mb-4 backdrop-blur-sm">
+                Help & Support
+              </span>
+            </motion.div>
+            
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+              className="text-4xl md:text-6xl font-bold mb-6 leading-tight"
+            >
+              Frequently Asked
+              <span className="block text-orange-200">Questions</span>
+            </motion.h1>
+            
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="text-xl text-orange-100 max-w-3xl mx-auto mb-10 leading-relaxed"
+            >
+              Find answers to common questions about our services, booking process, pricing, 
+              and everything you need to know about Swift Fix Pro.
+            </motion.p>
+            
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-8"
+              transition={{ delay: 0.5, duration: 0.6 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
-              <HelpCircle className="w-16 h-16 mx-auto mb-4 text-orange-200" />
-              <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                Frequently Asked Questions
-              </h1>
-              <p className="text-xl text-orange-100 max-w-2xl mx-auto">
-                Find answers to common questions about our services, booking process, and more
-              </p>
+              <a
+                href="#search"
+                className="bg-white text-orange-600 px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center text-lg"
+              >
+                <Search className="mr-2 w-5 h-5" />
+                Search FAQs
+              </a>
+              <a
+                href="/contact"
+                className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-orange-600 transition-colors text-lg"
+              >
+                Contact Support
+              </a>
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* 搜索和筛选区域 */}
-      <section className="py-8 bg-white border-b">
+      {/* Enhanced Search and Filter Section */}
+      <section id="search" className="py-12 bg-white shadow-sm">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
-            <div className="flex flex-col md:flex-row gap-4">
-              {/* 搜索框 */}
-              <div className="flex-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+              <div className="flex flex-col md:flex-row gap-6">
+                {/* Enhanced Search Box */}
+                <div className="flex-1 relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Search className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search for answers..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="block w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg"
+                  />
                 </div>
-                <input
-                  type="text"
-                  placeholder="Search for answers..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                />
-              </div>
 
-              {/* 分类筛选 */}
-              <div className="flex items-center gap-2">
-                <Filter className="w-5 h-5 text-gray-600" />
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-3 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                >
-                  {categoryOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                {/* Enhanced Category Filter */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Filter className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="pl-12 pr-8 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none bg-white text-lg min-w-[200px]"
+                  >
+                    {categoryOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              {/* Search Results Info */}
+              <div className="mt-6 flex items-center justify-between text-sm text-gray-600">
+                <div>
+                  Showing {filteredFaqs.length} of {faqs.length} questions
+                  {searchQuery && <span className="font-medium"> for "{searchQuery}"</span>}
+                  {selectedCategory && <span className="font-medium"> in {categoryOptions.find(cat => cat.value === selectedCategory)?.label}</span>}
+                </div>
+                {(searchQuery || selectedCategory) && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSelectedCategory('');
+                    }}
+                    className="text-orange-600 hover:text-orange-700 font-medium"
+                  >
+                    Clear filters
+                  </button>
+                )}
               </div>
             </div>
-
-            {/* 搜索结果统计 */}
-            {(searchQuery || selectedCategory) && (
-              <div className="mt-4 text-sm text-gray-600">
-                Showing {filteredFaqs.length} FAQ{filteredFaqs.length !== 1 ? 's' : ''}
-                {searchQuery && ` for "${searchQuery}"`}
-                {selectedCategory && ` in ${categoryOptions.find(cat => cat.value === selectedCategory)?.label}`}
-              </div>
-            )}
           </div>
         </div>
       </section>
@@ -426,28 +478,91 @@ const FAQPage = () => {
         </div>
       </section>
 
-      {/* 联系支持区域 */}
-      <section className="py-16 bg-orange-50">
-        <div className="container mx-auto px-4 text-center">
+      {/* Enhanced Support Section */}
+      <section className="py-20 bg-white relative overflow-hidden">
+        {/* Geometric Background Elements */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-20 right-10 w-32 h-32 bg-orange-200 rounded-full opacity-20"></div>
+          <div className="absolute bottom-20 left-10 w-40 h-40 bg-orange-100 rounded-full opacity-30"></div>
+          <div className="absolute top-1/3 left-1/4 w-6 h-6 bg-orange-500 rotate-45 opacity-30"></div>
+        </div>
+
+        <div className="container mx-auto px-4 text-center relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="max-w-2xl mx-auto"
+            className="max-w-4xl mx-auto"
           >
-            <MessageSquare className="w-12 h-12 text-orange-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Still Have Questions?
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Can't find what you're looking for? Our customer support team is here to help you with any questions or concerns.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors">
-                Contact Support
-              </button>
-              <button className="border border-orange-600 text-orange-600 px-6 py-3 rounded-lg hover:bg-orange-600 hover:text-white transition-colors">
-                Request Callback
-              </button>
+            <div className="mb-16">
+              <span className="inline-block px-4 py-2 bg-orange-500 bg-opacity-10 rounded-full text-orange-600 text-sm font-medium mb-6">
+                Need More Help?
+              </span>
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <MessageSquare className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-4xl font-bold text-gray-900 mb-6">
+                Still Have Questions?
+              </h2>
+              <p className="text-xl text-gray-600 mb-10 max-w-3xl mx-auto">
+                Can't find what you're looking for? Our customer support team is here to help you with any questions or concerns.
+              </p>
+            </div>
+
+            {/* Enhanced CTA Section */}
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 text-white shadow-2xl">
+              <h3 className="text-2xl font-bold mb-4">Get Instant Support</h3>
+              <p className="text-orange-100 mb-8 text-lg">
+                Our expert team is available 24/7 to assist you with any questions
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button className="bg-white text-orange-600 px-8 py-4 rounded-xl font-semibold hover:bg-gray-50 transition-colors duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+                  <MessageSquare className="w-5 h-5" />
+                  Contact Support
+                </button>
+                <button className="border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-orange-600 transition-colors duration-300 flex items-center justify-center gap-2">
+                  <ArrowRight className="w-5 h-5" />
+                  Request Callback
+                </button>
+              </div>
+            </div>
+
+            {/* Additional Support Options */}
+            <div className="grid md:grid-cols-3 gap-8 mt-16">
+              {[
+                {
+                  icon: "📧",
+                  title: "Email Support",
+                  description: "Get detailed help via email",
+                  action: "Send Email"
+                },
+                {
+                  icon: "💬",
+                  title: "Live Chat",
+                  description: "Chat with our support team",
+                  action: "Start Chat"
+                },
+                {
+                  icon: "📞",
+                  title: "Phone Support",
+                  description: "Speak directly with an expert",
+                  action: "Call Now"
+                }
+              ].map((option, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="bg-gray-50 rounded-xl p-6 hover:bg-white hover:shadow-lg transition-all duration-300"
+                >
+                  <div className="text-4xl mb-4">{option.icon}</div>
+                  <h4 className="text-lg font-semibold text-gray-900 mb-2">{option.title}</h4>
+                  <p className="text-gray-600 mb-4">{option.description}</p>
+                  <button className="text-orange-600 font-medium hover:text-orange-700 transition-colors">
+                    {option.action} →
+                  </button>
+                </motion.div>
+              ))}
             </div>
           </motion.div>
         </div>

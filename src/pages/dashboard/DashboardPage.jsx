@@ -16,7 +16,7 @@ import {
   MessageSquare,
   Building,
   CheckCircle,
-  ArrowLeft,
+  ArrowRight,
   Gift,
   Share2,
   Copy,
@@ -539,23 +539,97 @@ const CustomerDashboard = () => {
 
   return (
     <div className="space-y-8">
-      {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 rounded-2xl p-8 text-white shadow-lg border border-orange-200">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.firstName || user?.name}! 👋</h1>
-            <p className="text-orange-100 text-lg">Track your service requests and manage your property maintenance</p>
-          </div>
-          <Link
-            to="/order-request"
-            className="bg-white text-orange-600 px-8 py-3 rounded-xl font-semibold hover:bg-orange-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-          >
-            + Request New Service
-          </Link>
+      {/* Hero Banner - Matching HomePage Design */}
+      <section className="relative overflow-hidden">
+        {/* Background with geometric patterns - Matching HomePage */}
+        <div className="absolute inset-0 bg-orange-600">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700"></div>
+          {/* Geometric shapes - Matching HomePage */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500 rounded-full opacity-20 transform translate-x-32 -translate-y-32"></div>
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-orange-700 rounded-full opacity-30 transform -translate-x-24 translate-y-24"></div>
+          <div className="absolute top-1/2 left-1/4 w-64 h-64 bg-white opacity-5 rounded-full"></div>
+          <div className="absolute top-1/4 right-1/3 w-48 h-48 bg-orange-400 rounded-full opacity-10 transform rotate-45"></div>
         </div>
-      </div>
+        
+        <div className="relative container mx-auto px-4 py-24">
+          <div className="max-w-4xl mx-auto text-center text-white">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6 }}
+              className="mb-6"
+            >
+              <span className="inline-block px-4 py-2 bg-orange-500 bg-opacity-30 rounded-full text-orange-100 text-sm font-medium mb-4 backdrop-blur-sm">
+                Dashboard Overview
+              </span>
+            </motion.div>
+            
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+              className="text-4xl md:text-6xl font-bold mb-6 leading-tight"
+            >
+              Welcome back,
+              <span className="block text-orange-200">{user?.firstName || user?.name}! 👋</span>
+            </motion.h1>
+            
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="text-xl text-orange-100 max-w-3xl mx-auto mb-10 leading-relaxed"
+            >
+              Track your service requests, manage your property maintenance, and stay updated with your orders 
+              - all in one convenient dashboard.
+            </motion.p>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.6 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+            >
+              <Link
+                to="/order-request"
+                className="bg-white text-orange-600 px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center text-lg"
+              >
+                <Package className="mr-2 w-5 h-5" />
+                Request New Service
+              </Link>
+              <Link
+                to="/services"
+                className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-orange-600 transition-colors text-lg"
+              >
+                Browse Services
+              </Link>
+            </motion.div>
+            
+            {/* Quick Stats Info - Matching HomePage contact style */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7, duration: 0.6 }}
+              className="mt-12 flex flex-wrap justify-center gap-8 text-orange-100"
+            >
+              <div className="flex items-center">
+                <Package className="w-5 h-5 mr-2" />
+                <span>{dashboardData.stats.totalOrders} Total Orders</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="w-5 h-5 mr-2" />
+                <span>{dashboardData.stats.completedOrders} Completed</span>
+              </div>
+              <div className="flex items-center">
+                <DollarSign className="w-5 h-5 mr-2" />
+                <span>${dashboardData.stats.totalSpent.toFixed(0)} Total Spent</span>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
       
-      {/* Stats */}
+      {/* Enhanced Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
           <motion.div
@@ -563,19 +637,19 @@ const CustomerDashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: index * 0.1 }}
-            className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 hover:shadow-xl hover:border-gray-200 transition-all duration-300 transform hover:-translate-y-1"
+            className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl hover:border-orange-200 transition-all duration-300 transform hover:-translate-y-1 group"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className={`p-4 rounded-xl ${stat.color} text-white shadow-lg`}>
+                <div className={`p-4 rounded-xl ${stat.color} text-white shadow-lg group-hover:shadow-xl transition-shadow`}>
                   <stat.icon size={24} />
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                  <p className={`text-2xl font-bold ${stat.textColor}`}>{stat.value}</p>
+                  <p className={`text-2xl font-bold ${stat.textColor} group-hover:scale-105 transition-transform`}>{stat.value}</p>
                 </div>
               </div>
-              <div className={`w-16 h-16 ${stat.bgColor} rounded-full flex items-center justify-center opacity-20`}>
+              <div className={`w-16 h-16 ${stat.bgColor} rounded-full flex items-center justify-center opacity-20 group-hover:opacity-30 transition-opacity`}>
                 <stat.icon size={28} className={stat.textColor} />
               </div>
             </div>
@@ -583,195 +657,191 @@ const CustomerDashboard = () => {
         ))}
       </div>
 
-      {/* Recent Orders */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">Recent Orders</h2>
-            <p className="text-gray-600">Track your latest service requests</p>
+      {/* Modern Recent Orders Section */}
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-50 to-orange-50 p-8 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1 font-roboto">Recent Orders</h2>
+              <p className="text-gray-600">Track your latest service requests and their progress</p>
+            </div>
+            <button
+              onClick={() => navigate('/dashboard?section=orders')}
+              className="bg-orange-600 text-white px-6 py-3 rounded-xl hover:bg-orange-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 inline-flex items-center"
+            >
+              View All Orders
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </button>
           </div>
-          <button
-            onClick={() => navigate('/dashboard?section=orders')}
-            className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105"
-          >
-            View All Orders →
-          </button>
         </div>
 
-        {dashboardData.recentOrders.length > 0 ? (
-          <div className="overflow-x-auto">
-            <div className="min-w-full">
-              <div className="hidden lg:grid lg:grid-cols-6 gap-4 py-4 px-6 bg-gray-50 rounded-lg font-semibold text-gray-700 text-sm mb-4">
-                <div>Job Number</div>
-                <div>Service</div>
-                <div>Status</div>
-                <div>Date</div>
-                <div>Amount</div>
-                <div>Actions</div>
-              </div>
-              <div className="space-y-4">
-                {dashboardData.recentOrders.slice(0, 5).map((order, index) => (
-                  <motion.div
-                    key={order._id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="lg:grid lg:grid-cols-6 gap-4 p-6 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all duration-200 border border-gray-200 hover:border-gray-300"
-                  >
-                    {/* Mobile layout */}
-                    <div className="lg:hidden space-y-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-mono text-sm text-gray-600">{order.jobNumber}</p>
-                          <p className="font-semibold text-gray-900">{order.title}</p>
-                        </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                          {order.status.replace('_', ' ')}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="text-sm text-gray-600">{formatDate(order.createdAt)}</p>
-                          <p className="text-lg font-bold text-gray-900">${order.totalAmount.toFixed(2)}</p>
-                        </div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleViewOrder(order)}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors"
-                          >
-                            View
-                          </button>
-                          {['PENDING', 'ASSIGNED'].includes(order.status) && (
-                            <button
-                              onClick={() => handleCancelOrder(order._id)}
-                              className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          )}
-                        </div>
-                      </div>
+        <div className="p-8">{dashboardData.recentOrders.length > 0 ? (
+          <div className="space-y-4">
+            {dashboardData.recentOrders.slice(0, 5).map((order, index) => (
+              <motion.div
+                key={order._id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-gradient-to-r from-gray-50 to-white p-6 rounded-xl hover:from-orange-50 hover:to-gray-50 transition-all duration-300 border border-gray-200 hover:border-orange-200 hover:shadow-md group"
+              >
+                {/* Mobile & Desktop Unified Layout */}
+                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                  {/* Order Info */}
+                  <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Job Number</p>
+                      <p className="font-mono text-sm font-medium text-gray-900">{order.jobNumber}</p>
                     </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Service</p>
+                      <p className="font-semibold text-gray-900">{order.title}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Date</p>
+                      <p className="text-gray-700">{formatDate(order.createdAt)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Amount</p>
+                      <p className="text-xl font-bold text-gray-900">${order.totalAmount.toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  {/* Status & Actions */}
+                  <div className="flex items-center justify-between lg:justify-end gap-4">
+                    <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                      {order.status.replace('_', ' ')}
+                    </span>
                     
-                    {/* Desktop layout */}
-                    <div className="hidden lg:flex lg:items-center">
-                      <span className="font-mono text-sm text-gray-600">{order.jobNumber}</span>
-                    </div>
-                    <div className="hidden lg:flex lg:items-center">
-                      <span className="font-semibold text-gray-900">{order.title}</span>
-                    </div>
-                    <div className="hidden lg:flex lg:items-center">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                        {order.status.replace('_', ' ')}
-                      </span>
-                    </div>
-                    <div className="hidden lg:flex lg:items-center">
-                      <span className="text-gray-700">{formatDate(order.createdAt)}</span>
-                    </div>
-                    <div className="hidden lg:flex lg:items-center">
-                      <span className="text-lg font-bold text-gray-900">${order.totalAmount.toFixed(2)}</span>
-                    </div>
-                    <div className="hidden lg:flex lg:items-center lg:space-x-2">
+                    <div className="flex space-x-2">
                       <button
                         onClick={() => handleViewOrder(order)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors font-medium"
                       >
-                        View Details
+                        <Eye className="w-4 h-4 inline mr-1" />
+                        View
                       </button>
                       {['PENDING', 'ASSIGNED'].includes(order.status) && (
                         <button
                           onClick={() => handleCancelOrder(order._id)}
-                          className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                          className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors font-medium"
                         >
+                          <X className="w-4 h-4 inline mr-1" />
                           Cancel
                         </button>
                       )}
                     </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         ) : (
           <div className="text-center py-16">
-            <div className="bg-gray-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
-              <Package className="w-12 h-12 text-gray-400" />
+            <div className="bg-gradient-to-br from-orange-100 to-orange-200 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+              <Package className="w-12 h-12 text-orange-600" />
             </div>
             <h3 className="text-2xl font-semibold text-gray-900 mb-3">No orders yet</h3>
-            <p className="text-gray-600 mb-8 text-lg">Ready to get started? Request your first service and let us handle the rest!</p>
+            <p className="text-gray-600 mb-8 text-lg max-w-md mx-auto">Ready to get started? Request your first service and let us handle the rest!</p>
             <Link
               to="/order-request"
-              className="bg-gradient-to-r from-orange-600 to-red-600 text-white px-8 py-4 rounded-xl hover:from-orange-700 hover:to-red-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
+              className="bg-gradient-to-r from-orange-600 to-orange-700 text-white px-8 py-4 rounded-xl hover:from-orange-700 hover:to-orange-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 inline-flex items-center"
             >
-              🚀 Request Your First Service
+              <Package className="w-5 h-5 mr-2" />
+              Request Your First Service
             </Link>
           </div>
         )}
+        </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Enhanced Quick Actions */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6 font-roboto">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link
-            to="/order-request"
-            className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-8 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 block text-white group"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="p-4 rounded-xl bg-white bg-opacity-20 group-hover:bg-opacity-30 transition-all duration-200">
-                  <Package className="w-8 h-8" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-xl font-bold">Request Service</h3>
-                  <p className="text-orange-100 mt-1">Book a new maintenance service</p>
+            <Link
+              to="/order-request"
+              className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-lg p-8 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 block text-white group relative overflow-hidden"
+            >
+              {/* Background decoration */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full transform translate-x-8 -translate-y-8"></div>
+              <div className="relative">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="p-4 rounded-xl bg-white bg-opacity-20 group-hover:bg-opacity-30 transition-all duration-200">
+                      <Package className="w-8 h-8" />
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-xl font-bold">Request Service</h3>
+                      <p className="text-orange-100 mt-1">Book a new maintenance service</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-6 h-6 text-orange-200 group-hover:text-white transition-colors group-hover:translate-x-1 transform duration-200" />
                 </div>
               </div>
-              <div className="text-orange-200 group-hover:text-white transition-colors">
-                →
-              </div>
-            </div>
-          </Link>
+            </Link>
+          </motion.div>
 
-          <Link
-            to="/services"
-            className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-8 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 block text-white group"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="p-4 rounded-xl bg-white bg-opacity-20 group-hover:bg-opacity-30 transition-all duration-200">
-                  <Settings className="w-8 h-8" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-xl font-bold">Browse Services</h3>
-                  <p className="text-blue-100 mt-1">Explore available services</p>
+            <Link
+              to="/services"
+              className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-8 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 block text-white group relative overflow-hidden"
+            >
+              {/* Background decoration */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full transform translate-x-8 -translate-y-8"></div>
+              <div className="relative">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="p-4 rounded-xl bg-white bg-opacity-20 group-hover:bg-opacity-30 transition-all duration-200">
+                      <Settings className="w-8 h-8" />
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-xl font-bold">Browse Services</h3>
+                      <p className="text-blue-100 mt-1">Explore available services</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-6 h-6 text-blue-200 group-hover:text-white transition-colors group-hover:translate-x-1 transform duration-200" />
                 </div>
               </div>
-              <div className="text-blue-200 group-hover:text-white transition-colors">
-                →
-              </div>
-            </div>
-          </Link>
+            </Link>
+          </motion.div>
 
-          <button
-            onClick={loadDashboardData}
-            className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg p-8 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-white group"
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="p-4 rounded-xl bg-white bg-opacity-20 group-hover:bg-opacity-30 transition-all duration-200">
-                  <TrendingUp className="w-8 h-8" />
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-xl font-bold">Refresh Data</h3>
-                  <p className="text-emerald-100 mt-1">Update dashboard information</p>
+            <button
+              onClick={loadDashboardData}
+              className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl shadow-lg p-8 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-white group w-full relative overflow-hidden"
+            >
+              {/* Background decoration */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full transform translate-x-8 -translate-y-8"></div>
+              <div className="relative">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="p-4 rounded-xl bg-white bg-opacity-20 group-hover:bg-opacity-30 transition-all duration-200">
+                      <TrendingUp className="w-8 h-8" />
+                    </div>
+                    <div className="ml-4">
+                      <h3 className="text-xl font-bold">Refresh Data</h3>
+                      <p className="text-emerald-100 mt-1">Update dashboard information</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-6 h-6 text-emerald-200 group-hover:text-white transition-colors group-hover:translate-x-1 transform duration-200" />
                 </div>
               </div>
-              <div className="text-emerald-200 group-hover:text-white transition-colors">
-                ↻
-              </div>
-            </div>
-          </button>
+            </button>
+          </motion.div>
         </div>
       </div>
 
@@ -1949,26 +2019,48 @@ const DashboardPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 pt-24">
+    <div className="min-h-screen bg-gray-50">
       <div className="flex">
-        {/* Sidebar */}
-        <div className="w-64 bg-white shadow-xl border-r border-gray-200 min-h-screen">
-          <div className="p-6">
+        {/* Modern Sidebar */}
+        <div className="w-80 bg-white shadow-2xl border-r border-gray-100 min-h-screen">
+          {/* Header */}
+          <div className="p-8 bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 text-white">
             <a href="/" className="block mb-6">
-              <h1 className="text-xl font-bold text-gray-900 hover:text-orange-600 transition-colors">Swift Fix Pro</h1>
+              <h1 className="text-2xl font-bold text-white hover:text-orange-100 transition-colors">Swift Fix Pro</h1>
+              <p className="text-orange-100 text-sm mt-1">Property Maintenance</p>
             </a>
             
-            <nav className="space-y-4">
+            {/* User Profile Card */}
+            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-4 border border-white border-opacity-20">
+              <div className="flex items-center">
+                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                  <User className="w-6 h-6 text-white" />
+                </div>
+                <div className="ml-3">
+                  <p className="font-semibold text-white">{user?.name || 'User'}</p>
+                  <p className="text-orange-100 text-sm capitalize">{user?.role || 'Customer'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+            
+          {/* Navigation */}
+          <div className="p-6">
+            <nav className="space-y-2">
               {mainNavigation.map((item) => {
                 if (item.external) {
                   return (
                     <a
                       key={item.name}
                       href={item.href}
-                      className="flex items-center px-4 py-2 rounded-lg transition-colors text-gray-600 hover:bg-gray-100"
+                      className="flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-gray-600 hover:bg-orange-50 hover:text-orange-600 group"
                     >
-                      <item.icon size={20} className="mr-3" />
-                      {item.name}
+                      <div className="w-10 h-10 bg-gray-100 group-hover:bg-orange-100 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                        <item.icon size={20} className="group-hover:text-orange-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">{item.name}</div>
+                      </div>
                     </a>
                   );
                 }
@@ -1978,8 +2070,10 @@ const DashboardPage = () => {
                 return (
                   <div key={item.name} className="space-y-1">
                     <div 
-                      className={`flex items-center px-4 py-3 rounded-lg transition-colors cursor-pointer ${
-                        isActiveSection ? 'bg-orange-100' : 'hover:bg-gray-100'
+                      className={`flex items-center px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer group ${
+                        isActiveSection 
+                          ? 'bg-orange-50 border border-orange-200 shadow-sm' 
+                          : 'hover:bg-gray-50'
                       }`}
                       onClick={() => {
                         setActiveSection(item.section);
@@ -1987,27 +2081,40 @@ const DashboardPage = () => {
                         navigate(item.tabs[0].href);
                       }}
                     >
-                      <item.icon size={20} className={`mr-3 ${isActiveSection ? 'text-orange-600' : 'text-gray-500'}`} />
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 transition-colors ${
+                        isActiveSection 
+                          ? 'bg-orange-100' 
+                          : 'bg-gray-100 group-hover:bg-orange-50'
+                      }`}>
+                        <item.icon size={20} className={`${
+                          isActiveSection ? 'text-orange-600' : 'text-gray-500 group-hover:text-orange-500'
+                        }`} />
+                      </div>
                       <div className="flex-1">
-                        <div className={`font-medium ${isActiveSection ? 'text-orange-700' : 'text-gray-900'}`}>
+                        <div className={`font-medium ${
+                          isActiveSection ? 'text-orange-700' : 'text-gray-900'
+                        }`}>
                           {item.name}
                         </div>
                         <div className="text-xs text-gray-500">{item.description}</div>
                       </div>
+                      {isActiveSection && (
+                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                      )}
                     </div>
                     
                     {/* Sub-navigation tabs */}
                     {isActiveSection && item.tabs && (
-                      <div className="ml-8 space-y-1">
+                      <div className="ml-14 space-y-1 mt-2">
                         {item.tabs.map((tab) => (
                           <Link
                             key={tab.tab}
                             to={tab.href}
                             onClick={() => setActiveTab(tab.tab)}
-                            className={`block px-4 py-2 text-sm rounded-lg transition-colors ${
+                            className={`block px-4 py-2 text-sm rounded-lg transition-all duration-200 ${
                               activeTab === tab.tab
-                                ? 'bg-orange-50 text-orange-700 font-medium'
-                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                ? 'bg-orange-100 text-orange-700 font-medium border-l-2 border-orange-500'
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 border-l-2 border-transparent'
                             }`}
                           >
                             {tab.name}
@@ -2020,48 +2127,78 @@ const DashboardPage = () => {
               })}
             </nav>
 
-            <div className="mt-8 pt-6 border-t">
+            {/* Logout Button */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
               <button
                 onClick={handleLogout}
-                className="flex items-center px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg w-full"
+                className="flex items-center px-4 py-3 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-xl w-full transition-all duration-200 group"
               >
-                <LogOut size={20} className="mr-3" />
-                Logout
+                <div className="w-10 h-10 bg-gray-100 group-hover:bg-red-100 rounded-lg flex items-center justify-center mr-3 transition-colors">
+                  <LogOut size={20} className="group-hover:text-red-600" />
+                </div>
+                <span className="font-medium">Logout</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="flex-1 p-8 bg-gradient-to-br from-transparent via-blue-50/30 to-orange-50/20">
-          {/* Breadcrumb */}
-          <div className="mb-6">
-            <div className="flex items-center text-sm text-gray-500 mb-2">
-              <span>{getCurrentSection()?.name}</span>
-              {getCurrentSection()?.tabs?.find(t => t.tab === activeTab) && (
-                <>
-                  <span className="mx-2">›</span>
-                  <span className="text-gray-700">{getCurrentSection()?.tabs?.find(t => t.tab === activeTab)?.name}</span>
-                </>
-              )}
+        {/* Main Content Area */}
+        <div className="flex-1 bg-gradient-to-br from-gray-50 via-white to-orange-50/30">
+          {/* Top Header */}
+          <div className="bg-white border-b border-gray-200 shadow-sm">
+            <div className="px-8 py-6">
+              {/* Breadcrumb */}
+              <div className="flex items-center text-sm text-gray-500 mb-2">
+                <Home className="w-4 h-4 mr-2" />
+                <span>Dashboard</span>
+                {getCurrentSection()?.tabs?.find(t => t.tab === activeTab) && (
+                  <>
+                    <span className="mx-2">›</span>
+                    <span className="text-gray-700">{getCurrentSection()?.tabs?.find(t => t.tab === activeTab)?.name}</span>
+                  </>
+                )}
+              </div>
+              
+              {/* Page Title */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 font-roboto">
+                    {getCurrentSection()?.tabs?.find(t => t.tab === activeTab)?.name || getCurrentSection()?.name}
+                  </h1>
+                  <p className="text-gray-600 mt-1">
+                    {getCurrentSection()?.description}
+                  </p>
+                </div>
+                
+                {/* Quick Actions */}
+                <div className="flex items-center space-x-3">
+                  <Link
+                    to="/services"
+                    className="bg-orange-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-orange-700 transition-colors inline-flex items-center"
+                  >
+                    <Package className="w-4 h-4 mr-2" />
+                    Book Service
+                  </Link>
+                </div>
+              </div>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              {getCurrentSection()?.tabs?.find(t => t.tab === activeTab)?.name || getCurrentSection()?.name}
-            </h1>
           </div>
 
-          <Routes>
-            <Route path="/" element={getTabContent()} />
-            <Route path="/analytics" element={<div className="text-center py-12 text-gray-500">Analytics coming soon...</div>} />
-            <Route path="/activity" element={<div className="text-center py-12 text-gray-500">Activity feed coming soon...</div>} />
-            <Route path="/profile" element={<ProfileTab />} />
-            <Route path="/security" element={<div className="text-center py-12 text-gray-500">Security settings coming soon...</div>} />
-            <Route path="/preferences" element={<div className="text-center py-12 text-gray-500">Preferences coming soon...</div>} />
-            <Route path="/referrals" element={<ReferralOverview />} />
-            <Route path="/referrals/list" element={<ReferralList />} />
-            <Route path="/referrals/earnings" element={<ReferralEarnings />} />
-            <Route path="/referrals/share" element={<ReferralShare />} />
-          </Routes>
+          {/* Content Area */}
+          <div className="p-8">
+            <Routes>
+              <Route path="/" element={getTabContent()} />
+              <Route path="/analytics" element={<div className="text-center py-12 text-gray-500">Analytics coming soon...</div>} />
+              <Route path="/activity" element={<div className="text-center py-12 text-gray-500">Activity feed coming soon...</div>} />
+              <Route path="/profile" element={<ProfileTab />} />
+              <Route path="/security" element={<div className="text-center py-12 text-gray-500">Security settings coming soon...</div>} />
+              <Route path="/preferences" element={<div className="text-center py-12 text-gray-500">Preferences coming soon...</div>} />
+              <Route path="/referrals" element={<ReferralOverview />} />
+              <Route path="/referrals/list" element={<ReferralList />} />
+              <Route path="/referrals/earnings" element={<ReferralEarnings />} />
+              <Route path="/referrals/share" element={<ReferralShare />} />
+            </Routes>
+          </div>
         </div>
       </div>
     </div>

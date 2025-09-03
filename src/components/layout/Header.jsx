@@ -195,7 +195,7 @@ const Header = () => {
             <img 
               src="/logo.png" 
               alt="Swift Fix Pro" 
-              className="h-10 w-auto"
+              className="h-16 w-auto"
             />
           </Link>
 

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Search, Filter } from 'lucide-react';
+import ImageService from '../services/ImageService';
 
 const ServicesPage = () => {
   const { t } = useLanguage();
@@ -31,7 +32,7 @@ const ServicesPage = () => {
       name: 'Home Repairs',
       category: 'maintenance',
       description: 'Complete home repair solutions for all your property needs',
-      image: '/images/home-repairs.jpg',
+      image: ImageService.getImageUrl('home-repairs.jpg'),
       serviceTypes: [
         'General repairs',
         'Fixture installation',
@@ -47,7 +48,7 @@ const ServicesPage = () => {
       name: 'Painting Services',
       category: 'painting',
       description: 'Professional interior and exterior painting services',
-      image: '/images/interior-painting.jpg',
+      image: ImageService.getImageUrl('interior-painting.jpg'),
       serviceTypes: [
         'Interior painting',
         'Exterior painting',
@@ -63,7 +64,7 @@ const ServicesPage = () => {
       name: 'Electrical Services',
       category: 'electrical',
       description: 'Safe and reliable electrical installation and repair services',
-      image: '/images/electrical-services.jpg',
+      image: ImageService.getImageUrl('electrical-services.jpg'),
       serviceTypes: [
         'Wiring installation',
         'Circuit breaker repair',
@@ -79,7 +80,7 @@ const ServicesPage = () => {
       name: 'Plumbing Services',
       category: 'plumbing',
       description: 'Expert plumbing repairs and installations',
-      image: '/images/plumbing-services.jpg',
+      image: ImageService.getImageUrl('plumbing-services.jpg'),
       serviceTypes: [
         'Pipe repair and replacement',
         'Faucet installation',
@@ -95,7 +96,7 @@ const ServicesPage = () => {
       name: 'Carpentry Services',
       category: 'maintenance',
       description: 'Professional carpentry and woodwork services',
-      image: '/images/carpentry-services.jpg',
+      image: ImageService.getImageUrl('carpentry-services.jpg'),
       serviceTypes: [
         'Custom furniture',
         'Cabinet installation',
@@ -111,7 +112,7 @@ const ServicesPage = () => {
       name: 'Flooring Services',
       category: 'flooring',
       description: 'Complete flooring installation and repair services',
-      image: '/images/flooring-services.jpg',
+      image: ImageService.getImageUrl('flooring-services.jpg'),
       serviceTypes: [
         'Hardwood installation',
         'Tile installation',
@@ -127,7 +128,7 @@ const ServicesPage = () => {
       name: 'Appliance Installation',
       category: 'installation',
       description: 'Professional appliance installation and setup services',
-      image: '/images/appliance-installation.jpg',
+      image: ImageService.getImageUrl('appliance-installation.jpg'),
       serviceTypes: [
         'Kitchen appliance installation',
         'Washing machine setup',
@@ -143,7 +144,7 @@ const ServicesPage = () => {
       name: 'Furniture Assembly',
       category: 'assembly',
       description: 'Expert furniture assembly and installation services',
-      image: '/images/furniture-assembly.jpg',
+      image: ImageService.getImageUrl('furniture-assembly.jpg'),
       serviceTypes: [
         'IKEA furniture assembly',
         'Office furniture setup',
@@ -159,7 +160,7 @@ const ServicesPage = () => {
       name: 'Moving Services',
       category: 'moving',
       description: 'Comprehensive moving and relocation services',
-      image: '/images/moving-services.jpg',
+      image: ImageService.getImageUrl('moving-services.jpg'),
       serviceTypes: [
         'Residential moving',
         'Office relocation',
@@ -175,7 +176,7 @@ const ServicesPage = () => {
       name: 'Renovation',
       category: 'renovation',
       description: 'Complete renovation and remodeling services',
-      image: '/images/renovation.jpg',
+      image: ImageService.getImageUrl('renovation.jpg'),
       serviceTypes: [
         'Kitchen renovation',
         'Bathroom remodeling',
@@ -191,7 +192,7 @@ const ServicesPage = () => {
       name: 'Safety and Security',
       category: 'security',
       description: 'Home security and safety system installation',
-      image: '/images/safety-security.jpg',
+      image: ImageService.getImageUrl('safety-security.jpg'),
       serviceTypes: [
         'Security system installation',
         'Camera setup',
@@ -207,7 +208,7 @@ const ServicesPage = () => {
       name: 'Cleaning Services',
       category: 'cleaning',
       description: 'Comprehensive cleaning solutions for your property',
-      image: '/images/cleaning-services.jpg',
+      image: ImageService.getImageUrl('cleaning-services.jpg'),
       serviceTypes: [
         'Regular house cleaning',
         'Deep cleaning',

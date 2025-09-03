@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Star, Clock, CheckCircle, Shield, Award } from 'lucide-react';
+import ImageService from '../services/ImageService';
 
 const ServiceDetailPage = () => {
   const { id } = useParams();
@@ -14,11 +15,12 @@ const ServiceDetailPage = () => {
       name: "Home Repairs",
       category: "maintenance",
       description: "Complete home repair solutions for all your property needs",
-      image: "/images/home-repairs.jpg",
-      price: "$80",
-      duration: "2-4 hours",
+      image: ImageService.getImageUrl("home-repairs.jpg"),
       rating: 4.8,
       reviews: 156,
+      completedJobs: 1250,
+      warranty: "12 months",
+      responseTime: "Same day",
       detailedDescription: "Our comprehensive home maintenance service covers all aspects of keeping your property in top condition. From routine inspections to emergency repairs, our skilled technicians ensure your home remains safe, comfortable, and well-maintained year-round.",
       serviceTypes: [
         "General repairs",
@@ -57,11 +59,12 @@ const ServiceDetailPage = () => {
       name: "Painting Services",
       category: "painting",
       description: "Professional interior and exterior painting services",
-      image: "/images/interior-painting.jpg",
-      price: "$120",
-      duration: "1-3 days",
+      image: ImageService.getImageUrl("interior-painting.jpg"),
       rating: 4.9,
       reviews: 203,
+      completedJobs: 890,
+      warranty: "24 months",
+      responseTime: "2-3 days",
       detailedDescription: "Transform your space with our professional painting services. We use only premium quality paints and employ skilled painters who pay attention to every detail, ensuring a flawless finish that enhances your property's beauty and value.",
       serviceTypes: [
         "Interior painting",
@@ -100,11 +103,12 @@ const ServiceDetailPage = () => {
       name: "Electrical Services",
       category: "electrical",
       description: "Safe and reliable electrical installation and repair services",
-      image: "/images/electrical-services.jpg",
-      price: "$100",
-      duration: "2-6 hours",
+      image: ImageService.getImageUrl("electrical-services.jpg"),
       rating: 4.8,
       reviews: 189,
+      completedJobs: 750,
+      warranty: "18 months",
+      responseTime: "Same day",
       detailedDescription: "Our certified electricians provide safe and reliable electrical services for your home or business. From simple repairs to complex installations, we ensure all work meets safety standards and local codes.",
       serviceTypes: [
         "Wiring installation",
@@ -143,11 +147,12 @@ const ServiceDetailPage = () => {
       name: "Plumbing Services",
       category: "plumbing",
       description: "Expert plumbing repairs and installations",
-      image: "/images/plumbing-services.jpg",
-      price: "$90",
-      duration: "1-4 hours",
+      image: ImageService.getImageUrl("plumbing-services.jpg"),
       rating: 4.7,
       reviews: 234,
+      completedJobs: 980,
+      warranty: "12 months",
+      responseTime: "1 hour",
       detailedDescription: "Professional plumbing services for all your water and drainage needs. Our experienced plumbers handle everything from minor leaks to major installations with efficiency and expertise.",
       serviceTypes: [
         "Pipe repair and replacement",
@@ -186,11 +191,12 @@ const ServiceDetailPage = () => {
       name: "Carpentry Services",
       category: "maintenance",
       description: "Professional carpentry and woodwork services",
-      image: "/images/carpentry-services.jpg",
-      price: "$110",
-      duration: "2-8 hours",
+      image: ImageService.getImageUrl("carpentry-services.jpg"),
       rating: 4.9,
       reviews: 167,
+      completedJobs: 540,
+      warranty: "36 months",
+      responseTime: "2-3 days",
       detailedDescription: "Expert carpentry services for all your woodworking needs. From custom furniture to built-in storage solutions, our skilled carpenters deliver quality craftsmanship that stands the test of time.",
       serviceTypes: [
         "Custom furniture",
@@ -229,11 +235,12 @@ const ServiceDetailPage = () => {
       name: "Flooring Services",
       category: "flooring",
       description: "Complete flooring installation and repair services",
-      image: "/images/flooring-services.jpg",
-      price: "$150",
-      duration: "4-8 hours",
+      image: ImageService.getImageUrl("flooring-services.jpg"),
       rating: 4.8,
       reviews: 198,
+      completedJobs: 620,
+      warranty: "24 months",
+      responseTime: "3-5 days",
       detailedDescription: "Transform your space with our professional flooring services. We work with all types of flooring materials and provide expert installation, repair, and refinishing services.",
       serviceTypes: [
         "Hardwood installation",
@@ -272,11 +279,12 @@ const ServiceDetailPage = () => {
       name: "Appliance Installation",
       category: "installation",
       description: "Professional appliance installation and setup services",
-      image: "/images/appliance-installation.jpg",
-      price: "$75",
-      duration: "1-3 hours",
+      image: ImageService.getImageUrl("appliance-installation.jpg"),
       rating: 4.7,
       reviews: 145,
+      completedJobs: 425,
+      warranty: "6 months",
+      responseTime: "Same day",
       detailedDescription: "Safe and proper installation of all your home appliances. Our technicians ensure correct setup, proper connections, and full functionality testing for your peace of mind.",
       serviceTypes: [
         "Kitchen appliance installation",
@@ -315,11 +323,12 @@ const ServiceDetailPage = () => {
       name: "Furniture Assembly",
       category: "assembly",
       description: "Expert furniture assembly and installation services",
-      image: "/images/furniture-assembly.jpg",
-      price: "$60",
-      duration: "1-3 hours",
+      image: ImageService.getImageUrl("furniture-assembly.jpg"),
       rating: 4.6,
       reviews: 187,
+      completedJobs: 890,
+      warranty: "3 months",
+      responseTime: "Next day",
       detailedDescription: "Professional furniture assembly service that saves you time and ensures your furniture is properly assembled. We handle all types of furniture with the right tools and expertise.",
       serviceTypes: [
         "IKEA furniture assembly",
@@ -358,11 +367,12 @@ const ServiceDetailPage = () => {
       name: "Moving Services",
       category: "moving",
       description: "Comprehensive moving and relocation services",
-      image: "/images/moving-services.jpg",
-      price: "$200",
-      duration: "4-8 hours",
+      image: ImageService.getImageUrl("moving-services.jpg"),
       rating: 4.5,
       reviews: 156,
+      completedJobs: 320,
+      warranty: "Insurance covered",
+      responseTime: "1-2 days",
       detailedDescription: "Stress-free moving services with experienced movers who handle your belongings with care. From packing to transport, we make your move smooth and efficient.",
       serviceTypes: [
         "Residential moving",
@@ -401,11 +411,12 @@ const ServiceDetailPage = () => {
       name: "Renovation",
       category: "renovation",
       description: "Complete renovation and remodeling services",
-      image: "/images/renovation.jpg",
-      price: "$500",
-      duration: "1-4 weeks",
+      image: ImageService.getImageUrl("renovation.jpg"),
       rating: 4.9,
       reviews: 89,
+      completedJobs: 150,
+      warranty: "5 years",
+      responseTime: "1-2 weeks",
       detailedDescription: "Complete renovation services that transform your space. From design consultation to final touches, we manage every aspect of your renovation project with attention to detail and quality.",
       serviceTypes: [
         "Kitchen renovation",
@@ -444,11 +455,12 @@ const ServiceDetailPage = () => {
       name: "Safety and Security",
       category: "security",
       description: "Home security and safety system installation",
-      image: "/images/safety-security.jpg",
-      price: "$130",
-      duration: "2-4 hours",
+      image: ImageService.getImageUrl("safety-security.jpg"),
       rating: 4.8,
       reviews: 134,
+      completedJobs: 380,
+      warranty: "12 months",
+      responseTime: "Same day",
       detailedDescription: "Protect your property and loved ones with our comprehensive security solutions. From alarm systems to safety assessments, we provide peace of mind through reliable security measures.",
       serviceTypes: [
         "Security system installation",
@@ -487,11 +499,12 @@ const ServiceDetailPage = () => {
       name: "Cleaning Services",
       category: "cleaning",
       description: "Comprehensive cleaning solutions for your property",
-      image: "/images/cleaning-services.jpg",
-      price: "$80",
-      duration: "2-4 hours",
+      image: ImageService.getImageUrl("cleaning-services.jpg"),
       rating: 4.7,
       reviews: 245,
+      completedJobs: 1200,
+      warranty: "24 hours",
+      responseTime: "Next day",
       detailedDescription: "Professional cleaning services that keep your space spotless and healthy. We use eco-friendly products and provide flexible scheduling to meet your needs.",
       serviceTypes: [
         "Regular house cleaning",
@@ -610,11 +623,16 @@ const ServiceDetailPage = () => {
                     <span>{currentService.rating} ({currentService.reviews} reviews)</span>
                   </div>
                   <div className="flex items-center">
-                    <Clock className="w-4 h-4 mr-1" />
-                    <span>{currentService.duration}</span>
+                    <Award className="w-4 h-4 mr-1" />
+                    <span>{currentService.completedJobs}+ Jobs Completed</span>
                   </div>
                   <div className="flex items-center">
-                    <span className="font-semibold">From {currentService.price}</span>
+                    <Shield className="w-4 h-4 mr-1" />
+                    <span>{currentService.warranty} Warranty</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Clock className="w-4 h-4 mr-1" />
+                    <span>{currentService.responseTime} Response</span>
                   </div>
                 </div>
               </motion.div>
@@ -738,12 +756,16 @@ const ServiceDetailPage = () => {
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Service Summary</h3>
                 <div className="space-y-4">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Price:</span>
-                    <span className="font-semibold">From {currentService.price}</span>
+                    <span className="text-gray-600">Jobs Completed:</span>
+                    <span className="font-semibold">{currentService.completedJobs}+</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Duration:</span>
-                    <span className="font-semibold">{currentService.duration}</span>
+                    <span className="text-gray-600">Warranty:</span>
+                    <span className="font-semibold">{currentService.warranty}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Response Time:</span>
+                    <span className="font-semibold">{currentService.responseTime}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Rating:</span>
