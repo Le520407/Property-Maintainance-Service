@@ -1,6 +1,7 @@
 const Payment = require('../models/Payment');
 const Job = require('../models/Job');
 const Message = require('../models/Message');
+const hitpayService = require('./hitpayService');
 
 class PaymentService {
   constructor() {
@@ -438,7 +439,7 @@ class PaymentService {
       console.error('Error processing vendor payout:', error);
       throw error;
     } finally {
-      if (payment) await payment.save();
+      if (paymentId) await paymentId.save();
     }
   }
 
