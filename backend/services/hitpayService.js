@@ -51,7 +51,7 @@ class HitPayService {
       const response = await fetch(`${this.baseUrl}/subscription-plan`, {
         method: 'POST',
         headers: {
-          'X-Business-API-Key': this.apiKey,
+          'meowmeowmeow': this.apiKey,
           'X-Requested-With': 'XMLHttpRequest',
           'Content-Type': 'application/x-www-form-urlencoded'
         },
@@ -119,7 +119,7 @@ class HitPayService {
       const response = await fetch(`${this.baseUrl}/recurring-billing`, {
         method: 'POST',
         headers: {
-          'X-Business-API-Key': this.apiKey,
+          'meowmeowmeow': this.apiKey,
           'X-Requested-With': 'XMLHttpRequest',
           'Content-Type': 'application/x-www-form-urlencoded'
         },
@@ -146,7 +146,7 @@ class HitPayService {
       const response = await fetch(`${this.baseUrl}/recurring-billing/subscriptions/${subscriptionId}`, {
         method: 'DELETE',
         headers: {
-          'X-Business-API-Key': this.apiKey,
+          'meowmeowmeow': this.apiKey,
           'Content-Type': 'application/json'
         }
       });
@@ -171,7 +171,7 @@ class HitPayService {
       const response = await fetch(`${this.baseUrl}/recurring-billing/subscriptions/${subscriptionId}`, {
         method: 'GET',
         headers: {
-          'X-Business-API-Key': this.apiKey,
+          'meowmeowmeow': this.apiKey,
           'Content-Type': 'application/json'
         }
       });
@@ -196,7 +196,7 @@ class HitPayService {
       const response = await fetch(`${this.baseUrl}/recurring-billing/subscriptions/${subscriptionId}`, {
         method: 'PUT',
         headers: {
-          'X-Business-API-Key': this.apiKey,
+          'meowmeowmeow': this.apiKey,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(updateData)
@@ -257,7 +257,7 @@ class HitPayService {
       const response = await fetch(`${this.baseUrl}/payment-requests`, {
         method: 'POST',
         headers: {
-          'X-Business-API-Key': this.apiKey,
+          'meowmeowmeow': this.apiKey,
           'X-Requested-With': 'XMLHttpRequest',
           'Content-Type': 'application/x-www-form-urlencoded'
         },
