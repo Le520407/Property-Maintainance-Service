@@ -17,16 +17,10 @@ const MembershipSuccess = () => {
     const paymentId = searchParams.get('payment_id');
     const recurringBillingId = searchParams.get('recurring_billing_id');
     const status = searchParams.get('status');
-    const demo = searchParams.get('demo') === 'true';
 
     if (status === 'completed' && paymentId) {
-      // For demo mode, trigger backend simulation to flip membership ACTIVE
-      if (demo && recurringBillingId) {
-        simulateDemoRecurring(recurringBillingId).finally(fetchMembershipData);
-      } else {
-        // Payment was successful, fetch updated membership data
-        fetchMembershipData();
-      }
+      // Payment was successful, fetch updated membership data
+      fetchMembershipData();
     } else if (status === 'failed' || status === 'cancelled') {
       setError('Payment was not completed. Please try again.');
       setLoading(false);
@@ -35,17 +29,6 @@ const MembershipSuccess = () => {
       fetchMembershipData();
     }
   }, [searchParams]);
-
-  const simulateDemoRecurring = async (recurringBillingId) => {
-    try {
-      await api.post('/hitpay/simulate/recurring', {
-        recurring_billing_id: recurringBillingId,
-        status: 'completed',
-      });
-    } catch (e) {
-      console.warn('Demo simulate recurring failed:', e);
-    }
-  };
 
   const fetchMembershipData = async () => {
     try {
