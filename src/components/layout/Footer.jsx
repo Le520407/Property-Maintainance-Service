@@ -1,16 +1,17 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  Facebook, 
-  Twitter, 
-  Instagram, 
-  Linkedin, 
-  Phone, 
-  Mail, 
-  MapPin,
+import {
+  ArrowRight,
   Clock,
-  ArrowRight
+  Facebook,
+  Instagram,
+  Linkedin,
+  Mail,
+  MapPin,
+  Phone,
+  Twitter
 } from 'lucide-react';
+
+import { Link } from 'react-router-dom';
+import React from 'react';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -54,11 +55,11 @@ const Footer = () => {
               </div>
               <div>
                 <h3 className="text-xl font-bold">Swift Fix Pro</h3>
-                <p className="text-sm text-gray-400">Property Management Experts</p>
+                <p className="text-sm text-gray-400">Property Maintenance</p>
               </div>
             </div>
             <p className="text-gray-400 mb-6">
-              We are committed to providing you with the highest quality property management services, making your property maintenance simple and efficient.
+              We are committed to providing you with the highest quality property maintenance services, making your property maintenance simple and efficient.
             </p>
             
             {/* Contact Info */}
@@ -77,7 +78,7 @@ const Footer = () => {
               </div>
               <div className="flex items-center space-x-3">
                 <Clock size={16} className="text-orange-400" />
-                <span className="text-sm">Monday to Sunday 8:00 - 20:00</span>
+                <span className="text-sm">Everyday 8:00 - 20:00</span>
               </div>
             </div>
           </div>
