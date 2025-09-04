@@ -19,7 +19,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
 
-const CustomerRegisterPage = () => {
+const CustomerRegisterPage = ({ embedded = false }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,27 +111,16 @@ const CustomerRegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4">
+    <div className={embedded ? "" : "min-h-screen bg-gray-50 py-12"}>
+      <div className={embedded ? "" : "container mx-auto px-4"}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="max-w-4xl mx-auto"
+          className={embedded ? "" : "max-w-4xl mx-auto"}
         >
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="flex justify-center mb-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center shadow-lg">
-                <Home className="text-white" size={40} />
-              </div>
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Customer Registration
-            </h1>
-            <p className="text-gray-600">
-              Join Swift Fix Pro to book quality maintenance services for your property
-            </p>
           </div>
 
           {/* Customer Benefits Section */}

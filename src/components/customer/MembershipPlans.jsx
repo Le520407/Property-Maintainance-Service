@@ -255,44 +255,78 @@ const MembershipPlans = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-orange-600 via-orange-700 to-red-600 text-white py-20">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <h1 className="text-6xl font-bold mb-6">
-              Choose Your
-              <span className="block bg-gradient-to-r from-yellow-300 to-yellow-400 bg-clip-text text-transparent mt-2">
-                Perfect Plan
+    <div className="min-h-screen">
+      {/* Hero Section - Orange Modern Style */}
+      <section className="relative overflow-hidden">
+        {/* Background with geometric patterns */}
+        <div className="absolute inset-0 bg-orange-600">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700"></div>
+          {/* Geometric shapes */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500 rounded-full opacity-20 transform translate-x-32 -translate-y-32"></div>
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-orange-700 rounded-full opacity-30 transform -translate-x-24 translate-y-24"></div>
+          <div className="absolute top-1/2 left-1/4 w-64 h-64 bg-white opacity-5 rounded-full"></div>
+          <div className="absolute top-1/4 right-1/3 w-48 h-48 bg-orange-400 rounded-full opacity-10 transform rotate-45"></div>
+        </div>
+        
+        <div className="relative container mx-auto px-4 py-24">
+          <div className="max-w-4xl mx-auto text-center text-white">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6 }}
+              className="mb-6"
+            >
+              <span className="inline-block px-4 py-2 bg-orange-500 bg-opacity-30 rounded-full text-orange-100 text-sm font-medium mb-4 backdrop-blur-sm">
+                Premium Membership Plans
               </span>
-            </h1>
-            <p className="text-xl text-orange-100 max-w-4xl mx-auto leading-relaxed mb-8">
+            </motion.div>
+            
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+              className="text-4xl md:text-6xl font-bold mb-6 leading-tight"
+            >
+              Choose Your
+              <span className="block text-orange-200">Perfect Plan</span>
+            </motion.h1>
+            
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="text-xl text-orange-100 max-w-3xl mx-auto mb-10 leading-relaxed"
+            >
               Experience premium property maintenance with our tailored membership plans. 
               From HDB units to commercial spaces, we've got you covered with professional service and unmatched reliability.
-            </p>
-            <div className="flex justify-center space-x-8 text-sm">
+            </motion.p>
+            
+            {/* Features list */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.6 }}
+              className="flex flex-wrap justify-center gap-6 text-orange-100"
+            >
               <div className="flex items-center">
-                <CheckCircle className="h-5 w-5 text-green-300 mr-2" />
+                <CheckCircle className="w-5 h-5 mr-2 text-orange-200" />
                 <span>24/7 Emergency Support</span>
               </div>
               <div className="flex items-center">
-                <CheckCircle className="h-5 w-5 text-green-300 mr-2" />
+                <CheckCircle className="w-5 h-5 mr-2 text-orange-200" />
                 <span>Licensed Professionals</span>
               </div>
               <div className="flex items-center">
-                <CheckCircle className="h-5 w-5 text-green-300 mr-2" />
+                <CheckCircle className="w-5 h-5 mr-2 text-orange-200" />
                 <span>Quality Guarantee</span>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="max-w-7xl mx-auto px-4 -mt-12 relative">
+      <div className="bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 -mt-12 relative">
         {/* Current Membership Status */}
         {currentMembership && (
           <motion.div
@@ -378,198 +412,279 @@ const MembershipPlans = () => {
           </div>
         </div>
 
-        {/* Membership Plans */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 pb-20">
+        {/* Membership Plans Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
           {tiers.map((tier, index) => {
-            const color = getTierColor(tier.name);
-            const gradient = getTierGradient(tier.name);
             const isCurrentPlan = currentMembership?.tier._id === tier._id;
-            console.log(`Tier: ${tier.displayName}, Current: ${currentMembership?.tier._id}, Comparing: ${tier._id}, Match: ${isCurrentPlan}`);
-            const isPopular = false; // Removed popular badge
-
+            const isPopular = index === 1; // Make middle plan popular
+            const price = formatPrice(tier.monthlyPrice);
+            
             return (
-              <motion.div
+              <div
                 key={tier._id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -12, transition: { duration: 0.3 } }}
-                className={`relative bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 p-8 border-2 overflow-hidden ${
-                  isPopular ? 'border-orange-500 ring-4 ring-orange-100 scale-105' : 'border-gray-200 hover:border-gray-300'
-                } ${isCurrentPlan ? 'ring-4 ring-green-100 border-green-500' : ''}`}
+                className={`relative bg-white rounded-2xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl ${
+                  isPopular 
+                    ? 'border-orange-500 transform scale-105' 
+                    : 'border-gray-200 hover:border-orange-300'
+                } ${selectedTier?._id === tier._id ? 'ring-4 ring-orange-200' : ''}`}
               >
-                {/* Background decoration */}
-                <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${gradient} opacity-10 rounded-full -mr-12 -mt-12`}></div>
-                
+                {/* Popular Badge */}
                 {isPopular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
-                    <span className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-5 py-2 rounded-full text-sm font-bold shadow-xl">
-                      🔥 Most Popular
-                    </span>
-                  </div>
-                )}
-                
-                {isCurrentPlan && (
-                  <div className="absolute top-4 right-4 z-10">
-                    <span className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg">
-                      ✓ Active Plan
-                    </span>
-                  </div>
-                )}
-
-                <div className={`text-center mb-8 relative z-10 ${isCurrentPlan ? 'pt-12' : 'pt-4'}`}>
-                  <div className={`inline-flex p-4 rounded-2xl bg-gradient-to-br ${gradient} mb-6 shadow-lg`}>
-                    <div className="text-white">
-                      {getTierIcon(tier.name)}
+                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <div className="bg-orange-500 text-white px-4 py-1 rounded-full text-sm font-semibold flex items-center">
+                      <Star className="w-4 h-4 mr-1" />
+                      Most Popular
                     </div>
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-3">{tier.displayName}</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">{tier.description}</p>
-                </div>
+                )}
 
-                <div className="text-center mb-8">
-                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 mb-4">
-                    <div className="text-4xl font-bold text-gray-900 mb-2">
-                      <span className={`text-${color}-600`}>${formatPrice(tier.monthlyPrice)}</span>
-                      <span className="text-lg font-normal text-gray-500">
-                        /{billingCycle === 'YEARLY' ? 'year' : 'month'}
-                      </span>
+                {/* Current Plan Badge */}
+                {isCurrentPlan && (
+                  <div className="absolute -top-4 right-4">
+                    <div className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                      Current Plan
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-8 flex flex-col h-full">
+                  {/* Plan Icon */}
+                  <div className="text-center mb-6">
+                    <div className={`inline-flex p-4 rounded-2xl mb-4 ${
+                      isPopular ? 'bg-orange-500' : 'bg-gray-100'
+                    }`}>
+                      <div className={`text-2xl ${isPopular ? 'text-white' : 'text-gray-600'}`}>
+                        {getTierIcon(tier.name)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Plan Name */}
+                  <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                    {tier.displayName}
+                  </h3>
+
+                  {/* Plan Description */}
+                  <p className="text-gray-600 text-center mb-6 min-h-[3rem] flex items-center justify-center">
+                    {tier.description}
+                  </p>
+
+                  {/* Price */}
+                  <div className="text-center mb-8">
+                    <div className="text-4xl font-bold text-gray-900 mb-1">
+                      {tier.monthlyPrice === 0 ? 'FREE' : `$${price}`}
+                      {tier.monthlyPrice > 0 && (
+                        <span className="text-lg font-normal text-gray-500">
+                          /{billingCycle === 'YEARLY' ? 'year' : 'month'}
+                        </span>
+                      )}
                     </div>
                     {billingCycle === 'YEARLY' && tier.monthlyPrice > 0 && (
-                      <div className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-semibold inline-block">
-                        💰 Save ${(tier.monthlyPrice * 2).toFixed(2)}/year
+                      <div className="text-sm text-orange-600 font-medium">
+                        Save ${(tier.monthlyPrice * 2).toFixed(2)}/year
                       </div>
                     )}
                   </div>
-                </div>
 
-                <div className="space-y-4 mb-8">
-                  <div className="flex items-center text-sm bg-green-50 rounded-xl p-3">
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
-                    <span className="font-medium">
-                      {tier.features.serviceRequestsPerMonth === -1 
-                        ? 'Unlimited' 
-                        : tier.features.serviceRequestsPerMonth
-                      } service requests/month
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center text-sm bg-blue-50 rounded-xl p-3">
-                    <Clock className="h-5 w-5 text-blue-500 mr-3 flex-shrink-0" />
-                    <span className="font-medium">{tier.features.responseTimeHours}h response time</span>
-                  </div>
-
-                  {tier.features.materialDiscountPercent > 0 && (
-                    <div className="flex items-center text-sm bg-purple-50 rounded-xl p-3">
-                      <CreditCard className="h-5 w-5 text-purple-500 mr-3 flex-shrink-0" />
-                      <span className="font-medium">{tier.features.materialDiscountPercent}% discount on materials</span>
-                    </div>
-                  )}
-
-                  {tier.features.annualInspections > 0 && (
-                    <div className="flex items-center text-sm bg-indigo-50 rounded-xl p-3">
-                      <Shield className="h-5 w-5 text-indigo-500 mr-3 flex-shrink-0" />
-                      <span className="font-medium">
-                        {tier.features.annualInspections === 1 
-                          ? 'Annual inspection' 
-                          : `${tier.features.annualInspections} inspections/year`
-                        }
+                  {/* Features List */}
+                  <div className="space-y-4 mb-8 flex-grow">
+                    <div className="flex items-center">
+                      <CheckCircle className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+                      <span className="text-gray-700">
+                        {tier.features.serviceRequestsPerMonth === -1 
+                          ? 'Unlimited service requests' 
+                          : `Up to ${tier.features.serviceRequestsPerMonth} service requests`}
                       </span>
                     </div>
-                  )}
 
-                  {tier.features.emergencyService && (
-                    <div className="flex items-center text-sm bg-yellow-50 rounded-xl p-3">
-                      <Zap className="h-5 w-5 text-yellow-500 mr-3 flex-shrink-0" />
-                      <span className="font-medium">Emergency same-day service</span>
+                    <div className="flex items-center">
+                      <Clock className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+                      <span className="text-gray-700">
+                        {tier.features.responseTimeHours}h response time
+                      </span>
                     </div>
-                  )}
 
-                  {tier.features.prioritySupport && (
-                    <div className="flex items-center text-sm bg-pink-50 rounded-xl p-3">
-                      <Star className="h-5 w-5 text-pink-500 mr-3 flex-shrink-0" />
-                      <span className="font-medium">Priority customer support</span>
-                    </div>
-                  )}
+                    {tier.features.materialDiscountPercent > 0 ? (
+                      <div className="flex items-center">
+                        <CreditCard className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+                        <span className="text-gray-700">
+                          {tier.features.materialDiscountPercent}% material discount
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+                        <span className="text-gray-500">No material discount</span>
+                      </div>
+                    )}
 
-                  {tier.features.dedicatedManager && (
-                    <div className="flex items-center text-sm bg-rose-50 rounded-xl p-3">
-                      <Users className="h-5 w-5 text-rose-500 mr-3 flex-shrink-0" />
-                      <span className="font-medium">Dedicated account manager</span>
-                    </div>
-                  )}
+                    {tier.features.annualInspections > 0 ? (
+                      <div className="flex items-center">
+                        <Shield className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+                        <span className="text-gray-700">
+                          {tier.features.annualInspections === 1 ? 'Annual inspection' : `${tier.features.annualInspections} inspections/year`}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+                        <span className="text-gray-500">No inspections</span>
+                      </div>
+                    )}
+
+                    {tier.features.emergencyService ? (
+                      <div className="flex items-center">
+                        <Zap className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+                        <span className="text-gray-700">Emergency service</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+                        <span className="text-gray-500">No emergency service</span>
+                      </div>
+                    )}
+
+                    {tier.features.prioritySupport ? (
+                      <div className="flex items-center">
+                        <Star className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+                        <span className="text-gray-700">Priority support</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+                        <span className="text-gray-500">Standard support</span>
+                      </div>
+                    )}
+
+                    {tier.features.dedicatedManager ? (
+                      <div className="flex items-center">
+                        <Users className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+                        <span className="text-gray-700">Dedicated manager</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+                        <span className="text-gray-500">No dedicated manager</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Button */}
+                  <div className="mt-auto">
+                    <button
+                      onClick={() => {
+                        if (isCurrentPlan) {
+                          toast('You are already subscribed to this plan');
+                          return;
+                        }
+                        if (currentMembership && currentMembership.status === 'CANCELLED') {
+                          toast.error('Cannot upgrade cancelled membership');
+                          return;
+                        }
+                        setSelectedTier(tier);
+                        handleSubscribe(tier);
+                      }}
+                      disabled={isCurrentPlan || subscribing || (currentMembership && currentMembership.status === 'CANCELLED')}
+                      className={`w-full py-3 px-6 rounded-xl font-semibold text-lg transition-all duration-300 ${
+                        isCurrentPlan
+                          ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                          : subscribing && selectedTier?._id === tier._id
+                          ? 'bg-orange-500 text-white cursor-wait'
+                          : isPopular
+                          ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-lg hover:shadow-xl transform hover:scale-105'
+                          : 'bg-white text-orange-500 border-2 border-orange-500 hover:bg-orange-500 hover:text-white shadow-lg hover:shadow-xl'
+                      }`}
+                    >
+                      {isCurrentPlan ? (
+                        'Current Plan'
+                      ) : subscribing && selectedTier?._id === tier._id ? (
+                        <div className="flex items-center justify-center">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Processing...
+                        </div>
+                      ) : tier.monthlyPrice === 0 ? (
+                        'Start Free'
+                      ) : (
+                        'Get Started'
+                      )}
+                    </button>
+                  </div>
                 </div>
-
-                <button
-                  onClick={() => {
-                    if (isCurrentPlan) return;
-                    if (currentMembership && currentMembership.status === 'CANCELLED') return;
-                    handleSubscribe(tier); // Direct HitPay integration - no modal needed
-                  }}
-                  disabled={isCurrentPlan || subscribing || (currentMembership && currentMembership.status === 'CANCELLED')}
-                  className={`w-full py-4 px-6 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-105 ${
-                    isCurrentPlan
-                      ? 'bg-green-100 text-green-600 cursor-not-allowed border-2 border-green-200'
-                      : (currentMembership && currentMembership.status === 'CANCELLED')
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-2 border-gray-200'
-                      : isPopular
-                      ? 'bg-gradient-to-r from-orange-600 to-orange-700 text-white hover:from-orange-700 hover:to-orange-800 shadow-lg hover:shadow-xl'
-                      : `bg-gradient-to-r ${gradient} text-white hover:shadow-xl`
-                  } ${subscribing ? 'opacity-75 cursor-wait' : ''}`}
-                >
-                  {subscribing ? (
-                    <div className="flex items-center justify-center">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Redirecting to HitPay...
-                    </div>
-                  ) : isCurrentPlan ? (
-                    '✓ Current Plan'
-                  ) : currentMembership && currentMembership.status === 'CANCELLED' ? (
-                    'Plan Cancelled'
-                  ) : currentMembership ? (
-                    <>
-                      <CreditCard className="h-5 w-5 mr-2 inline" />
-                      Upgrade & Pay with HitPay
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="h-5 w-5 mr-2 inline" />
-                      Subscribe & Pay with HitPay
-                    </>
-                  )}
-                </button>
-              </motion.div>
+              </div>
             );
           })}
         </div>
 
-        {/* Trust Indicators */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="text-center py-16 border-t border-gray-200"
-        >
-          <h3 className="text-2xl font-bold text-gray-900 mb-8">Trusted by Singapore Homeowners</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600 mb-2">1000+</div>
-              <div className="text-gray-600">Happy Customers</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600 mb-2">24/7</div>
-              <div className="text-gray-600">Emergency Support</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600 mb-2">5-Star</div>
-              <div className="text-gray-600">Average Rating</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600 mb-2">100%</div>
-              <div className="text-gray-600">Licensed Professionals</div>
+        {/* Trust Indicators - Stats Section */}
+        <section className="py-16 bg-white mb-20">
+          <div className="container mx-auto px-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="text-center mb-12"
+            >
+              <h3 className="text-3xl font-bold text-gray-900 mb-4">Trusted by Singapore Homeowners</h3>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Join thousands of satisfied customers who trust us with their property maintenance needs.
+              </p>
+            </motion.div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="text-center"
+              >
+                <div className="mb-4 flex justify-center">
+                  <Users className="w-8 h-8 text-orange-600" />
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">1000+</div>
+                <div className="text-gray-600">Happy Customers</div>
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="text-center"
+              >
+                <div className="mb-4 flex justify-center">
+                  <Clock className="w-8 h-8 text-orange-600" />
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">24/7</div>
+                <div className="text-gray-600">Emergency Support</div>
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="text-center"
+              >
+                <div className="mb-4 flex justify-center">
+                  <Star className="w-8 h-8 text-orange-600" />
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">5-Star</div>
+                <div className="text-gray-600">Average Rating</div>
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="text-center"
+              >
+                <div className="mb-4 flex justify-center">
+                  <Shield className="w-8 h-8 text-orange-600" />
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-2">100%</div>
+                <div className="text-gray-600">Licensed Professionals</div>
+              </motion.div>
             </div>
           </div>
-        </motion.div>
+        </section>
 
         {/* Payment Modal */}
         {showPaymentModal && selectedTier && (
@@ -585,6 +700,7 @@ const MembershipPlans = () => {
             isUpgrade={currentMembership && currentMembership.status === 'ACTIVE'}
           />
         )}
+        </div>
       </div>
     </div>
   );

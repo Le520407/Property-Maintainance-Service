@@ -103,14 +103,14 @@ const AllInOneRegisterPage = () => {
     
     setIsValidatingCode(true);
     try {
-      const response = await api.post('/api/invite-codes/validate', { code });
-      if (response.data.success) {
+      const response = await api.post('/invite-codes/validate', { code });
+      if (response.success) {
         setCodeValidated(true);
         toast.success('Valid invite code!');
       }
     } catch (error) {
       setCodeValidated(false);
-      toast.error(error.response?.data?.message || 'Invalid invite code');
+      toast.error(error.message || 'Invalid invite code');
     } finally {
       setIsValidatingCode(false);
     }
@@ -149,7 +149,7 @@ const AllInOneRegisterPage = () => {
         if (data.referralCode) {
           customerData.referralCode = data.referralCode;
         }
-        response = await api.post('/api/auth/register', customerData);
+        response = await api.post('/auth/register', customerData);
         
       } else if (accountType === 'vendor') {
         const vendorData = {
@@ -182,7 +182,7 @@ const AllInOneRegisterPage = () => {
           country: data.country,
           inviteCode: data.inviteCode
         };
-        response = await api.post('/api/auth/register-agent', agentData);
+        response = await api.post('/auth/register-agent', agentData);
       }
 
       if (response?.data?.token || response?.token) {

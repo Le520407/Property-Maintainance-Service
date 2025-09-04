@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import { User, Mail, Lock, Eye, EyeOff, Gift, CheckCircle, Shield, Award, TrendingUp } from 'lucide-react';
 import { api } from '../../services/api';
 
-const AgentRegisterPage = () => {
+const AgentRegisterPage = ({ embedded = false }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -33,14 +33,14 @@ const AgentRegisterPage = () => {
     
     setIsValidatingCode(true);
     try {
-      const response = await api.post('/api/invite-codes/validate', { code });
-      if (response.data.success) {
+      const response = await api.post('/invite-codes/validate', { code });
+      if (response.success) {
         setCodeValidated(true);
         toast.success('Valid invite code!');
       }
     } catch (error) {
       setCodeValidated(false);
-      toast.error(error.response?.data?.message || 'Invalid invite code');
+      toast.error(error.message || 'Invalid invite code');
     } finally {
       setIsValidatingCode(false);
     }
@@ -80,20 +80,25 @@ const AgentRegisterPage = () => {
       return;
     }
 
+    if (!data.inviteCode) {
+      toast.error('Invite code is required');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const response = await api.post('/auth/register', {
+      const response = await api.post('/auth/register-agent', {
         ...data,
         role: 'referral'
       });
 
-      if (response.data.success) {
+      if (response.token) {
         toast.success('Agent registration successful! Please verify your email.');
         navigate('/login');
       }
     } catch (error) {
       console.error('Registration error:', error);
-      const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
+      const errorMessage = error.message || 'Registration failed. Please try again.';
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -101,23 +106,16 @@ const AgentRegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4">
+    <div className={embedded ? "" : "min-h-screen bg-gray-50 py-12"}>
+      <div className={embedded ? "" : "container mx-auto px-4"}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="max-w-4xl mx-auto"
+          className={embedded ? "" : "max-w-4xl mx-auto"}
         >
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="flex justify-center mb-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center shadow-lg">
-                <Award className="text-white" size={40} />
-              </div>
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900">Agent Registration</h2>
-            <p className="mt-2 text-gray-600">Join our exclusive referral agent program</p>
           </div>
 
           {/* Agent Benefits Section */}

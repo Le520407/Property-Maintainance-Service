@@ -16,6 +16,7 @@ import LoginPage from './pages/auth/LoginPage.jsx';
 import CustomerRegisterPage from './pages/auth/CustomerRegisterPage.jsx';
 import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
 import AgentRegisterPage from './pages/auth/AgentRegisterPage.jsx';
+import RegisterSelectionPage from './pages/auth/RegisterSelectionPage.jsx';
 import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
 import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
@@ -139,9 +140,12 @@ function App() {
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/login" element={<LoginPage />} />
-                      <Route path="/register" element={<CustomerRegisterPage />} />
+                      <Route path="/register-selection" element={<RegisterSelectionPage />} />
+                      <Route path="/customer-register" element={<CustomerRegisterPage />} />
                       <Route path="/vendor-register" element={<VendorRegisterPage />} />
                       <Route path="/agent-register" element={<AgentRegisterPage />} />
+                      {/* Legacy route redirects */}
+                      <Route path="/register" element={<CustomerRegisterPage />} />
                       <Route path="/booking" element={<BookingPage />} />
                       <Route path="/order-request" element={
                         <ProtectedRoute>
