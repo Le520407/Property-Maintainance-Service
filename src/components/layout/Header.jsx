@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { ShoppingCart, User, Menu, X, Gift, MessageCircle } from 'lucide-react';
-import { api } from '../../services/api';
+import { cachedApi } from '../../utils/globalCache';
 
 // Global function to clear messages visited flag (can be called from anywhere)
 export const clearMessagesVisitedFlag = (userId) => {
@@ -71,7 +71,7 @@ const Header = () => {
   // Cache for API responses
   const [lastFetchTime, setLastFetchTime] = useState(0);
   const [cachedUnreadCount, setCachedUnreadCount] = useState(0);
-  const CACHE_DURATION = 60000; // 1 minute cache
+  const CACHE_DURATION = 300000; // 5 minute cache to reduce API calls
   
   // Fetch unread messages count with caching
   const fetchUnreadCount = useCallback(async (forceRefresh = false) => {
@@ -101,14 +101,10 @@ const Header = () => {
 
     try {
       console.log('📡 Fetching unread count from API...');
-      let response;
-      if (user.role === 'admin') {
-        response = await api.get('/messages/support/conversations');
-        console.log('👑 Admin response:', response);
-      } else {
-        response = await api.messages.getConversations();
-        console.log('👤 User response:', response);
-      }
+      
+      // Use cached API call to prevent excessive requests
+      const response = await cachedApi.getConversations(user.id, user.role, forceRefresh);
+      console.log(`${user.role === 'admin' ? '👑 Admin' : '👤 User'} response:`, response);
       
       const conversations = response.conversations || [];
       const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
@@ -125,6 +121,16 @@ const Header = () => {
       
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
+      
+      // Handle rate limiting specifically
+      if (error.response?.status === 429) {
+        console.warn('⚠️ Rate limited - using cached value if available');
+        if (cachedUnreadCount !== null) {
+          setUnreadCount(cachedUnreadCount);
+        }
+        return;
+      }
+      
       // Use cached data on error if available
       if (cachedUnreadCount > 0) {
         setUnreadCount(cachedUnreadCount);
@@ -153,19 +159,21 @@ const Header = () => {
     clearMessagesVisitedFlag(user.id);
     fetchUnreadCount(true); // Force refresh on mount
 
-    // Reduced frequency: every 2 minutes instead of 30 seconds
+    // Increased frequency: every 5 minutes instead of 2 minutes to reduce server load
     const interval = setInterval(() => {
       // Only fetch if page is visible to reduce server load
       if (!document.hidden) {
         fetchUnreadCount();
       }
-    }, 120000); // 2 minutes
+    }, 300000); // 5 minutes
 
     // Listen for page visibility changes
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        // Page became visible, fetch fresh data
-        fetchUnreadCount(true); // Force refresh
+        // Page became visible, fetch fresh data with debounce
+        setTimeout(() => {
+          fetchUnreadCount(true); // Force refresh after short delay
+        }, 1000);
       }
     };
 
@@ -200,7 +208,7 @@ const Header = () => {
             <img 
               src="/logo.png" 
               alt="Swift Fix Pro" 
-              className="h-16 w-auto"
+              className="h-16 w-auto border-0"
             />
           </Link>
 

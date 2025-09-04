@@ -8,7 +8,7 @@ import MembershipSuccess from '../pages/MembershipSuccess';
 import JobCreate from '../pages/customer/JobCreate';
 import JobList from '../pages/customer/JobList';
 import JobDetail from '../pages/customer/JobDetail';
-import Profile from '../pages/customer/Profile';
+import CustomerProfile from '../pages/customer/CustomerProfile';
 
 const CustomerRoutes = () => {
   return (
@@ -30,7 +30,7 @@ const CustomerRoutes = () => {
         <Route path="/membership/success" element={<MembershipSuccess />} />
         
         {/* Profile */}
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile" element={<CustomerProfile />} />
         
         {/* Redirect any other routes to dashboard */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

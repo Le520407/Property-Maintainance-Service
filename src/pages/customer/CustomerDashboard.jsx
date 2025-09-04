@@ -12,8 +12,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
-import MembershipWidget from '../customer/MembershipWidget';
-import toast from 'react-hot-toast';
+import MembershipCard from '../customer/MembershipCard';
 
 const CustomerDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
@@ -29,6 +28,7 @@ const CustomerDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchDashboardData = async () => {
@@ -284,8 +284,8 @@ const CustomerDashboard = () => {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Membership Widget */}
-          <MembershipWidget />
+          {/* Membership Card */}
+          <MembershipCard />
 
           {/* Quick Actions */}
           <motion.div

@@ -16,6 +16,7 @@ import {
   BellOff
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { getCachedConversations } from '../../utils/apiCache';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 

@@ -17,10 +17,13 @@ import React, { useEffect, useState } from 'react';
 
 import TempPaymentMethodModal from './TempPaymentMethodModal';
 import { api } from '../../services/api';
+import { cachedApi } from '../../utils/globalCache';
+import { useAuth } from '../../contexts/AuthContext';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 const MembershipPlans = () => {
+  const { user } = useAuth();
   const [tiers, setTiers] = useState([]);
   const [currentMembership, setCurrentMembership] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -31,15 +34,17 @@ const MembershipPlans = () => {
 
   useEffect(() => {
     fetchMembershipData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchMembershipData = async () => {
+    if (!user) return;
+    
     try {
       const [tiersResponse, membershipResponse] = await Promise.all([
-        api.get('/membership/tiers'),
-        api.get('/membership/my-membership')
+        cachedApi.getMembershipTiers(),
+        cachedApi.getMembership(user.id)
       ]);
-
 
       console.log('Tiers:', tiersResponse.tiers);
       console.log('Current Membership:', membershipResponse.membership);
