@@ -50,7 +50,6 @@ class MembershipController {
       }
 
       const analytics = await membershipService.getMembershipAnalytics(userId);
-
       res.json({
         success: true,
         membership,
@@ -248,7 +247,7 @@ class MembershipController {
       }
 
       const userId = req.user._id;
-      const { tierId, billingCycle = 'MONTHLY', paymentMethodId } = req.body;
+      const { tierId, billingCycle = 'MONTHLY' } = req.body;
 
       console.log('Creating one-time membership payment:', { userId, tierId, billingCycle });
 
@@ -283,7 +282,7 @@ class MembershipController {
         email: req.user.email,
         redirect_url: `${process.env.FRONTEND_URL}/membership/success`,
         reference_number: `membership_${userId}_${tierId}_${Date.now()}`,
-        webhook: process.env.WEBHOOK_URL || 'https://ttytyd.com',
+        webhook: process.env.WEBHOOK_URL || 'https://swiftfixpay.com',
         name: req.user.fullName || `${req.user.firstName} ${req.user.lastName}`,
         purpose: `${selectedTier.displayName} Membership - ${billingCycle}`,
         send_email: true

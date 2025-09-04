@@ -4,13 +4,14 @@ import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { 
   Eye, EyeOff, Mail, Lock, User, Phone, MapPin, CheckCircle, Gift, 
-  Users, Briefcase, Award, Shield, Settings, Copy
+  Users, Briefcase, Award, Shield
 } from 'lucide-react';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const UnifiedRegisterPage = () => {
-  const [accountType, setAccountType] = useState('customer');
+  const [accountType, setAccountType] = useState('customer'); // Always customer for this page
+  const [currentStep, setCurrentStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -77,6 +78,56 @@ const UnifiedRegisterPage = () => {
     }
   ];
 
+  // Customer steps definition
+  const customerSteps = [
+    { number: 1, title: 'Personal Information' },
+    { number: 2, title: 'Contact Details' },
+    { number: 3, title: 'Account Security' }
+  ];
+
+  // Step navigation functions
+  const nextStep = () => {
+    const maxSteps = accountType === 'customer' ? 3 : 1;
+    if (currentStep < maxSteps) {
+      // Basic validation for each customer step
+      if (accountType === 'customer') {
+        const currentStepData = watch();
+        
+        if (currentStep === 1) {
+          if (!currentStepData.firstName || !currentStepData.lastName) {
+            toast.error('Please fill in all required fields in this step');
+            return;
+          }
+        }
+        
+        if (currentStep === 2) {
+          if (!currentStepData.email || !currentStepData.phone || !currentStepData.address) {
+            toast.error('Please fill in all required contact details');
+            return;
+          }
+        }
+      }
+      
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  // Reset form and step when account type changes
+  useEffect(() => {
+    reset();
+    setCurrentStep(1);
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      setValue('referralCode', refCode.toUpperCase());
+    }
+  }, [accountType, reset, setValue, searchParams]);
+
   // Validate invite code for agents
   const validateInviteCode = async (code) => {
     if (!code || code.length < 6) return;
@@ -97,53 +148,23 @@ const UnifiedRegisterPage = () => {
   };
 
   const onSubmit = async (data) => {
-    // Validate agent invite code
-    if (accountType === 'referral' && !codeValidated) {
-      toast.error('Please validate your invite code first');
-      return;
-    }
-
     setIsLoading(true);
     try {
-      let endpoint;
-      let payload = {
+      const payload = {
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
         password: data.password,
         phone: data.phone,
         address: data.address,
-        city: data.city,
-        country: data.country
+        role: 'customer'
       };
 
-      // Route to appropriate registration endpoint
-      switch (accountType) {
-        case 'customer':
-          endpoint = '/auth/register';
-          payload.role = 'customer';
-          if (data.referralCode) {
-            payload.referralCode = data.referralCode;
-          }
-          break;
-        
-        case 'vendor':
-          endpoint = '/auth/register-technician';
-          payload.skills = data.skills ? data.skills.split(',').map(s => s.trim()) : [];
-          payload.experience = parseInt(data.experience) || 0;
-          payload.hourlyRate = parseFloat(data.hourlyRate) || 0;
-          break;
-        
-        case 'referral':
-          endpoint = '/auth/register-agent';
-          payload.inviteCode = data.inviteCode;
-          break;
-        
-        default:
-          throw new Error('Invalid account type');
+      if (data.referralCode) {
+        payload.referralCode = data.referralCode;
       }
 
-      const response = await api.post(endpoint, payload);
+      const response = await api.post('/auth/register', payload);
 
       if (response.token) {
         localStorage.setItem('token', response.token);
@@ -177,81 +198,280 @@ const UnifiedRegisterPage = () => {
   const selectedType = accountTypes.find(type => type.id === accountType);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-lg w-full space-y-8">
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-4xl mx-auto"
         >
           {/* Header */}
-          <div className="text-center">
-            <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 bg-orange-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-2xl">S</span>
-              </div>
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h2>
-            <p className="text-gray-600">Choose your account type and join Swift Fix Pro</p>
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Customer Registration
+            </h1>
+            <p className="text-gray-600">
+              Join Swift Fix Pro to book quality maintenance services
+            </p>
           </div>
 
-          {/* Account Type Selection */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Account Type</h3>
-            <div className="space-y-3">
-              {accountTypes.map((type) => (
-                <div
-                  key={type.id}
-                  onClick={() => setAccountType(type.id)}
-                  className={`relative p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                    accountType === type.id
-                      ? `${type.borderColor} ${type.bgColor}`
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <type.icon className={`w-6 h-6 ${type.color} mr-3`} />
-                    <div className="flex-1">
-                      <div className="flex items-center">
-                        <h4 className="font-medium text-gray-900">{type.name}</h4>
-                        {type.badge && (
-                          <span className="ml-2 px-2 py-0.5 text-xs font-semibold text-purple-700 bg-purple-100 rounded-full">
-                            {type.badge}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600">{type.description}</p>
-                    </div>
-                    <div className={`w-4 h-4 rounded-full border-2 ${
-                      accountType === type.id
-                        ? `${type.color.replace('text', 'bg')} border-transparent`
-                        : 'border-gray-300'
-                    }`}>
-                      {accountType === type.id && (
-                        <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
-                      )}
-                    </div>
+          {/* Progress Steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              {customerSteps.map((step, index) => (
+                <div key={step.number} className="flex items-center">
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                    currentStep >= step.number 
+                      ? 'bg-orange-600 border-orange-600 text-white' 
+                      : 'border-gray-300 text-gray-500'
+                  }`}>
+                    {currentStep > step.number ? (
+                      <CheckCircle size={20} />
+                    ) : (
+                      <span className="text-sm font-medium">{step.number}</span>
+                    )}
                   </div>
+                  <span className={`ml-2 text-sm font-medium ${
+                    currentStep >= step.number ? 'text-orange-600' : 'text-gray-500'
+                  }`}>
+                    {step.title}
+                  </span>
+                  {index < customerSteps.length - 1 && (
+                    <div className={`w-16 h-0.5 mx-4 ${
+                      currentStep > step.number ? 'bg-orange-600' : 'bg-gray-300'
+                    }`} />
+                  )}
                 </div>
               ))}
             </div>
           </div>
 
           {/* Registration Form */}
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <div className="flex items-center mb-6">
-              <selectedType.icon className={`w-5 h-5 ${selectedType.color} mr-2`} />
-              <h3 className="text-lg font-semibold text-gray-900">
-                {selectedType.name} Registration
-              </h3>
-              {selectedType.badge && (
-                <span className="ml-2 px-2 py-0.5 text-xs font-semibold text-purple-700 bg-purple-100 rounded-full">
-                  {selectedType.badge}
-                </span>
-              )}
-            </div>
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+              {/* Step 1: Personal Information */}
+              {currentStep === 1 && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                    <User className="mr-2" />
+                    Personal Information
+                  </h2>
+                      
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            First Name *
+                          </label>
+                          <input
+                            type="text"
+                            {...register('firstName', { required: 'First name is required' })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="Enter your first name"
+                          />
+                          {errors.firstName && (
+                            <p className="text-red-500 text-sm mt-1">{errors.firstName.message}</p>
+                          )}
+                        </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Last Name *
+                          </label>
+                          <input
+                            type="text"
+                            {...register('lastName', { required: 'Last name is required' })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="Enter your last name"
+                          />
+                          {errors.lastName && (
+                            <p className="text-red-500 text-sm mt-1">{errors.lastName.message}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Referral Code */}
+                      <div className="mt-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Referral Code (Optional)
+                        </label>
+                        <input
+                          {...register('referralCode')}
+                          type="text"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="Enter referral code (optional)"
+                          style={{ textTransform: 'uppercase' }}
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Have a referral code? Enter it to get special benefits!
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Step 2: Contact Details */}
+                  {currentStep === 2 && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                        <Phone className="mr-2" />
+                        Contact Details
+                      </h2>
+                      
+                      <div className="space-y-6">
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Email Address *
+                            </label>
+                            <input
+                              type="email"
+                              {...register('email', { 
+                                required: 'Email is required',
+                                pattern: {
+                                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                  message: 'Invalid email address'
+                                }
+                              })}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              placeholder="Enter your email address"
+                            />
+                            {errors.email && (
+                              <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Phone Number *
+                            </label>
+                            <input
+                              type="tel"
+                              {...register('phone', { required: 'Phone number is required' })}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              placeholder="Enter your phone number"
+                            />
+                            {errors.phone && (
+                              <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Address *
+                          </label>
+                          <textarea
+                            {...register('address', { required: 'Address is required' })}
+                            rows={3}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                            placeholder="Enter your detailed address"
+                          />
+                          {errors.address && (
+                            <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Step 3: Account Security */}
+                  {currentStep === 3 && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                        <Shield className="mr-2" />
+                        Account Security
+                      </h2>
+                      
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Password *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              {...register('password', { 
+                                required: 'Password is required',
+                                minLength: {
+                                  value: 6,
+                                  message: 'Password must be at least 6 characters'
+                                }
+                              })}
+                              className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              placeholder="Create a strong password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                          </div>
+                          {errors.password && (
+                            <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Confirm Password *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              {...register('confirmPassword', { 
+                                required: 'Please confirm your password',
+                                validate: value => value === password || 'Passwords do not match'
+                              })}
+                              className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              placeholder="Confirm your password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                          </div>
+                          {errors.confirmPassword && (
+                            <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>
+                          )}
+                        </div>
+
+                        {/* Terms & Agreement */}
+                        <div className="flex items-start">
+                          <input
+                            type="checkbox"
+                            {...register('agreeToTerms', { required: 'Please agree to the terms of service' })}
+                            className="mt-1 mr-3"
+                          />
+                          <label className="text-sm text-gray-600">
+                            I have read and agree to the{' '}
+                            <Link to="/terms" className="text-orange-600 hover:underline">Terms of Service</Link>{' '}
+                            and{' '}
+                            <Link to="/privacy" className="text-orange-600 hover:underline">Privacy Policy</Link>
+                          </label>
+                        </div>
+                        {errors.agreeToTerms && (
+                          <p className="text-red-500 text-sm mt-1">{errors.agreeToTerms.message}</p>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
               {/* Invite Code for Agents */}
               {accountType === 'referral' && (
                 <div>
@@ -623,7 +843,7 @@ const UnifiedRegisterPage = () => {
                 <p className="mt-1 text-sm text-red-600">{errors.agreeToTerms.message}</p>
               )}
 
-              {/* Submit Button */}
+              {/* Submit Button for Non-Customers */}
               <button
                 type="submit"
                 disabled={isLoading || (accountType === 'referral' && !codeValidated)}
@@ -635,6 +855,47 @@ const UnifiedRegisterPage = () => {
               >
                 {isLoading ? `Creating ${selectedType.name.toLowerCase()} account...` : `Create ${selectedType.name} Account`}
               </button>
+                </>
+              )}
+
+              {/* Customer Multi-Step Navigation */}
+              {accountType === 'customer' && (
+                <div className="flex justify-between pt-6">
+                  <button
+                    type="button"
+                    onClick={prevStep}
+                    disabled={currentStep === 1}
+                    className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  
+                  {currentStep < customerSteps.length ? (
+                    <button
+                      type="button"
+                      onClick={nextStep}
+                      className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+                    >
+                      Next
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Creating Account...
+                        </>
+                      ) : (
+                        'Create Customer Account'
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
             </form>
           </div>
 

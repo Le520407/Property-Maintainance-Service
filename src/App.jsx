@@ -14,7 +14,7 @@ import AboutPage from './pages/AboutPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
-import UnifiedRegisterPage from './pages/auth/UnifiedRegisterPage.jsx';
+import CustomerRegisterPage from './pages/auth/CustomerRegisterPage.jsx';
 import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
 import AgentRegisterPage from './pages/auth/AgentRegisterPage.jsx';
 import DashboardPage from './pages/dashboard/DashboardPage.jsx';
@@ -141,7 +141,7 @@ function App() {
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/login" element={<LoginPage />} />
-                      <Route path="/register" element={<UnifiedRegisterPage />} />
+                      <Route path="/register" element={<CustomerRegisterPage />} />
                       <Route path="/vendor-register" element={<VendorRegisterPage />} />
                       <Route path="/agent-register" element={<AgentRegisterPage />} />
                       <Route path="/booking" element={<BookingPage />} />

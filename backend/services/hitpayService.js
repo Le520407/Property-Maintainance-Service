@@ -2,8 +2,8 @@ const crypto = require('crypto');
 
 class HitPayService {
   constructor() {
-    this.baseUrl = process.env.HITPAY_BASE_URL || 'https://api.sandbox.hit-pay.com/v1';
-    this.apiKey = process.env.HITPAY_API_KEY;
+    this.baseUrl = process.env.HITPAY_BASE_URL || 'https://api.hit-pay.com/v1';
+    this.apiKey = process.env.HITPAY_API_KEY || 'live_2cb354046b1cdae747b6c9e948fe44e80962b3e03cdaaa804bd9f9bf12f85083';
     this.salt = process.env.HITPAY_SALT;
     this.webhookSecret = process.env.HITPAY_WEBHOOK_SECRET;
     
@@ -12,8 +12,15 @@ class HitPayService {
                   this.apiKey === 'test_9b6b83ea014999e2507e35a8e644a4a9df2c85055f2c5f44cf7efadf46b9328c' ||
                   this.apiKey === 'demo_api_key_for_development' ||
                   this.apiKey.startsWith('demo_') ||
-                  this.apiKey.startsWith('test_') ||
                   process.env.NODE_ENV === 'development'; // Force demo mode in development
+    
+    // Temporarily force demo mode until HitPay store is verified
+    this.isDemo = true;
+    
+    // Force live mode since we have a live API key
+    if (this.apiKey.startsWith('live_')) {
+      this.isDemo = false;
+    }
     
     if (this.isDemo) {
       console.log('🚀 HitPay Service initialized in DEMO MODE');
@@ -131,7 +138,7 @@ class HitPayService {
       const response = await fetch(`${this.baseUrl}/recurring-billing`, {
         method: 'POST',
         headers: {
-          'meowmeowmeow': this.apiKey,
+          'X-BUSINESS-API-KEY': this.apiKey,
           'X-Requested-With': 'XMLHttpRequest',
           'Content-Type': 'application/x-www-form-urlencoded'
         },
