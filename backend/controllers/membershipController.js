@@ -3,6 +3,13 @@ const hitpayService = require('../services/hitpayService');
 const { validationResult } = require('express-validator');
 const { CustomerMembership } = require('../models/CustomerMembership');
 
+// Force HitPay service out of demo mode if we have real API key
+if (process.env.HITPAY_SANDBOX === 'false' && process.env.HITPAY_API_KEY?.startsWith('test_')) {
+  hitpayService.isDemo = false;
+  hitpayService.isSandbox = true;
+  console.log('🔧 Forced HitPay service out of demo mode for real API');
+}
+
 // Initialize Stripe only if we have a real key
 let stripe = null;
 if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'sk_test_demo_key_for_development') {
@@ -43,7 +50,6 @@ class MembershipController {
       }
 
       const analytics = await membershipService.getMembershipAnalytics(userId);
-
       res.json({
         success: true,
         membership,
@@ -223,6 +229,124 @@ class MembershipController {
       res.status(400).json({
         success: false,
         message: 'Failed to create membership subscription',
+        error: error.message
+      });
+    }
+  }
+
+  // Create one-time payment for membership (alternative to subscription)
+  async createPayment(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const userId = req.user._id;
+      const { tierId, billingCycle = 'MONTHLY' } = req.body;
+
+      console.log('Creating one-time membership payment:', { userId, tierId, billingCycle });
+
+      // Import the model directly since we need it
+      const { MembershipTier } = require('../models/CustomerMembership');
+      
+      const selectedTier = await MembershipTier.findById(tierId);
+      if (!selectedTier) {
+        return res.status(404).json({
+          success: false,
+          message: 'Membership tier not found'
+        });
+      }
+
+      // Check if user already has active membership
+      const existingMembership = await membershipService.getCustomerMembership(userId);
+      if (existingMembership && existingMembership.status === 'ACTIVE') {
+        return res.status(400).json({
+          success: false,
+          message: 'You already have an active membership. Please use the upgrade option instead.',
+          shouldUseUpgrade: true
+        });
+      }
+
+      // Calculate amount based on billing cycle
+      const amount = billingCycle === 'YEARLY' ? selectedTier.yearlyPrice : selectedTier.monthlyPrice;
+      
+      // Create HitPay one-time payment request
+      const paymentData = {
+        amount: amount,
+        currency: 'SGD',
+        email: req.user.email,
+        redirect_url: `${process.env.FRONTEND_URL}/membership/success`,
+        reference_number: `membership_${userId}_${tierId}_${Date.now()}`,
+        webhook: process.env.WEBHOOK_URL || 'https://swiftfixpay.com',
+        name: req.user.fullName || `${req.user.firstName} ${req.user.lastName}`,
+        purpose: `${selectedTier.displayName} Membership - ${billingCycle}`,
+        send_email: true
+        // Remove payment_methods to let HitPay use account defaults
+      };
+
+      console.log('Creating HitPay payment request for membership:', paymentData);
+      
+      let hitpayPayment;
+      try {
+        hitpayPayment = await hitpayService.createPayment(paymentData);
+        console.log('HitPay payment request created:', hitpayPayment);
+      } catch (paymentError) {
+        console.error('Failed to create HitPay payment:', paymentError);
+        throw new Error('Failed to create payment request: ' + paymentError.message);
+      }
+
+      // Store the membership details in our database (pending until payment)
+      const membership = new CustomerMembership({
+        customer: userId,
+        tier: tierId,
+        status: 'PENDING',
+        billingCycle: billingCycle,
+        monthlyPrice: selectedTier.monthlyPrice,
+        yearlyPrice: selectedTier.yearlyPrice,
+        currentPrice: amount,
+        paymentMethod: 'HITPAY',
+        startDate: new Date(),
+        // For one-time payments, set end date based on billing cycle
+        endDate: billingCycle === 'YEARLY' ? 
+          new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) : // 1 year
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),   // 1 month
+        autoRenew: false, // One-time payments don't auto-renew
+        // Store payment reference for webhook processing
+        hitpayPlanId: hitpayPayment.payment_request_id || hitpayPayment.id,
+        hitpayRecurringBillingId: paymentData.reference_number
+      });
+
+      await membership.save();
+
+      console.log('One-time membership payment created successfully:', membership._id);
+
+      // Return the HitPay payment URL for frontend redirect
+      res.status(201).json({
+        success: true,
+        message: 'One-time payment created. Redirecting to HitPay checkout.',
+        membership: {
+          id: membership._id,
+          tier: selectedTier,
+          billingCycle,
+          amount,
+          status: 'PENDING',
+          paymentType: 'ONE_TIME'
+        },
+        paymentUrl: hitpayPayment.url, // HitPay payment URL
+        paymentRequestId: hitpayPayment.payment_request_id || hitpayPayment.id,
+        reference: paymentData.reference_number
+      });
+
+    } catch (error) {
+      console.error('HitPay one-time payment creation error:', error);
+      res.status(400).json({
+        success: false,
+        message: 'Failed to create one-time payment',
         error: error.message
       });
     }

@@ -52,29 +52,35 @@ const ProtectedRoute = ({
   }
 
   // 检查角色权限
-  if (requiredRole && user.role !== requiredRole) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600 mb-6">
-            You don't have permission to access this page. Required role: {requiredRole}
-          </p>
-          <button
-            onClick={() => window.history.back()}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors mr-4"
-          >
-            Go Back
-          </button>
-          <button
-            onClick={() => window.location.href = '/dashboard'}
-            className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
-          >
-            Go to Dashboard
-          </button>
+  if (requiredRole) {
+    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!allowedRoles.includes(user.role)) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
+            <p className="text-gray-600 mb-6">
+              You don't have permission to access this page. Required role: {Array.isArray(requiredRole) ? requiredRole.join(' or ') : requiredRole}
+            </p>
+            <p className="text-sm text-gray-500 mb-6">
+              Your current role: {user.role}. If you believe this is an error, please logout and login again.
+            </p>
+            <button
+              onClick={() => window.history.back()}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors mr-4"
+            >
+              Go Back
+            </button>
+            <button
+              onClick={() => window.location.href = '/dashboard'}
+              className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Go to Dashboard
+            </button>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   // 检查管理员权限

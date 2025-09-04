@@ -52,6 +52,11 @@ const Header = () => {
     { name: 'Membership', href: '/membership/plans', badge: 'Premium' }
   ] : [];
 
+  // Vendor-specific navigation items (only show for vendors)
+  const vendorNavigation = user?.role === 'vendor' ? [
+    { name: 'Membership', href: '/vendor/membership', badge: 'Pro' }
+  ] : [];
+
   // Admin navigation items (only show for admin users)
   const adminNavigation = user?.role === 'admin' ? [
     { name: 'Admin Panel', href: '/dashboard', isDropdown: true, items: [
@@ -221,6 +226,24 @@ const Header = () => {
                 to={item.href}
                 className={`relative inline-flex items-center text-gray-700 hover:text-orange-600 transition-colors pr-12 ${
                   location.pathname.startsWith('/membership') ? 'text-orange-600 font-medium' : ''
+                }`}
+              >
+                {item.name}
+                {item.badge && (
+                  <span className="absolute -top-4 right-4 bg-orange-100 text-orange-800 text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            ))}
+            
+            {/* Vendor Navigation */}
+            {vendorNavigation.map((item) => (
+              <Link
+                key={item.name}
+                to={item.href}
+                className={`relative inline-flex items-center text-gray-700 hover:text-orange-600 transition-colors pr-12 ${
+                  location.pathname.startsWith('/vendor/membership') ? 'text-orange-600 font-medium' : ''
                 }`}
               >
                 {item.name}
@@ -443,6 +466,25 @@ const Header = () => {
                   to={item.href}
                   className={`flex items-center justify-between text-gray-700 hover:text-orange-600 transition-colors ${
                     location.pathname.startsWith('/membership') ? 'text-orange-600 font-medium' : ''
+                  }`}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {item.name}
+                  {item.badge && (
+                    <span className="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
+                </Link>
+              ))}
+              
+              {/* Vendor Navigation - Mobile */}
+              {vendorNavigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`flex items-center justify-between text-gray-700 hover:text-orange-600 transition-colors ${
+                    location.pathname.startsWith('/vendor/membership') ? 'text-orange-600 font-medium' : ''
                   }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
