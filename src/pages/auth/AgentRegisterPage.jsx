@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { User, Mail, Phone, MapPin, Lock, Eye, EyeOff, Gift, CheckCircle, Shield, Award, TrendingUp } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, Gift, CheckCircle, Shield, Award, TrendingUp } from 'lucide-react';
 import { api } from '../../services/api';
 
 const AgentRegisterPage = () => {
@@ -15,7 +15,7 @@ const AgentRegisterPage = () => {
   const [codeValidated, setCodeValidated] = useState(false);
   
   const navigate = useNavigate();
-  const { register, handleSubmit, formState: { errors }, trigger, getValues, watch, setValue } = useForm();
+  const { register, handleSubmit, formState: { errors }, trigger, watch, setValue } = useForm();
   
   const password = watch('password');
   const inviteCode = watch('inviteCode');
@@ -101,13 +101,13 @@ const AgentRegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-white rounded-lg shadow-lg p-8"
+          transition={{ duration: 0.6 }}
+          className="max-w-4xl mx-auto"
         >
           {/* Header */}
           <div className="text-center mb-8">
@@ -151,34 +151,33 @@ const AgentRegisterPage = () => {
             <div className="flex items-center justify-between">
               {agentSteps.map((step, index) => (
                 <div key={step.number} className="flex items-center">
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                    currentStep >= step.number 
-                      ? 'bg-orange-600 border-orange-600 text-white' 
-                      : 'bg-gray-100 border-gray-300 text-gray-500'
-                  }`}>
-                    <step.icon size={16} />
+                  <div className="flex items-center">
+                    <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 ${
+                      currentStep >= step.number 
+                        ? 'bg-orange-600 border-orange-600 text-white' 
+                        : 'bg-gray-100 border-gray-300 text-gray-500'
+                    }`}>
+                      <step.icon size={20} />
+                    </div>
+                    <div className="ml-3 text-sm font-medium text-gray-700">
+                      {step.title}
+                    </div>
                   </div>
                   {index < agentSteps.length - 1 && (
-                    <div className={`w-12 h-0.5 mx-1 ${
+                    <div className={`w-16 h-0.5 mx-4 ${
                       currentStep > step.number ? 'bg-orange-600' : 'bg-gray-300'
                     }`}></div>
                   )}
                 </div>
               ))}
             </div>
-            <div className="flex justify-between mt-2">
-              {agentSteps.map((step) => (
-                <div key={step.number} className="text-xs text-gray-500 text-center" style={{ width: '60px' }}>
-                  {step.title}
-                </div>
-              ))}
-            </div>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Step 1: Invite Code Validation */}
-            {currentStep === 1 && (
+          {/* Form Container */}
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* Step 1: Invite Code Validation */}
+              {currentStep === 1 && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -486,16 +485,17 @@ const AgentRegisterPage = () => {
                 </button>
               )}
             </div>
-          </form>
+            </form>
 
-          {/* Login Link */}
-          <div className="text-center mt-6">
-            <p className="text-gray-600">
-              Already have an account?{' '}
-              <Link to="/login" className="text-orange-600 hover:text-orange-700 font-medium">
-                Sign in now
-              </Link>
-            </p>
+            {/* Login Link */}
+            <div className="text-center mt-6">
+              <p className="text-gray-600">
+                Already have an account?{' '}
+                <Link to="/login" className="text-orange-600 hover:text-orange-700 font-medium">
+                  Sign in now
+                </Link>
+              </p>
+            </div>
           </div>
         </motion.div>
       </div>
