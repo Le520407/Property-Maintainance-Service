@@ -4,17 +4,20 @@ import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { 
   Eye, EyeOff, User, Phone, Mail, Users, Briefcase, Award, Gift,
-  Building, FileText, Shield, Upload
+  Building, FileText, Shield, Upload, CheckCircle, AlertCircle, MapPin,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const RegisterPage = () => {
+  // Multi-step customer registration implementation - Updated Sept 2025
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [accountType, setAccountType] = useState('customer');
+  const [currentStep, setCurrentStep] = useState(1);
   const [searchParams] = useSearchParams();
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
@@ -76,15 +79,53 @@ const RegisterPage = () => {
     }
   }, [searchParams, setValue]);
 
+  // Add customer steps
+  const customerSteps = [
+    { number: 1, title: 'Personal Information' },
+    { number: 2, title: 'Contact Details' },
+    { number: 3, title: 'Account Security' }
+  ];
+
   // Reset form when account type changes
   useEffect(() => {
     reset();
-    // Re-apply referral code if it exists
+    setCurrentStep(1);
     const refCode = searchParams.get('ref');
     if (refCode) {
       setValue('referralCode', refCode.toUpperCase());
     }
   }, [accountType, reset, setValue, searchParams]);
+
+  const nextStep = () => {
+    const maxSteps = accountType === 'customer' ? 3 : 1;
+    if (currentStep < maxSteps) {
+      const currentStepData = watch();
+      
+      if (accountType === 'customer') {
+        if (currentStep === 1) {
+          if (!currentStepData.firstName || !currentStepData.lastName) {
+            toast.error('Please fill in all required fields in this step');
+            return;
+          }
+        }
+        
+        if (currentStep === 2) {
+          if (!currentStepData.email || !currentStepData.phone || !currentStepData.address) {
+            toast.error('Please complete all contact details');
+            return;
+          }
+        }
+      }
+      
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -206,107 +247,404 @@ const RegisterPage = () => {
             </div>
           </div>
 
+          {/* Progress Steps for Customers */}
+          {accountType === 'customer' && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between">
+                {customerSteps.map((step, index) => (
+                  <div key={step.number} className="flex items-center">
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                      currentStep >= step.number 
+                        ? 'bg-orange-600 border-orange-600 text-white' 
+                        : 'border-gray-300 text-gray-500'
+                    }`}>
+                      {currentStep > step.number ? (
+                        <CheckCircle size={20} />
+                      ) : (
+                        <span className="text-sm font-medium">{step.number}</span>
+                      )}
+                    </div>
+                    <span className={`ml-2 text-sm font-medium ${
+                      currentStep >= step.number ? 'text-orange-600' : 'text-gray-500'
+                    }`}>
+                      {step.title}
+                    </span>
+                    {index < customerSteps.length - 1 && (
+                      <div className={`w-16 h-0.5 mx-4 ${
+                        currentStep > step.number ? 'bg-orange-600' : 'bg-gray-300'
+                      }`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Registration Form */}
           <div className="bg-white rounded-xl shadow-lg p-8">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
 
-              {/* Basic Information */}
-              <div>
-                <h2 className="text-2xl font-semibold mb-6 flex items-center">
-                  <User className="mr-2" />
-                  Basic Information
-                </h2>
-                
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      First Name *
-                    </label>
-                    <input
-                      type="text"
-                      {...register('firstName', { required: 'First name is required' })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      placeholder="Enter first name"
-                    />
-                    {errors.firstName && (
-                      <p className="text-red-500 text-sm mt-1">{errors.firstName.message}</p>
-                    )}
-                  </div>
+              {/* Customer Multi-Step Form */}
+              {accountType === 'customer' && (
+                <>
+                  {/* Step 1: Personal Information */}
+                  {currentStep === 1 && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                        <User className="mr-2" />
+                        Personal Information
+                      </h2>
+                      
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            First Name *
+                          </label>
+                          <input
+                            type="text"
+                            {...register('firstName', { required: 'First name is required' })}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                            placeholder="Enter your first name"
+                          />
+                          {errors.firstName && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center">
+                              <AlertCircle size={16} className="mr-1" />
+                              {errors.firstName.message}
+                            </p>
+                          )}
+                        </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Last Name *
-                    </label>
-                    <input
-                      type="text"
-                      {...register('lastName', { required: 'Last name is required' })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      placeholder="Enter last name"
-                    />
-                    {errors.lastName && (
-                      <p className="text-red-500 text-sm mt-1">{errors.lastName.message}</p>
-                    )}
-                  </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Last Name *
+                          </label>
+                          <input
+                            type="text"
+                            {...register('lastName', { required: 'Last name is required' })}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                            placeholder="Enter your last name"
+                          />
+                          {errors.lastName && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center">
+                              <AlertCircle size={16} className="mr-1" />
+                              {errors.lastName.message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      {...register('email', { 
-                        required: 'Email is required',
-                        pattern: {
-                          value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                          message: 'Invalid email address'
-                        }
-                      })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      placeholder="Enter email address"
-                    />
-                    {errors.email && (
-                      <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
-                    )}
-                  </div>
+                      {/* Referral Code */}
+                      <div className="mt-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Referral Code (Optional)
+                        </label>
+                        <div className="relative">
+                          <Gift size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <input
+                            {...register('referralCode')}
+                            type="text"
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                            placeholder="Enter referral code (optional)"
+                            style={{ textTransform: 'uppercase' }}
+                          />
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500 flex items-center">
+                          <Gift size={12} className="mr-1" />
+                          Have a referral code? Enter it to get special benefits!
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone Number *
-                    </label>
-                    <input
-                      type="tel"
-                      {...register('phone', { required: 'Phone number is required' })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      placeholder="Enter phone number"
-                    />
-                    {errors.phone && (
-                      <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
-                    )}
-                  </div>
-                </div>
+                  {/* Step 2: Contact Details */}
+                  {currentStep === 2 && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                        <Phone className="mr-2" />
+                        Contact Details
+                      </h2>
+                      
+                      <div className="space-y-6">
+                        <div className="grid md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Email Address *
+                            </label>
+                            <div className="relative">
+                              <Mail size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                              <input
+                                type="email"
+                                {...register('email', { 
+                                  required: 'Email is required',
+                                  pattern: {
+                                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                                    message: 'Invalid email address'
+                                  }
+                                })}
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                                placeholder="Enter your email address"
+                              />
+                            </div>
+                            {errors.email && (
+                              <p className="text-red-500 text-sm mt-1 flex items-center">
+                                <AlertCircle size={16} className="mr-1" />
+                                {errors.email.message}
+                              </p>
+                            )}
+                          </div>
 
-                {/* Referral Code for Customers */}
-                {accountType === 'customer' && (
-                  <div className="mt-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Referral Code (Optional)
-                    </label>
-                    <div className="relative">
-                      <Gift size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        {...register('referralCode')}
-                        type="text"
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        placeholder="Enter referral code (optional)"
-                        style={{ textTransform: 'uppercase' }}
-                      />
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Phone Number *
+                            </label>
+                            <div className="relative">
+                              <Phone size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                              <input
+                                type="tel"
+                                {...register('phone', { required: 'Phone number is required' })}
+                                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                                placeholder="Enter your phone number"
+                              />
+                            </div>
+                            {errors.phone && (
+                              <p className="text-red-500 text-sm mt-1 flex items-center">
+                                <AlertCircle size={16} className="mr-1" />
+                                {errors.phone.message}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Address *
+                          </label>
+                          <div className="relative">
+                            <MapPin size={20} className="absolute left-3 top-3 text-gray-400" />
+                            <textarea
+                              {...register('address', { required: 'Address is required' })}
+                              rows={3}
+                              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors resize-none"
+                              placeholder="Enter your detailed address"
+                            />
+                          </div>
+                          {errors.address && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center">
+                              <AlertCircle size={16} className="mr-1" />
+                              {errors.address.message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Step 3: Account Security */}
+                  {currentStep === 3 && (
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                        <Shield className="mr-2" />
+                        Account Security
+                      </h2>
+                      
+                      <div className="space-y-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Password *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              {...register('password', { 
+                                required: 'Password is required',
+                                minLength: {
+                                  value: 6,
+                                  message: 'Password must be at least 6 characters'
+                                }
+                              })}
+                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                              placeholder="Create a strong password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                          </div>
+                          {errors.password && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center">
+                              <AlertCircle size={16} className="mr-1" />
+                              {errors.password.message}
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Confirm Password *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              {...register('confirmPassword', { 
+                                required: 'Please confirm your password',
+                                validate: value => value === password || 'Passwords do not match'
+                              })}
+                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                              placeholder="Confirm your password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                          </div>
+                          {errors.confirmPassword && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center">
+                              <AlertCircle size={16} className="mr-1" />
+                              {errors.confirmPassword.message}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Password Requirements */}
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">Password Requirements:</h4>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li className={`flex items-center ${password && password.length >= 6 ? 'text-green-600' : ''}`}>
+                              <CheckCircle size={16} className={`mr-2 ${password && password.length >= 6 ? 'text-green-600' : 'text-gray-300'}`} />
+                              At least 6 characters long
+                            </li>
+                            <li className={`flex items-center ${password && /[A-Za-z]/.test(password) && /\d/.test(password) ? 'text-green-600' : ''}`}>
+                              <CheckCircle size={16} className={`mr-2 ${password && /[A-Za-z]/.test(password) && /\d/.test(password) ? 'text-green-600' : 'text-gray-300'}`} />
+                              Contains letters and numbers
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </>
+              )}
+
+              {/* Non-Customer Forms (Vendor/Referral) */}
+              {accountType !== 'customer' && (
+                <>
+                  {/* Basic Information */}
+                  <div>
+                    <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                      <User className="mr-2" />
+                      Basic Information
+                    </h2>
+                    
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          First Name *
+                        </label>
+                        <input
+                          type="text"
+                          {...register('firstName', { required: 'First name is required' })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="Enter first name"
+                        />
+                        {errors.firstName && (
+                          <p className="text-red-500 text-sm mt-1">{errors.firstName.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Last Name *
+                        </label>
+                        <input
+                          type="text"
+                          {...register('lastName', { required: 'Last name is required' })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="Enter last name"
+                        />
+                        {errors.lastName && (
+                          <p className="text-red-500 text-sm mt-1">{errors.lastName.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Email Address *
+                        </label>
+                        <input
+                          type="email"
+                          {...register('email', { 
+                            required: 'Email is required',
+                            pattern: {
+                              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                              message: 'Invalid email address'
+                            }
+                          })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="Enter email address"
+                        />
+                        {errors.email && (
+                          <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Phone Number *
+                        </label>
+                        <input
+                          type="tel"
+                          {...register('phone', { required: 'Phone number is required' })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="Enter phone number"
+                        />
+                        {errors.phone && (
+                          <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
+                        )}
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Have a referral code? Enter it to get special benefits!
-                    </p>
+
+                    {/* Referral Code for Referral agents */}
+                    {accountType === 'referral' && (
+                      <div className="mt-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Referral Code (Optional)
+                        </label>
+                        <div className="relative">
+                          <Gift size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <input
+                            {...register('referralCode')}
+                            type="text"
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="Enter referral code (optional)"
+                            style={{ textTransform: 'uppercase' }}
+                          />
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Have a referral code? Enter it to get special benefits!
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
 
               {/* Company Information (Vendors Only) */}
               {accountType === 'vendor' && (
@@ -553,149 +891,233 @@ const RegisterPage = () => {
                 </motion.div>
               )}
 
-              {/* Account Security & Agreement */}
-              <div>
-                <h2 className="text-2xl font-semibold mb-6 flex items-center">
-                  <Shield className="mr-2" />
-                  Account Security
-                </h2>
-                
-                <div className="space-y-6">
-                  {/* Address for non-vendors */}
-                  {accountType !== 'vendor' && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Address *
-                      </label>
-                      <textarea
-                        {...register('address', { required: 'Address is required' })}
-                        rows={3}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        placeholder="Enter your address"
-                      />
-                      {errors.address && (
-                        <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Password Fields */}
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Password *
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          {...register('password', { 
-                            required: 'Password is required',
-                            minLength: { value: 8, message: 'Password must be at least 8 characters' },
-                            pattern: {
-                              value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-                              message: 'Password must contain uppercase, lowercase, and numbers'
-                            }
-                          })}
-                          className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                          placeholder="Enter password"
+              {/* Account Security & Agreement - Conditional for non-customers */}
+              {accountType !== 'customer' && (
+                <div>
+                  <h2 className="text-2xl font-semibold mb-6 flex items-center">
+                    <Shield className="mr-2" />
+                    Account Security
+                  </h2>
+                  
+                  <div className="space-y-6">
+                    {/* Address for non-vendors */}
+                    {accountType !== 'vendor' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Address *
+                        </label>
+                        <textarea
+                          {...register('address', { required: 'Address is required' })}
+                          rows={3}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="Enter your address"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                        >
-                          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
+                        {errors.address && (
+                          <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>
+                        )}
                       </div>
-                      {errors.password && (
-                        <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
-                      )}
+                    )}
+
+                    {/* Password Fields */}
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Password *
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            {...register('password', { 
+                              required: 'Password is required',
+                              minLength: { value: 8, message: 'Password must be at least 8 characters' },
+                              pattern: {
+                                value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+                                message: 'Password must contain uppercase, lowercase, and numbers'
+                              }
+                            })}
+                            className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="Enter password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                          >
+                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                          </button>
+                        </div>
+                        {errors.password && (
+                          <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Confirm Password *
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            {...register('confirmPassword', { 
+                              required: 'Please confirm password',
+                              validate: value => value === password || 'Passwords do not match'
+                            })}
+                            className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="Confirm password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                          >
+                            {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                          </button>
+                        </div>
+                        {errors.confirmPassword && (
+                          <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>
+                        )}
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Confirm Password *
-                      </label>
-                      <div className="relative">
+                    {/* Agreement */}
+                    <div className="space-y-4">
+                      <div className="flex items-start">
                         <input
-                          type={showConfirmPassword ? 'text' : 'password'}
-                          {...register('confirmPassword', { 
-                            required: 'Please confirm password',
-                            validate: value => value === password || 'Passwords do not match'
-                          })}
-                          className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                          placeholder="Confirm password"
+                          type="checkbox"
+                          {...register('agreeToTerms', { required: 'Please agree to terms' })}
+                          className="mt-1 mr-3"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                        >
-                          {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                        </button>
+                        <label className="text-sm text-gray-600">
+                          I agree to the{' '}
+                          <Link to="/terms" className="text-orange-600 hover:underline">Terms of Service</Link>{' '}
+                          and{' '}
+                          <Link to="/privacy" className="text-orange-600 hover:underline">Privacy Policy</Link>
+                        </label>
                       </div>
-                      {errors.confirmPassword && (
-                        <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>
+                      {errors.agreeToTerms && (
+                        <p className="text-red-500 text-sm mt-1">{errors.agreeToTerms.message}</p>
+                      )}
+
+                      <div className="flex items-start">
+                        <input
+                          type="checkbox"
+                          {...register('agreeToContract', { required: 'Please agree to service contract' })}
+                          className="mt-1 mr-3"
+                        />
+                        <label className="text-sm text-gray-600">
+                          I agree to the{' '}
+                          {accountType === 'vendor' ? 'Vendor Service Agreement' : 
+                           accountType === 'referral' ? 'Agent Partnership Agreement' : 
+                           'Customer Service Agreement'}
+                        </label>
+                      </div>
+                      {errors.agreeToContract && (
+                        <p className="text-red-500 text-sm mt-1">{errors.agreeToContract.message}</p>
                       )}
                     </div>
                   </div>
+                </div>
+              )}
 
-                  {/* Agreement */}
-                  <div className="space-y-4">
-                    <div className="flex items-start">
-                      <input
-                        type="checkbox"
-                        {...register('agreeToTerms', { required: 'Please agree to terms' })}
-                        className="mt-1 mr-3"
-                      />
-                      <label className="text-sm text-gray-600">
-                        I agree to the{' '}
-                        <Link to="/terms" className="text-orange-600 hover:underline">Terms of Service</Link>{' '}
-                        and{' '}
-                        <Link to="/privacy" className="text-orange-600 hover:underline">Privacy Policy</Link>
-                      </label>
-                    </div>
-                    {errors.agreeToTerms && (
-                      <p className="text-red-500 text-sm mt-1">{errors.agreeToTerms.message}</p>
-                    )}
+              {/* Terms & Agreement for customers */}
+              {accountType === 'customer' && currentStep === 3 && (
+                <div className="space-y-4">
+                  <div className="flex items-start">
+                    <input
+                      type="checkbox"
+                      {...register('agreeToTerms', { required: 'Please agree to terms' })}
+                      className="mt-1 mr-3"
+                    />
+                    <label className="text-sm text-gray-600">
+                      I agree to the{' '}
+                      <Link to="/terms" className="text-orange-600 hover:underline">Terms of Service</Link>{' '}
+                      and{' '}
+                      <Link to="/privacy" className="text-orange-600 hover:underline">Privacy Policy</Link>
+                    </label>
+                  </div>
+                  {errors.agreeToTerms && (
+                    <p className="text-red-500 text-sm mt-1">{errors.agreeToTerms.message}</p>
+                  )}
 
-                    <div className="flex items-start">
-                      <input
-                        type="checkbox"
-                        {...register('agreeToContract', { required: 'Please agree to service contract' })}
-                        className="mt-1 mr-3"
-                      />
-                      <label className="text-sm text-gray-600">
-                        I agree to the{' '}
-                        {accountType === 'vendor' ? 'Vendor Service Agreement' : 
-                         accountType === 'referral' ? 'Agent Partnership Agreement' : 
-                         'Customer Service Agreement'}
-                      </label>
-                    </div>
-                    {errors.agreeToContract && (
-                      <p className="text-red-500 text-sm mt-1">{errors.agreeToContract.message}</p>
+                  <div className="flex items-start">
+                    <input
+                      type="checkbox"
+                      {...register('agreeToContract', { required: 'Please agree to service contract' })}
+                      className="mt-1 mr-3"
+                    />
+                    <label className="text-sm text-gray-600">
+                      I agree to the Customer Service Agreement
+                    </label>
+                  </div>
+                  {errors.agreeToContract && (
+                    <p className="text-red-500 text-sm mt-1">{errors.agreeToContract.message}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Customer Multi-Step Navigation */}
+              {accountType === 'customer' && (
+                <div className="flex justify-between pt-6">
+                  {currentStep > 1 && (
+                    <button
+                      type="button"
+                      onClick={prevStep}
+                      className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                    >
+                      <ChevronLeft size={20} />
+                      Previous
+                    </button>
+                  )}
+                  
+                  <div className={currentStep === 1 ? 'ml-auto' : ''}>
+                    {currentStep < customerSteps.length ? (
+                      <button
+                        type="button"
+                        onClick={nextStep}
+                        className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2"
+                      >
+                        Next
+                        <ChevronRight size={20} />
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {isLoading ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Creating Account...
+                          </>
+                        ) : (
+                          'Create Customer Account'
+                        )}
+                      </button>
                     )}
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Submit Button */}
-              <div className="pt-6">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-orange-600 text-white py-3 rounded-lg font-semibold hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Creating Account...
-                    </>
-                  ) : (
-                    `Create ${accountTypes.find(t => t.id === accountType)?.name} Account`
-                  )}
-                </button>
-              </div>
+              {/* Non-Customer Submit Button */}
+              {accountType !== 'customer' && (
+                <div className="pt-6">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full bg-orange-600 text-white py-3 rounded-lg font-semibold hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Creating Account...
+                      </>
+                    ) : (
+                      `Create ${accountTypes.find(t => t.id === accountType)?.name} Account`
+                    )}
+                  </button>
+                </div>
+              )}
             </form>
           </div>
 

@@ -1,7 +1,8 @@
 const Payment = require('../models/Payment');
 const Job = require('../models/Job');
 const Message = require('../models/Message');
-const hitpayService = require('./hitpayService');
+// const HitPayService = require('./hitpayService');
+// const hitpayService = new HitPayService();
 
 class PaymentService {
   constructor() {

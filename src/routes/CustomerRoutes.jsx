@@ -5,7 +5,6 @@ import CustomerDashboard from '../pages/customer/CustomerDashboard';
 import MembershipPlans from '../components/customer/MembershipPlans';
 import MembershipDashboard from '../components/customer/MembershipDashboard';
 import MembershipSuccess from '../pages/MembershipSuccess';
-import DemoCheckout from '../pages/DemoCheckout';
 import JobCreate from '../pages/customer/JobCreate';
 import JobList from '../pages/customer/JobList';
 import JobDetail from '../pages/customer/JobDetail';
@@ -29,7 +28,6 @@ const CustomerRoutes = () => {
         <Route path="/membership/plans" element={<MembershipPlans />} />
         <Route path="/membership/dashboard" element={<MembershipDashboard />} />
         <Route path="/membership/success" element={<MembershipSuccess />} />
-        <Route path="/membership/demo-checkout" element={<DemoCheckout />} />
         
         {/* Profile */}
         <Route path="/profile" element={<Profile />} />

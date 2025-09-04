@@ -13,7 +13,10 @@ import ProductsPage from './pages/ProductsPage.jsx';
 import AboutPage from './pages/AboutPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
-import AllInOneRegisterPage from './pages/auth/AllInOneRegisterPage.jsx';
+import RegisterPage from './pages/auth/RegisterPage.jsx';
+import CustomerRegisterPage from './pages/auth/CustomerRegisterPage.jsx';
+import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
+import AgentRegisterPage from './pages/auth/AgentRegisterPage.jsx';
 import DashboardPage from './pages/dashboard/DashboardPage.jsx';
 import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
 import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
@@ -46,6 +49,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 import MembershipPlans from './components/customer/MembershipPlans.jsx';
 import MembershipDashboard from './components/customer/MembershipDashboard.jsx';
 import MembershipSuccess from './pages/MembershipSuccess.jsx';
+import VendorMembership from './components/vendor/VendorMembership.jsx';
 
 // Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -137,9 +141,15 @@ function App() {
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/login" element={<LoginPage />} />
+<<<<<<<<< Temporary merge branch 1
+                      <Route path="/register" element={<UnifiedRegisterPage />} />
+                      <Route path="/vendor-register" element={<VendorRegisterPage />} />
+                      <Route path="/agent-register" element={<AgentRegisterPage />} />
+=========
                       <Route path="/register" element={<AllInOneRegisterPage />} />
                       <Route path="/vendor-register" element={<AllInOneRegisterPage />} />
                       <Route path="/agent-register" element={<AllInOneRegisterPage />} />
+>>>>>>>>> Temporary merge branch 2
                       <Route path="/booking" element={<BookingPage />} />
                       <Route path="/order-request" element={
                         <ProtectedRoute>
@@ -184,6 +194,13 @@ function App() {
                       <Route path="/membership/success" element={
                         <ProtectedRoute requiredRole="customer">
                           <MembershipSuccess />
+                        </ProtectedRoute>
+                      } />
+                      
+                      {/* Vendor Membership Routes */}
+                      <Route path="/vendor/membership" element={
+                        <ProtectedRoute requiredRole="vendor">
+                          <VendorMembership />
                         </ProtectedRoute>
                       } />
                       
