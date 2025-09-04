@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   User, 
@@ -31,7 +31,6 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
-import JobChat from '../../components/communication/JobChat';
 import VendorPricingManagement from '../../components/vendor/VendorPricingManagement';
 import { CurrentPlanTab, UpgradePlansTab, UsageStatsTab, BillingHistoryTab } from '../../components/vendor/VendorMembership';
 
@@ -1378,8 +1377,8 @@ const VendorDashboardPage = () => {
 const VendorJobAssignments = ({ status }) => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedJobForChat, setSelectedJobForChat] = useState(null);
   const [showJobDetails, setShowJobDetails] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadJobs();
@@ -1536,7 +1535,7 @@ const VendorJobAssignments = ({ status }) => {
                   {(job.status === 'IN_DISCUSSION' || job.status === 'QUOTE_SENT' || job.status === 'QUOTE_ACCEPTED' || job.status === 'PAID' || job.status === 'IN_PROGRESS') && (
                     <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
                       <button
-                        onClick={() => setSelectedJobForChat(job)}
+                        onClick={() => navigate('/messages', { state: { selectedJob: job } })}
                         className="flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors"
                       >
                         <MessageSquare className="h-4 w-4 mr-2" />
@@ -1568,35 +1567,6 @@ const VendorJobAssignments = ({ status }) => {
         </div>
       )}
 
-      {/* Job Chat Modal */}
-      {selectedJobForChat && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-4xl h-5/6 flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900">
-                  Job #{selectedJobForChat.jobNumber} - Chat & Pricing
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {selectedJobForChat.title}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedJobForChat(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <JobChat 
-                job={selectedJobForChat} 
-                onClose={() => setSelectedJobForChat(null)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Job Details Modal */}
       {showJobDetails && (
@@ -1702,7 +1672,7 @@ const VendorJobAssignments = ({ status }) => {
               <button
                 onClick={() => {
                   setShowJobDetails(null);
-                  setSelectedJobForChat(showJobDetails);
+                  navigate('/messages', { state: { selectedJob: showJobDetails } });
                 }}
                 className="w-full flex items-center justify-center px-4 py-2 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-colors"
               >
