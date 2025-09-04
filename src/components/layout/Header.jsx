@@ -306,10 +306,10 @@ const Header = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide">
-                            {user.role === 'vendor' ? 'Membership' : user.role === 'admin' ? 'Access Level' : 'Account'}
+                            {(user.role === 'vendor' || user.role === 'technician') ? 'Membership' : user.role === 'admin' ? 'Access Level' : 'Account'}
                           </p>
                           <p className="text-sm font-medium text-gray-900">
-                            {user.role === 'vendor' ? 'Professional Plan' : 
+                            {(user.role === 'vendor' || user.role === 'technician') ? 'Professional Plan' : 
                              user.role === 'admin' ? 'Administrator' : 
                              'Standard Member'}
                           </p>
@@ -325,7 +325,7 @@ const Header = () => {
                           </span>
                         </div>
                       </div>
-                      {user.role === 'vendor' && user.status === 'ACTIVE' && (
+                      {(user.role === 'vendor' || user.role === 'technician') && user.status === 'ACTIVE' && (
                         <p className="text-xs text-gray-500 mt-1">Next billing: Feb 15, 2025</p>
                       )}
                       {user.status === 'PENDING' && (
@@ -334,14 +334,14 @@ const Header = () => {
                     </div>
                     
                     <Link
-                      to={user.role === 'vendor' ? '/vendor-dashboard' : '/dashboard'}
+                      to={(user.role === 'vendor' || user.role === 'technician') ? '/vendor-dashboard' : '/dashboard'}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => {
                         console.log('Dashboard link clicked. User role:', user.role);
                         setIsUserMenuOpen(false);
                       }}
                     >
-                      {t('dashboard')} {user.role === 'vendor' && '(Vendor)'} {user.role === 'referral' && '(Agent)'}
+                      {t('dashboard')} {(user.role === 'vendor' || user.role === 'technician') && '(Vendor)'} {user.role === 'referral' && '(Agent)'}
                     </Link>
                     
                     {/* Customer-specific menu items */}
