@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { ShoppingCart, User, Menu, X, Gift, MessageCircle } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, Gift, MessageCircle, ChevronDown } from 'lucide-react';
 import { api } from '../../services/api';
 
 // Global function to clear messages visited flag (can be called from anywhere)
@@ -20,14 +20,19 @@ const Header = () => {
   const { t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isRegisterDropdownOpen, setIsRegisterDropdownOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const userMenuRef = useRef(null);
+  const registerDropdownRef = useRef(null);
 
   // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setIsUserMenuOpen(false);
+      }
+      if (registerDropdownRef.current && !registerDropdownRef.current.contains(event.target)) {
+        setIsRegisterDropdownOpen(false);
       }
     };
 
@@ -423,12 +428,44 @@ const Header = () => {
                 >
                   {t('login')}
                 </Link>
-                <Link
-                  to="/register"
-                  className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors"
-                >
-                  {t('register')}
-                </Link>
+                
+                {/* Register Dropdown */}
+                <div className="relative" ref={registerDropdownRef}>
+                  <button
+                    onClick={() => setIsRegisterDropdownOpen(!isRegisterDropdownOpen)}
+                    className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors flex items-center gap-1"
+                  >
+                    {t('register')}
+                    <ChevronDown size={16} className={`transform transition-transform ${isRegisterDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {isRegisterDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border">
+                      <Link
+                        to="/register"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                        onClick={() => setIsRegisterDropdownOpen(false)}
+                      >
+                        Customer Registration
+                      </Link>
+                      <Link
+                        to="/vendor-register"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                        onClick={() => setIsRegisterDropdownOpen(false)}
+                      >
+                        Vendor Registration
+                      </Link>
+                      <Link
+                        to="/agent-register"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                        onClick={() => setIsRegisterDropdownOpen(false)}
+                      >
+                        Agent Registration
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -506,13 +543,32 @@ const Header = () => {
                   >
                     {t('login')}
                   </Link>
-                  <Link
-                    to="/register"
-                    className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors text-center"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    {t('register')}
-                  </Link>
+                  
+                  {/* Mobile Register Options */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-600 px-2">Register as:</div>
+                    <Link
+                      to="/register"
+                      className="block bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors text-center"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Customer
+                    </Link>
+                    <Link
+                      to="/vendor-register"
+                      className="block bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors text-center"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Vendor
+                    </Link>
+                    <Link
+                      to="/agent-register"
+                      className="block bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700 transition-colors text-center"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Agent
+                    </Link>
+                  </div>
                 </div>
               )}
             </nav>

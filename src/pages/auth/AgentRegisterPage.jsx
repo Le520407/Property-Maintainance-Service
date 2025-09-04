@@ -112,36 +112,51 @@ const AgentRegisterPage = () => {
           {/* Header */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center">
-                <Award className="text-white" size={32} />
+              <div className="w-20 h-20 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center shadow-lg">
+                <Award className="text-white" size={40} />
               </div>
             </div>
             <h2 className="text-3xl font-bold text-gray-900">Agent Registration</h2>
             <p className="mt-2 text-gray-600">Join our exclusive referral agent program</p>
           </div>
 
-          {/* Agent Benefits Card */}
+          {/* Agent Benefits Section */}
           <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-lg p-6 text-white mb-8">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <TrendingUp size={20} className="mr-2" />
-              Agent Benefits
-            </h3>
-            <div className="grid grid-cols-1 gap-3 text-sm">
-              <div className="flex items-center">
-                <CheckCircle size={16} className="mr-2 text-orange-200" />
-                <span>15% commission on every successful referral</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+              <div>
+                <h3 className="text-xl font-semibold mb-4 flex items-center">
+                  <TrendingUp size={24} className="mr-2" />
+                  Agent Benefits
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>15% commission on every successful referral</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Higher earning potential for property agents</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Bronze to Platinum tier progression system</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Exclusive agent dashboard and analytics</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center">
-                <CheckCircle size={16} className="mr-2 text-orange-200" />
-                <span>Higher earning potential for property agents</span>
-              </div>
-              <div className="flex items-center">
-                <CheckCircle size={16} className="mr-2 text-orange-200" />
-                <span>Bronze to Platinum tier progression system</span>
-              </div>
-              <div className="flex items-center">
-                <CheckCircle size={16} className="mr-2 text-orange-200" />
-                <span>Exclusive agent dashboard and analytics</span>
+              <div className="hidden md:block">
+                <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+                  <div className="flex justify-center items-center h-32">
+                    <div className="text-center">
+                      <Award size={48} className="mx-auto mb-2 text-orange-200" />
+                      <p className="text-sm text-orange-100">Grow Your Network</p>
+                      <p className="text-xs text-orange-200">earn more commissions</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -157,7 +172,11 @@ const AgentRegisterPage = () => {
                         ? 'bg-orange-600 border-orange-600 text-white' 
                         : 'bg-gray-100 border-gray-300 text-gray-500'
                     }`}>
-                      <step.icon size={20} />
+                      {currentStep > step.number ? (
+                        <CheckCircle size={20} />
+                      ) : (
+                        <span className="text-sm font-bold">{step.number}</span>
+                      )}
                     </div>
                     <div className="ml-3 text-sm font-medium text-gray-700">
                       {step.title}

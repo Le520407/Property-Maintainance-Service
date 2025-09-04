@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
 // Layout Components
 import Header from './components/layout/Header.jsx';
@@ -13,11 +13,9 @@ import ProductsPage from './pages/ProductsPage.jsx';
 import AboutPage from './pages/AboutPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
-import RegisterPage from './pages/auth/RegisterPage.jsx';
 import CustomerRegisterPage from './pages/auth/CustomerRegisterPage.jsx';
 import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
 import AgentRegisterPage from './pages/auth/AgentRegisterPage.jsx';
-import DashboardPage from './pages/dashboard/DashboardPage.jsx';
 import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
 import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
@@ -141,15 +139,9 @@ function App() {
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/login" element={<LoginPage />} />
-<<<<<<<<< Temporary merge branch 1
-                      <Route path="/register" element={<UnifiedRegisterPage />} />
+                      <Route path="/register" element={<CustomerRegisterPage />} />
                       <Route path="/vendor-register" element={<VendorRegisterPage />} />
                       <Route path="/agent-register" element={<AgentRegisterPage />} />
-=========
-                      <Route path="/register" element={<AllInOneRegisterPage />} />
-                      <Route path="/vendor-register" element={<AllInOneRegisterPage />} />
-                      <Route path="/agent-register" element={<AllInOneRegisterPage />} />
->>>>>>>>> Temporary merge branch 2
                       <Route path="/booking" element={<BookingPage />} />
                       <Route path="/order-request" element={
                         <ProtectedRoute>

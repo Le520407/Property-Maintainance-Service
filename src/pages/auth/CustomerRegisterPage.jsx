@@ -122,8 +122,8 @@ const CustomerRegisterPage = () => {
           {/* Header */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 bg-orange-600 rounded-xl flex items-center justify-center">
-                <User className="text-white" size={32} />
+              <div className="w-20 h-20 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center shadow-lg">
+                <Home className="text-white" size={40} />
               </div>
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -134,12 +134,50 @@ const CustomerRegisterPage = () => {
             </p>
           </div>
 
+          {/* Customer Benefits Section */}
+          <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-lg p-6 text-white mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+              <div>
+                <h3 className="text-xl font-semibold mb-4">Why Choose Swift Fix Pro?</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Access to verified and trusted service providers</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>24/7 customer support and service guarantee</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Easy booking and secure payment processing</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Competitive pricing and transparent quotes</span>
+                  </div>
+                </div>
+              </div>
+              <div className="hidden md:block">
+                <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+                  <div className="flex justify-center items-center h-32">
+                    <div className="text-center">
+                      <Home size={48} className="mx-auto mb-2 text-orange-200" />
+                      <p className="text-sm text-orange-100">Your Home</p>
+                      <p className="text-xs text-orange-200">in safe hands</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Progress Steps */}
           <div className="mb-8">
             <div className="flex items-center justify-between">
               {steps.map((step, index) => (
                 <div key={step.number} className="flex items-center">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 ${
                     currentStep >= step.number 
                       ? 'bg-orange-600 border-orange-600 text-white' 
                       : 'border-gray-300 text-gray-500'
