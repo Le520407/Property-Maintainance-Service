@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   User, 
@@ -1377,6 +1377,8 @@ const VendorDashboardPage = () => {
 const VendorJobAssignments = ({ status }) => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showJobDetails, setShowJobDetails] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadJobs();
@@ -1531,10 +1533,21 @@ const VendorJobAssignments = ({ status }) => {
                   )}
 
                   {(job.status === 'IN_DISCUSSION' || job.status === 'QUOTE_SENT' || job.status === 'QUOTE_ACCEPTED' || job.status === 'PAID' || job.status === 'IN_PROGRESS') && (
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                      <span className="text-sm text-green-700 bg-green-100 px-3 py-2 rounded-full">
-                        ✓ Job Accepted - Use message icon in header to communicate with customer
-                      </span>
+                    <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
+                      <button
+                        onClick={() => navigate('/messages', { state: { selectedJob: job } })}
+                        className="flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Chat & Quote
+                      </button>
+                      <button
+                        onClick={() => setShowJobDetails(job)}
+                        className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Job Details
+                      </button>
                       <button
                         onClick={() => {
                           // Update job status to next stage
@@ -1551,6 +1564,123 @@ const VendorJobAssignments = ({ status }) => {
               </div>
             </motion.div>
           ))}
+        </div>
+      )}
+
+
+      {/* Job Details Modal */}
+      {showJobDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-full max-w-2xl max-h-5/6 overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">
+                Job #{showJobDetails.jobNumber} - Details
+              </h3>
+              <button
+                onClick={() => setShowJobDetails(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Job Information */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Job Title</h4>
+                <p className="text-gray-700">{showJobDetails.title}</p>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Description</h4>
+                <p className="text-gray-700">{showJobDetails.description}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Category</h4>
+                  <p className="text-gray-700 capitalize">{showJobDetails.category}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Priority</h4>
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    showJobDetails.priority === 'HIGH' ? 'bg-red-100 text-red-800' :
+                    showJobDetails.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-green-100 text-green-800'
+                  }`}>
+                    {showJobDetails.priority}
+                  </span>
+                </div>
+              </div>
+
+              {/* Customer Information */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Customer</h4>
+                <p className="text-gray-700">
+                  {showJobDetails.customerId?.firstName} {showJobDetails.customerId?.lastName}
+                </p>
+                <p className="text-gray-600 text-sm">{showJobDetails.customerId?.email}</p>
+              </div>
+
+              {/* Location */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Location</h4>
+                <p className="text-gray-700">
+                  {showJobDetails.location?.address}, {showJobDetails.location?.city}
+                </p>
+                {showJobDetails.location?.zipCode && (
+                  <p className="text-gray-600 text-sm">{showJobDetails.location.zipCode}</p>
+                )}
+              </div>
+
+              {/* Timing */}
+              {showJobDetails.requestedTimeSlot && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Requested Time</h4>
+                  <p className="text-gray-700">
+                    {new Date(showJobDetails.requestedTimeSlot.date).toLocaleDateString()}
+                  </p>
+                  <p className="text-gray-600 text-sm">
+                    {showJobDetails.requestedTimeSlot.startTime} - {showJobDetails.requestedTimeSlot.endTime}
+                  </p>
+                </div>
+              )}
+
+              {/* Pricing */}
+              {showJobDetails.vendorQuote && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Your Quote</h4>
+                  <p className="text-gray-700 text-lg font-semibold">
+                    ${showJobDetails.vendorQuote.amount}
+                  </p>
+                  {showJobDetails.vendorQuote.description && (
+                    <p className="text-gray-600 text-sm mt-1">
+                      {showJobDetails.vendorQuote.description}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Special Instructions */}
+              {showJobDetails.specialInstructions && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Special Instructions</h4>
+                  <p className="text-gray-700">{showJobDetails.specialInstructions}</p>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowJobDetails(null);
+                  navigate('/messages', { state: { selectedJob: showJobDetails } });
+                }}
+                className="w-full flex items-center justify-center px-4 py-2 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Open Chat & Pricing
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

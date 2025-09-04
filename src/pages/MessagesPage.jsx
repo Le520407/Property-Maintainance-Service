@@ -95,7 +95,7 @@ const MessagesPage = () => {
           Welcome to Messages
         </h2>
         <p className="text-gray-600 mb-6 max-w-md">
-          {user?.role === 'vendor' 
+          {(user?.role === 'vendor' || user?.role === 'technician')
             ? 'Connect with customers, send quotes, and manage your jobs all in one place.'
             : user?.role === 'customer'
             ? 'Chat with vendors, discuss your projects, and approve quotes seamlessly.'

@@ -55,7 +55,7 @@ const JobChat = ({ job, onClose, onJobUpdate, hideHeader = false }) => {
     availableTimes: ''
   });
 
-  const isVendor = user?.role === 'vendor';
+  const isVendor = user?.role === 'vendor' || user?.role === 'technician';
   const isCustomer = user?.role === 'customer';
   const otherParty = isVendor 
     ? { ...job.customerId, role: 'customer' }

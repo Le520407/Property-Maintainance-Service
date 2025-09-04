@@ -734,7 +734,7 @@ const ServiceDetailPage = () => {
                   <p className="text-gray-600 mb-6 text-lg">Ready to get started? Contact us to schedule your service appointment and get a free quote.</p>
                   <div className="grid md:grid-cols-2 gap-4">
                     <Link
-                      to="/booking"
+                      to={`/order-request?service=${currentService.id}&title=${encodeURIComponent(currentService.name)}&category=${encodeURIComponent(currentService.category)}`}
                       className="block w-full bg-orange-600 text-white text-center py-4 rounded-lg hover:bg-orange-700 transition-colors font-semibold text-lg"
                     >
                       Book Now
@@ -782,7 +782,7 @@ const ServiceDetailPage = () => {
                 
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <Link
-                    to={`/booking?service=${currentService.id}`}
+                    to={`/order-request?service=${currentService.id}&title=${encodeURIComponent(currentService.name)}&category=${encodeURIComponent(currentService.category)}`}
                     className="block w-full bg-orange-600 text-white text-center py-3 rounded-lg hover:bg-orange-700 transition-colors font-semibold mb-3"
                   >
                     Book This Service

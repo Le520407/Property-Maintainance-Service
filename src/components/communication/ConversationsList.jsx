@@ -64,7 +64,7 @@ const ConversationsList = ({ onSelectConversation, selectedJobId }) => {
             category: 'plumbing',
             estimatedBudget: 250,
             location: { city: 'Singapore', address: '123 Main Street' },
-            customer: user?.role === 'vendor' ? { firstName: 'John', lastName: 'Smith' } : null,
+            customer: (user?.role === 'vendor' || user?.role === 'technician') ? { firstName: 'John', lastName: 'Smith' } : null,
             vendor: user?.role === 'customer' ? { firstName: 'Mike', lastName: 'Johnson' } : null,
             createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
             unreadCount: 2,
@@ -84,7 +84,7 @@ const ConversationsList = ({ onSelectConversation, selectedJobId }) => {
             category: 'cleaning',
             estimatedBudget: 120,
             location: { city: 'Singapore', address: '456 Oak Avenue' },
-            customer: user?.role === 'vendor' ? { firstName: 'Sarah', lastName: 'Wilson' } : null,
+            customer: (user?.role === 'vendor' || user?.role === 'technician') ? { firstName: 'Sarah', lastName: 'Wilson' } : null,
             vendor: user?.role === 'customer' ? { firstName: 'Lisa', lastName: 'Chen' } : null,
             createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
             unreadCount: 0,
@@ -104,7 +104,7 @@ const ConversationsList = ({ onSelectConversation, selectedJobId }) => {
             category: 'electrical',
             estimatedBudget: 300,
             location: { city: 'Singapore', address: '789 Pine Street' },
-            customer: user?.role === 'vendor' ? { firstName: 'David', lastName: 'Brown' } : null,
+            customer: (user?.role === 'vendor' || user?.role === 'technician') ? { firstName: 'David', lastName: 'Brown' } : null,
             vendor: user?.role === 'customer' ? { firstName: 'Alex', lastName: 'Rodriguez' } : null,
             createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
             unreadCount: 0,
@@ -192,7 +192,7 @@ const ConversationsList = ({ onSelectConversation, selectedJobId }) => {
   const ConversationItem = ({ conversation }) => {
     const isSelected = selectedJobId === conversation._id;
     const hasUnread = conversation.unreadCount > 0;
-    const otherParty = user?.role === 'vendor' ? conversation.customer : conversation.vendor;
+    const otherParty = (user?.role === 'vendor' || user?.role === 'technician') ? conversation.customer : conversation.vendor;
     
     return (
       <motion.div

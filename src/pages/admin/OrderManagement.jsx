@@ -37,6 +37,7 @@ import {
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import PricingMonitor from '../../components/admin/PricingMonitor';
 
 const OrderManagement = () => {
   const { user } = useAuth();
@@ -49,6 +50,7 @@ const OrderManagement = () => {
   const [jobToDelete, setJobToDelete] = useState(null);
   const [selectedVendor, setSelectedVendor] = useState('');
   const [viewMode, setViewMode] = useState('table');
+  const [activeTab, setActiveTab] = useState('orders');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedOrders, setSelectedOrders] = useState([]);
@@ -1102,6 +1104,43 @@ const OrderManagement = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 relative z-10">
 
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-xl shadow-lg mb-8 border border-gray-100">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'orders'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center">
+                  <Package className="w-5 h-5 mr-2" />
+                  Orders Management
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('pricing')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'pricing'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center">
+                  <BarChart3 className="w-5 h-5 mr-2" />
+                  Pricing Monitor
+                </div>
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'orders' && (
+          <>
         {/* Enhanced Filters */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -1929,7 +1968,14 @@ const OrderManagement = () => {
             </div>
           )}
         </div>
-      </div>
+
+          </>
+        )}
+
+        {/* Pricing Monitor Tab */}
+        {activeTab === 'pricing' && (
+          <PricingMonitor jobs={jobs} />
+        )}
 
       {/* Modals */}
       {selectedJob && !showAssignModal && (
@@ -1956,6 +2002,7 @@ const OrderManagement = () => {
           />
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 };
