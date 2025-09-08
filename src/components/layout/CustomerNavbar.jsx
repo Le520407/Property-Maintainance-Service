@@ -4,12 +4,10 @@ import {
   Home,
   Calendar,
   Clock,
-  Star,
   User,
   Menu,
   X,
   Crown,
-  Settings,
   LogOut,
   Bell
 } from 'lucide-react';
@@ -18,7 +16,7 @@ import { api } from '../../services/api';
 const CustomerNavbar = ({ user, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [membership, setMembership] = useState(null);
-  const [notifications, setNotifications] = useState(0);
+  const [notifications] = useState(0);
   const location = useLocation();
 
   useEffect(() => {
@@ -27,8 +25,8 @@ const CustomerNavbar = ({ user, onLogout }) => {
 
   const fetchMembershipStatus = async () => {
     try {
-      const response = await api.get('/membership/my-membership');
-      setMembership(response.data.membership);
+      const response = await api.get('/users/membership');
+      setMembership(response.membership);
     } catch (error) {
       console.error('Failed to fetch membership:', error);
     }
@@ -126,8 +124,8 @@ const CustomerNavbar = ({ user, onLogout }) => {
             </button>
 
             {/* User menu */}
-            <div className="relative">
-              <div className="flex items-center space-x-3">
+            <div className="relative group">
+              <button className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
                 <div className="flex-shrink-0">
                   <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
                     <User className="h-4 w-4 text-orange-600" />
@@ -143,16 +141,37 @@ const CustomerNavbar = ({ user, onLogout }) => {
                     </p>
                   )}
                 </div>
+              </button>
+              
+              {/* Dropdown Menu */}
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 z-50">
+                <div className="py-1">
+                  <Link
+                    to="/profile"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <User className="h-4 w-4 mr-3" />
+                    My Profile
+                  </Link>
+                  <Link
+                    to="/membership"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <Crown className="h-4 w-4 mr-3" />
+                    Membership
+                  </Link>
+                  <hr className="my-1" />
+                  <button
+                    onClick={onLogout}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <LogOut className="h-4 w-4 mr-3" />
+                    Sign Out
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Logout */}
-            <button
-              onClick={onLogout}
-              className="text-gray-400 hover:text-gray-500 p-2"
-            >
-              <LogOut className="h-5 w-5" />
-            </button>
           </div>
 
           {/* Mobile menu button */}
@@ -229,6 +248,20 @@ const CustomerNavbar = ({ user, onLogout }) => {
               </div>
             </div>
             <div className="mt-3 space-y-1">
+              <Link
+                to="/profile"
+                onClick={() => setIsOpen(false)}
+                className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+              >
+                My Profile
+              </Link>
+              <Link
+                to="/membership"
+                onClick={() => setIsOpen(false)}
+                className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+              >
+                Membership
+              </Link>
               <button
                 onClick={onLogout}
                 className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 w-full text-left"

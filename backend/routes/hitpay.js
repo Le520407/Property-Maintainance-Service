@@ -75,7 +75,7 @@ router.post('/payment-request', async (req, res) => {
       email: email,
       redirect_url: redirect_url,
       reference_number: reference_number,
-      webhook: webhook,
+      webhook: webhook || `${process.env.WEBHOOK_URL}/api/hitpay/webhook`,
       name: name,
       purpose: purpose,
       send_email: send_email,

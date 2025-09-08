@@ -13,7 +13,7 @@ const servicePackageSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['plumbing', 'electrical', 'cleaning', 'gardening', 'painting', 'security', 'hvac', 'general']
+    enum: ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services']
   },
   price: {
     type: Number,
@@ -35,7 +35,7 @@ const priceListSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['plumbing', 'electrical', 'cleaning', 'gardening', 'painting', 'security', 'hvac', 'general']
+    enum: ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services']
   },
   baseRate: {
     type: Number,
@@ -139,7 +139,7 @@ const vendorSchema = new mongoose.Schema({
   // Service Information
   serviceCategories: [{
     type: String,
-    enum: ['plumbing', 'electrical', 'cleaning', 'gardening', 'painting', 'security', 'hvac', 'general']
+    enum: ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services']
   }],
   serviceArea: {
     type: String,
@@ -214,7 +214,7 @@ const vendorSchema = new mongoose.Schema({
     description: String,
     category: {
       type: String,
-      enum: ['plumbing', 'electrical', 'cleaning', 'gardening', 'painting', 'security', 'hvac', 'general']
+      enum: ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services']
     }
   }],
   

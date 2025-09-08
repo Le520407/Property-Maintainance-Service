@@ -53,7 +53,7 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
     description: vendor.description || ''
   });
 
-  const serviceCategories = ['plumbing', 'electrical', 'cleaning', 'gardening', 'painting', 'security', 'hvac', 'general'];
+  const serviceCategories = ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services'];
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   const saveProfile = async (updatedData) => {
