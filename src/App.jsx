@@ -24,6 +24,8 @@ import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import ServiceDetailPage from './pages/ServiceDetailPage.jsx';
 import CartPage from './pages/CartPage.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
+import OrdersPage from './pages/OrdersPage.jsx';
+import OrderSuccessPage from './pages/OrderSuccessPage.jsx';
 import ReferralPage from './pages/ReferralPage.jsx';
 import VendorDashboardPage from './pages/vendor/VendorDashboardPage.jsx';
 import SubscriptionPage from './pages/SubscriptionPage.jsx';
@@ -164,6 +166,16 @@ function App() {
                       } />
                       <Route path="/cart" element={<CartPage />} />
                       <Route path="/checkout" element={<CheckoutPage />} />
+                      <Route path="/orders" element={
+                        <ProtectedRoute>
+                          <OrdersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/orders/:orderId/success" element={
+                        <ProtectedRoute>
+                          <OrderSuccessPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/referral" element={<ReferralPage />} />
                       <Route path="/referral-dashboard" element={
                         <ProtectedRoute>

@@ -576,6 +576,40 @@ export const api = {
       method: 'PATCH',
     }),
   },
+
+  // Cart API methods
+  cart: {
+    // Get user's cart
+    get: () => request('/cart'),
+    
+    // Add item to cart
+    add: (item) => request('/cart/add', {
+      method: 'POST',
+      body: JSON.stringify(item),
+    }),
+    
+    // Update item quantity
+    updateQuantity: (productId, quantity) => request(`/cart/update/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ quantity }),
+    }),
+    
+    // Remove item from cart
+    remove: (productId) => request(`/cart/remove/${productId}`, {
+      method: 'DELETE',
+    }),
+    
+    // Clear entire cart
+    clear: () => request('/cart/clear', {
+      method: 'DELETE',
+    }),
+    
+    // Sync cart from localStorage
+    sync: (items) => request('/cart/sync', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    }),
+  },
 };
 
 // Utility functions

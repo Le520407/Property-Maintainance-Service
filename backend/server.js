@@ -24,6 +24,7 @@ const announcementRoutes = require('./routes/announcements');
 const membershipRoutes = require('./routes/membership');
 const hitpayRoutes = require('./routes/hitpay');
 const imageRoutes = require('./routes/images');
+const cartRoutes = require('./routes/cart');
 
 const app = express();
 
@@ -79,6 +80,8 @@ app.use('/api/subscriptions', customerSubscriptionRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/membership', membershipRoutes);
 app.use('/api/hitpay', hitpayRoutes);
+app.use('/api/orders', require('./routes/orders'));
+app.use('/api/cart', cartRoutes);
 app.use('/api/images', imageRoutes);
 app.use('/api/upload', require('./routes/upload'));
 

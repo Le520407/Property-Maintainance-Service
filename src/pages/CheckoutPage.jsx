@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useLanguage } from '../contexts/LanguageContext';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
-import { CreditCard, Truck, Shield, CheckCircle } from 'lucide-react';
+import { CreditCard, Shield, CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 
 const CheckoutPage = () => {
-  const { t } = useLanguage();
   const { cartItems, getCartTotal, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -40,13 +39,81 @@ const CheckoutPage = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate order processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Validate form data
+      if (!formData.recipientName || !formData.phone || !formData.address || 
+          !formData.city || !formData.postalCode) {
+        toast.error('Please fill in all required fields');
+        setIsSubmitting(false);
+        return;
+      }
 
-    // Clear cart and show success message
-    clearCart();
-    toast.success('Order submitted successfully!');
-    navigate('/');
+      // Prepare order data
+      const orderData = {
+        items: cartItems.map(item => ({
+          serviceId: item.id,
+          serviceName: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          category: item.category || 'service'
+        })),
+        shippingAddress: {
+          fullName: formData.recipientName,
+          phone: formData.phone,
+          email: formData.email,
+          street: formData.address,
+          city: formData.city,
+          state: formData.state || 'Singapore',
+          postalCode: formData.postalCode,
+          country: 'Singapore',
+          notes: formData.notes
+        },
+        paymentMethod: 'hitpay'
+      };
+
+      console.log('Creating order with data:', orderData);
+
+      // Create order and get payment URL
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/orders/create`,
+        orderData,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Order creation response:', response.data);
+
+      if (response.data.success && response.data.paymentUrl) {
+        // Clear cart before redirecting to payment
+        clearCart();
+        
+        toast.success('Order created! Redirecting to payment...');
+        
+        // Redirect to HitPay payment page
+        window.location.href = response.data.paymentUrl;
+      } else {
+        throw new Error(response.data.message || 'Failed to create order');
+      }
+
+    } catch (error) {
+      console.error('Checkout error:', error);
+      
+      let errorMessage = 'Failed to process order. Please try again.';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (cartItems.length === 0) {

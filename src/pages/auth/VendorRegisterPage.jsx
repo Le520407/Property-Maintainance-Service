@@ -44,14 +44,18 @@ const VendorRegisterPage = ({ embedded = false }) => {
   ];
 
   const serviceCategories = [
-    { id: 'plumbing', name: 'Plumbing', icon: '🔧' },
-    { id: 'electrical', name: 'Electrical', icon: '⚡' },
-    { id: 'cleaning', name: 'Cleaning', icon: '🧹' },
-    { id: 'gardening', name: 'Gardening', icon: '🌱' },
-    { id: 'painting', name: 'Painting', icon: '🎨' },
-    { id: 'security', name: 'Security', icon: '🔒' },
-    { id: 'hvac', name: 'HVAC', icon: '❄️' },
-    { id: 'general', name: 'General Maintenance', icon: '🛠️' }
+    { id: 'home-repairs', name: 'Home Repairs' },
+    { id: 'painting-services', name: 'Painting Services' },
+    { id: 'electrical-services', name: 'Electrical Services' },
+    { id: 'plumbing-services', name: 'Plumbing Services' },
+    { id: 'carpentry-services', name: 'Carpentry Services' },
+    { id: 'flooring-services', name: 'Flooring Services' },
+    { id: 'appliance-installation', name: 'Appliance Installation' },
+    { id: 'furniture-assembly', name: 'Furniture Assembly' },
+    { id: 'moving-services', name: 'Moving Services' },
+    { id: 'renovation', name: 'Renovation' },
+    { id: 'safety-security', name: 'Safety and Security' },
+    { id: 'cleaning-services', name: 'Cleaning Services' }
   ];
 
   const handleFileUpload = (event) => {
