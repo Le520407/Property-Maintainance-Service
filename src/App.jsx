@@ -45,6 +45,12 @@ import NotFoundPage from './pages/NotFoundPage.jsx';
 import ApiTest from './components/ApiTest.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 
+// Legal Pages
+import TermsPage from './pages/legal/TermsPage.jsx';
+import PrivacyPolicyPage from './pages/legal/PrivacyPolicyPage.jsx';
+import VendorAgreementPage from './pages/legal/VendorAgreementPage.jsx';
+import AgentAgreementPage from './pages/legal/AgentAgreementPage.jsx';
+
 // Membership Components
 import MembershipPlans from './components/customer/MembershipPlans.jsx';
 import MembershipDashboard from './components/customer/MembershipDashboard.jsx';
@@ -140,6 +146,13 @@ function App() {
                       <Route path="/pricing" element={<PricingPage />} />
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/contact" element={<ContactPage />} />
+                      
+                      {/* Legal Pages */}
+                      <Route path="/terms" element={<TermsPage />} />
+                      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                      <Route path="/vendor-agreement" element={<VendorAgreementPage />} />
+                      <Route path="/agent-agreement" element={<AgentAgreementPage />} />
+                      
                       <Route path="/login" element={<LoginPage />} />
                       <Route path="/register" element={<RegisterPage />} />
                       <Route path="/customer-register" element={<CustomerRegisterPage />} />

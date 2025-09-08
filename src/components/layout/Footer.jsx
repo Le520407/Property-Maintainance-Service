@@ -33,6 +33,12 @@ const Footer = () => {
       { name: 'Login', href: '/login' },
       { name: 'Register', href: '/register' },
     ],
+    legal: [
+      { name: 'Terms of Service', href: '/terms' },
+      { name: 'Privacy Policy', href: '/privacy' },
+      { name: 'Vendor Agreement', href: '/vendor-agreement' },
+      { name: 'Agent Agreement', href: '/agent-agreement' },
+    ],
   };
 
   const socialLinks = [
@@ -46,7 +52,7 @@ const Footer = () => {
     <footer className="bg-gray-900 text-white">
       {/* Main Footer Content */}
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
           {/* Company Info */}
           <div className="lg:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
@@ -156,6 +162,25 @@ Sunday and Public Holidays: Closed (Emergency services available)
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h4 className="text-lg font-semibold mb-4">Legal</h4>
+            <ul className="space-y-2">
+              {footerLinks.legal.map((link) => (
+                <li key={link.name}>
+                  <Link
+                    to={link.href}
+                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    className="text-gray-400 hover:text-white transition-colors flex items-center group"
+                  >
+                    <ArrowRight size={12} className="mr-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>
