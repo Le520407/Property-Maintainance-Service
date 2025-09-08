@@ -314,6 +314,8 @@ const OrderSubmissionPage = () => {
         estimatedBudget: budgetAmount,
         subtotal: budgetAmount,
         totalAmount: budgetAmount, // Initial estimate
+        status: 'PENDING', // Add initial status
+        serviceCategory: formData.category, // Add service category for vendor matching
         location: {
           ...formData.location,
           address: completeAddress || formData.location.streetAddress // Ensure backward compatibility
