@@ -87,14 +87,18 @@ const AllInOneRegisterPage = () => {
 
   // Service categories for vendors
   const serviceCategories = [
-    { id: 'plumbing', name: 'Plumbing', icon: '🔧' },
-    { id: 'electrical', name: 'Electrical', icon: '⚡' },
-    { id: 'cleaning', name: 'Cleaning', icon: '🧹' },
-    { id: 'gardening', name: 'Gardening', icon: '🌱' },
-    { id: 'painting', name: 'Painting', icon: '🎨' },
-    { id: 'security', name: 'Security', icon: '🔒' },
-    { id: 'hvac', name: 'HVAC', icon: '❄️' },
-    { id: 'general', name: 'General Maintenance', icon: '🛠️' }
+    { id: 'home-repairs', name: 'Home Repairs' },
+    { id: 'painting-services', name: 'Painting Services' },
+    { id: 'electrical-services', name: 'Electrical Services' },
+    { id: 'plumbing-services', name: 'Plumbing Services' },
+    { id: 'carpentry-services', name: 'Carpentry Services' },
+    { id: 'flooring-services', name: 'Flooring Services' },
+    { id: 'appliance-installation', name: 'Appliance Installation' },
+    { id: 'furniture-assembly', name: 'Furniture Assembly' },
+    { id: 'moving-services', name: 'Moving Services' },
+    { id: 'renovation', name: 'Renovation' },
+    { id: 'safety-security', name: 'Safety and Security' },
+    { id: 'cleaning-services', name: 'Cleaning Services' }
   ];
 
   // Validate invite code for agents
@@ -103,14 +107,14 @@ const AllInOneRegisterPage = () => {
     
     setIsValidatingCode(true);
     try {
-      const response = await api.post('/api/invite-codes/validate', { code });
-      if (response.data.success) {
+      const response = await api.post('/invite-codes/validate', { code });
+      if (response.success) {
         setCodeValidated(true);
         toast.success('Valid invite code!');
       }
     } catch (error) {
       setCodeValidated(false);
-      toast.error(error.response?.data?.message || 'Invalid invite code');
+      toast.error(error.message || 'Invalid invite code');
     } finally {
       setIsValidatingCode(false);
     }
@@ -149,7 +153,7 @@ const AllInOneRegisterPage = () => {
         if (data.referralCode) {
           customerData.referralCode = data.referralCode;
         }
-        response = await api.post('/api/auth/register', customerData);
+        response = await api.post('/auth/register', customerData);
         
       } else if (accountType === 'vendor') {
         const vendorData = {
@@ -182,7 +186,7 @@ const AllInOneRegisterPage = () => {
           country: data.country,
           inviteCode: data.inviteCode
         };
-        response = await api.post('/api/auth/register-agent', agentData);
+        response = await api.post('/auth/register-agent', agentData);
       }
 
       if (response?.data?.token || response?.token) {

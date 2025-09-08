@@ -24,16 +24,17 @@ const announcementRoutes = require('./routes/announcements');
 const membershipRoutes = require('./routes/membership');
 const hitpayRoutes = require('./routes/hitpay');
 const imageRoutes = require('./routes/images');
+const cartRoutes = require('./routes/cart');
 
 const app = express();
 
 // Connect to MongoDB
 connectDB();
 
-// Rate limiting - Increased for development
+// Rate limiting - Increased significantly for development
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // limit each IP to 1000 requests per windowMs (increased for dev)
+  max: 5000, // limit each IP to 5000 requests per windowMs (greatly increased for dev)
   message: 'Too many requests from this IP, please try again later.',
 });
 
@@ -79,6 +80,8 @@ app.use('/api/subscriptions', customerSubscriptionRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/membership', membershipRoutes);
 app.use('/api/hitpay', hitpayRoutes);
+app.use('/api/orders', require('./routes/orders'));
+app.use('/api/cart', cartRoutes);
 app.use('/api/images', imageRoutes);
 app.use('/api/upload', require('./routes/upload'));
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -136,19 +136,18 @@ const OrderSubmissionPage = () => {
   }, [location.search, location.state, user]);
 
   const serviceCategories = [
-    { value: 'maintenance', label: 'Home Repairs', icon: '🛠️' },
-    { value: 'plumbing', label: 'Plumbing', icon: '🔧' },
-    { value: 'electrical', label: 'Electrical', icon: '⚡' },
-    { value: 'cleaning', label: 'Cleaning', icon: '🧽' },
-    { value: 'painting', label: 'Painting', icon: '🎨' },
-    { value: 'security', label: 'Security', icon: '🔒' },
-    { value: 'hvac', label: 'HVAC', icon: '🌡️' },
-    { value: 'gardening', label: 'Gardening', icon: '🌱' },
-    { value: 'flooring', label: 'Flooring', icon: '🏠' },
-    { value: 'installation', label: 'Installation', icon: '📦' },
-    { value: 'assembly', label: 'Assembly', icon: '🔩' },
-    { value: 'moving', label: 'Moving', icon: '📦' },
-    { value: 'renovation', label: 'Renovation', icon: '🏗️' }
+    { value: 'home-repairs', label: 'Home Repairs' },
+    { value: 'painting-services', label: 'Painting Services' },
+    { value: 'electrical-services', label: 'Electrical Services' },
+    { value: 'plumbing-services', label: 'Plumbing Services' },
+    { value: 'carpentry-services', label: 'Carpentry Services' },
+    { value: 'flooring-services', label: 'Flooring Services' },
+    { value: 'appliance-installation', label: 'Appliance Installation' },
+    { value: 'furniture-assembly', label: 'Furniture Assembly' },
+    { value: 'moving-services', label: 'Moving Services' },
+    { value: 'renovation', label: 'Renovation' },
+    { value: 'safety-security', label: 'Safety and Security' },
+    { value: 'cleaning-services', label: 'Cleaning Services' }
   ];
 
 
@@ -314,6 +313,8 @@ const OrderSubmissionPage = () => {
         estimatedBudget: budgetAmount,
         subtotal: budgetAmount,
         totalAmount: budgetAmount, // Initial estimate
+        status: 'PENDING', // Add initial status
+        serviceCategory: formData.category, // Add service category for vendor matching
         location: {
           ...formData.location,
           address: completeAddress || formData.location.streetAddress // Ensure backward compatibility
@@ -333,7 +334,7 @@ const OrderSubmissionPage = () => {
 
       const response = await api.jobs.create(orderData);
       
-      toast.success('Order submitted successfully! 🎉');
+      toast.success('Order submitted successfully! ðŸŽ‰');
       toast.success('Our admin will review and assign it to the best vendor in your area.');
       
       // Redirect to order tracking or dashboard
@@ -500,7 +501,7 @@ const OrderSubmissionPage = () => {
                   Detailed Description *
                 </label>
                 <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h4 className="text-sm font-medium text-blue-800 mb-2">📝 What to include for {serviceCategories.find(c => c.value === formData.category)?.label || 'your'} services:</h4>
+                  <h4 className="text-sm font-medium text-blue-800 mb-2">ðŸ“ What to include for {serviceCategories.find(c => c.value === formData.category)?.label || 'your'} services:</h4>
                   <div className="text-sm text-blue-700">
                     {(() => {
                       switch(formData.category) {
@@ -826,7 +827,7 @@ const OrderSubmissionPage = () => {
                     }}
                     className="ml-3 text-sm text-green-600 hover:text-green-800 underline"
                   >
-                    Manage Profile →
+                    Manage Profile â†’
                   </button>
                 </div>
               )}

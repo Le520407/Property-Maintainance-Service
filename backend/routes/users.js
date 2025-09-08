@@ -1,14 +1,27 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
+const { CustomerMembership } = require('../models/CustomerMembership');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Get user profile
+// Get user profile with membership information
 router.get('/profile', authenticateToken, async (req, res) => {
   try {
-    res.json({ user: req.user });
+    // Get current user's active membership
+    let membership = null;
+    if (req.user.role === 'customer') {
+      membership = await CustomerMembership.findOne({
+        customer: req.user._id,
+        status: { $in: ['ACTIVE', 'PENDING'] }
+      }).populate('tier').sort({ createdAt: -1 });
+    }
+
+    res.json({ 
+      user: req.user,
+      membership: membership 
+    });
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -323,6 +336,71 @@ router.put('/admin/:userId/status', authenticateToken, requireRole(['ADMIN']), a
   } catch (error) {
     console.error('Update user status error:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Get user's current membership status
+router.get('/membership', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ 
+        message: 'Only customers can access membership information' 
+      });
+    }
+
+    const membership = await CustomerMembership.findOne({
+      customer: req.user._id,
+      status: { $in: ['ACTIVE', 'PENDING', 'SUSPENDED'] }
+    }).populate('tier').sort({ createdAt: -1 });
+
+    if (!membership) {
+      return res.json({
+        success: true,
+        membership: null,
+        message: 'No membership found'
+      });
+    }
+
+    // Calculate usage and remaining benefits
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+    const usage = membership.currentUsage?.month === currentMonth 
+      ? membership.currentUsage 
+      : { serviceRequestsUsed: 0, emergencyRequestsUsed: 0 };
+
+    const tier = membership.tier;
+    const remaining = {
+      serviceRequests: tier.features.serviceRequestsPerMonth === -1 
+        ? 'Unlimited' 
+        : Math.max(0, tier.features.serviceRequestsPerMonth - usage.serviceRequestsUsed),
+      materialDiscount: tier.features.materialDiscountPercent,
+      emergencyService: tier.features.emergencyService,
+      prioritySupport: tier.features.prioritySupport
+    };
+
+    res.json({
+      success: true,
+      membership: {
+        id: membership._id,
+        tier: tier,
+        status: membership.status,
+        billingCycle: membership.billingCycle,
+        currentPrice: membership.currentPrice,
+        startDate: membership.startDate,
+        endDate: membership.endDate,
+        nextBillingDate: membership.nextBillingDate,
+        autoRenew: membership.autoRenew,
+        usage: usage,
+        remaining: remaining,
+        createdAt: membership.createdAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Get membership error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to get membership information' 
+    });
   }
 });
 

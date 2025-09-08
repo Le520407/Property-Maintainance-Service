@@ -30,7 +30,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
-  const [activeSection, setActiveSection] = useState(initialSection || 'services');
+  const [activeSection, setActiveSection] = useState(initialSection || 'profile');
   const [servicePackages, setServicePackages] = useState(vendor.servicePackages || []);
   const [priceLists, setPriceLists] = useState(vendor.priceLists || []);
   const [availabilitySchedule, setAvailabilitySchedule] = useState(vendor.availabilitySchedule || []);
@@ -38,8 +38,17 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
   const [editingPrice, setEditingPrice] = useState(null);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [loading, setLoading] = useState(false);
+  
+  // Vendor profile editing states
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    serviceCategories: vendor.serviceCategories || [],
+    serviceArea: vendor.serviceArea || '',
+    companyName: vendor.companyName || '',
+    description: vendor.description || ''
+  });
 
-  const serviceCategories = ['plumbing', 'electrical', 'cleaning', 'gardening', 'painting', 'security', 'hvac', 'general'];
+  const serviceCategories = ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services'];
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   const saveProfile = async (updatedData) => {
@@ -155,7 +164,29 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
     await saveProfile({ availabilitySchedule: updatedSchedule });
   };
 
+  // Handle profile form submission
+  const handleSaveProfile = async () => {
+    if (profileForm.serviceCategories.length === 0) {
+      toast.error('Please select at least one service category');
+      return;
+    }
+
+    await saveProfile(profileForm);
+    setEditingProfile(false);
+  };
+
+  // Handle service category toggle
+  const handleServiceCategoryToggle = (category) => {
+    setProfileForm(prev => ({
+      ...prev,
+      serviceCategories: prev.serviceCategories.includes(category)
+        ? prev.serviceCategories.filter(c => c !== category)
+        : [...prev.serviceCategories, category]
+    }));
+  };
+
   const sections = [
+    { id: 'profile', name: 'Profile & Categories', icon: User },
     { id: 'services', name: 'Service Packages', icon: FileText },
     { id: 'pricing', name: 'Price Lists', icon: DollarSign },
     { id: 'schedule', name: 'Availability', icon: Calendar }
@@ -185,6 +216,149 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
           })}
         </nav>
       </div>
+
+      {/* Profile & Categories Section */}
+      {activeSection === 'profile' && (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-medium text-gray-900">Profile & Service Categories</h3>
+            <button
+              onClick={() => setEditingProfile(!editingProfile)}
+              className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
+            >
+              <Edit2 className="h-4 w-4 mr-2" />
+              {editingProfile ? 'Cancel' : 'Edit Profile'}
+            </button>
+          </div>
+
+          {!editingProfile ? (
+            <div className="space-y-6">
+              {/* Current Service Categories */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Service Categories</h4>
+                <div className="flex flex-wrap gap-2">
+                  {(vendor.serviceCategories || []).map((category) => (
+                    <span
+                      key={category}
+                      className="px-3 py-2 bg-purple-100 text-purple-800 rounded-full text-sm font-medium"
+                    >
+                      {category.charAt(0).toUpperCase() + category.slice(1)}
+                    </span>
+                  ))}
+                  {(!vendor.serviceCategories || vendor.serviceCategories.length === 0) && (
+                    <p className="text-gray-500 italic">No service categories selected</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Other Profile Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Service Area</h4>
+                  <p className="text-gray-900">{vendor.serviceArea || 'Not specified'}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Company Name</h4>
+                  <p className="text-gray-900">{vendor.companyName || 'Not specified'}</p>
+                </div>
+              </div>
+
+              {vendor.description && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Description</h4>
+                  <p className="text-gray-900">{vendor.description}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Service Categories Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Service Categories * (Select all that apply)
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {serviceCategories.map((category) => (
+                    <label key={category} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={profileForm.serviceCategories.includes(category)}
+                        onChange={() => handleServiceCategoryToggle(category)}
+                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-gray-700 capitalize">
+                        {category}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  These categories determine which jobs you'll be assigned to
+                </p>
+              </div>
+
+              {/* Other Profile Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Service Area
+                  </label>
+                  <input
+                    type="text"
+                    value={profileForm.serviceArea}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, serviceArea: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="e.g., Singapore, Kuala Lumpur"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Company Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profileForm.companyName}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, companyName: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="Your company name"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={profileForm.description}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, description: e.target.value }))}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="Brief description of your services"
+                />
+              </div>
+
+              {/* Save/Cancel Buttons */}
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => setEditingProfile(false)}
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={loading}
+                  className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Service Packages Section */}
       {activeSection === 'services' && (
@@ -729,28 +903,7 @@ const VendorDashboardPage = () => {
         stack: error.stack
       });
       
-      // Auto-load demo data as fallback
-      console.log('🔄 Auto-loading demo data as fallback...');
-      setDashboardData({
-        vendor: { 
-          userId: { firstName: 'Demo' }, 
-          verificationStatus: 'VERIFIED',
-          servicePackages: [],
-          priceLists: [],
-          availabilitySchedule: [],
-          serviceCategories: ['plumbing'],
-          serviceArea: 'Singapore',
-          qualityScore: 4.5,
-          onTimePercentage: 95,
-          customerSatisfactionScore: 4.7,
-          currentRating: 4.8,
-          totalJobsCompleted: 28
-        },
-        stats: { jobs: {}, earnings: {}, ratings: {} },
-        recentJobs: []
-      });
-      
-      toast.error(`API failed, loaded demo data. Error: ${error.message}`);
+      toast.error(`Failed to load dashboard: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -780,27 +933,6 @@ const VendorDashboardPage = () => {
               className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
             >
               Retry
-            </button>
-            <button
-              onClick={() => setDashboardData({
-                vendor: { 
-                  userId: { firstName: 'Demo' }, 
-                  verificationStatus: 'VERIFIED',
-                  servicePackages: [],
-                  priceLists: [],
-                  availabilitySchedule: [],
-                  serviceCategories: ['plumbing'],
-                  serviceArea: 'Singapore',
-                  qualityScore: 4.5,
-                  onTimePercentage: 95,
-                  customerSatisfactionScore: 4.7
-                },
-                stats: { jobs: {}, earnings: {}, ratings: {} },
-                recentJobs: []
-              })}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Load Demo Data
             </button>
           </div>
         </div>
@@ -1173,12 +1305,7 @@ const VendorDashboardPage = () => {
 
     // Account Section  
     if (activeSection === 'account') {
-      if (activeTab === 'profile') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Profile Information</h3>
-          <p className="text-gray-600">Profile management coming soon...</p>
-        </div>
-      );
+      if (activeTab === 'profile') return <ProfileTab vendor={vendor} onUpdate={fetchDashboardData} activeSection="profile" />;
       if (activeTab === 'verification') return (
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Account Verification</h3>
@@ -1373,14 +1500,79 @@ const VendorJobAssignments = ({ status }) => {
 
     try {
       console.log('Sending response:', { response, reason, jobId }); // Debug log
-      const result = await api.vendor.respondToJob(jobId, { response, reason });
+      
+      // Update job status without price (price comes later via Update Status)
+      const updateData = { 
+        response, 
+        reason
+      };
+      
+      const result = await api.vendor.respondToJob(jobId, updateData);
       console.log('Response result:', result); // Debug log
-      toast.success(`Job ${response.toLowerCase()} successfully!`);
+      
+      if (response === 'ACCEPTED') {
+        toast.success('Job accepted! You can now communicate with the customer and set your price using the "Update Status" button.');
+      } else {
+        toast.success(`Job ${response.toLowerCase()} successfully!`);
+      }
+      
       loadJobs(); // Reload jobs
     } catch (error) {
       console.error('Error responding to job:', error);
       console.error('Error details:', error.response?.data || error.message);
       toast.error(`Failed to ${response.toLowerCase()} job: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  const handleStatusUpdate = async (jobId, newStatus) => {
+    try {
+      console.log('Updating job status:', { jobId, newStatus });
+      
+      // Find the job to get current details
+      const job = jobs.find(j => j._id === jobId);
+      if (!job) {
+        toast.error('Job not found');
+        return;
+      }
+
+      let updateData = { status: newStatus };
+
+      // If sending a quote (setting price after communication), ask for price
+      if (newStatus === 'QUOTE_SENT') {
+        const price = window.prompt('Please set your quote price for this job (in dollars).\nThis price will be sent to the customer for approval:');
+        if (!price || isNaN(price) || parseFloat(price) <= 0) {
+          toast.error('Please provide a valid price for the quote');
+          return;
+        }
+        updateData.totalAmount = parseFloat(price);
+      } else {
+        // Keep existing price for other status updates
+        if (job.totalAmount) {
+          updateData.totalAmount = job.totalAmount;
+        }
+      }
+
+      // Use the correct API endpoint for status updates
+      const result = await api.vendor.updateJobStatus(jobId, updateData);
+      
+      console.log('Status update result:', result);
+      
+      if (newStatus === 'QUOTE_SENT') {
+        toast.success(`Quote sent with price $${updateData.totalAmount}! Customer can now accept or reject your quote.`);
+      } else if (newStatus === 'IN_DISCUSSION') {
+        toast.success('Job status set to discussion. You can now communicate with the customer about requirements.');
+      } else if (newStatus === 'IN_PROGRESS') {
+        toast.success('Job work started! Payment will be processed through the website after completion.');
+      } else if (newStatus === 'COMPLETED') {
+        toast.success('Job marked as completed! Payment will be processed automatically through the website.');
+      } else {
+        toast.success(`Job status updated to ${newStatus.replace('_', ' ').toLowerCase()}!`);
+      }
+      
+      loadJobs(); // Reload jobs
+    } catch (error) {
+      console.error('Error updating job status:', error);
+      toast.error(`Failed to update job status: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -1495,21 +1687,99 @@ const VendorJobAssignments = ({ status }) => {
                     </div>
                   )}
 
-                  {(job.status === 'IN_DISCUSSION' || job.status === 'QUOTE_SENT' || job.status === 'QUOTE_ACCEPTED' || job.status === 'PAID' || job.status === 'IN_PROGRESS') && (
+                  {(job.status === 'ACCEPTED' || job.status === 'QUOTED' || job.status === 'IN_PROGRESS' || job.status === 'PAID' || job.status === 'IN_DISCUSSION' || job.status === 'QUOTE_SENT' || job.status === 'QUOTE_ACCEPTED') && (
+                    <div className="space-y-3">
+                      {/* Price Display */}
+                      {job.totalAmount && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-green-800">Job Price:</span>
+                            <span className="text-lg font-bold text-green-600">${job.totalAmount}</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
+                        <button
+                          onClick={() => navigate('/messages')}
+                          className="flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
+                        >
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Chat
+                        </button>
+                        
+                        {/* Status Update Dropdown */}
+                        <div className="relative">
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                handleStatusUpdate(job._id, e.target.value);
+                                e.target.value = ''; // Reset selection
+                              }
+                            }}
+                            className="flex items-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
+                            defaultValue=""
+                          >
+                            <option value="">Update Status</option>
+                            {job.status === 'ACCEPTED' && <option value="IN_DISCUSSION">Start Discussion</option>}
+                            {job.status === 'IN_DISCUSSION' && <option value="QUOTE_SENT">Send Quote & Price</option>}
+                            {(job.status === 'QUOTE_ACCEPTED' || job.status === 'PAID') && <option value="IN_PROGRESS">Start Work</option>}
+                            {job.status === 'IN_PROGRESS' && <option value="COMPLETED">Mark Complete</option>}
+                          </select>
+                        </div>
+                        
+                        {/* Quick Action Buttons */}
+                        {job.status === 'ACCEPTED' && (
+                          <button
+                            onClick={() => handleStatusUpdate(job._id, 'IN_DISCUSSION')}
+                            className="flex items-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Start Discussion
+                          </button>
+                        )}
+                        
+                        {job.status === 'IN_DISCUSSION' && (
+                          <button
+                            onClick={() => handleStatusUpdate(job._id, 'QUOTE_SENT')}
+                            className="flex items-center px-3 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                          >
+                            <DollarSign className="h-4 w-4 mr-2" />
+                            Send Quote & Price
+                          </button>
+                        )}
+                        
+                        {(job.status === 'QUOTE_ACCEPTED' || job.status === 'PAID') && (
+                          <button
+                            onClick={() => handleStatusUpdate(job._id, 'IN_PROGRESS')}
+                            className="flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                          >
+                            <Activity className="h-4 w-4 mr-2" />
+                            Start Work
+                          </button>
+                        )}
+                        
+                        {job.status === 'IN_PROGRESS' && (
+                          <button
+                            onClick={() => handleStatusUpdate(job._id, 'COMPLETED')}
+                            className="flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Mark Complete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {job.status === 'COMPLETED' && (
                     <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
                       <button
-                        onClick={() => navigate('/messages', { state: { selectedJob: job } })}
-                        className="flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors"
-                      >
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Chat & Quote
-                      </button>
-                      <button
-                        onClick={() => setShowJobDetails(job)}
-                        className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                        onClick={() => navigate(`/jobs/${job._id}`)}
+                        className="flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
                       >
                         <FileText className="h-4 w-4 mr-2" />
-                        Job Details
+                        View Details
                       </button>
                       <button
                         onClick={() => {
@@ -1633,14 +1903,10 @@ const VendorJobAssignments = ({ status }) => {
             </div>
             <div className="p-4 border-t border-gray-200">
               <button
-                onClick={() => {
-                  setShowJobDetails(null);
-                  navigate('/messages', { state: { selectedJob: showJobDetails } });
-                }}
-                className="w-full flex items-center justify-center px-4 py-2 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-colors"
+                onClick={() => setShowJobDetails(null)}
+                className="w-full flex items-center justify-center px-4 py-2 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 transition-colors"
               >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Open Chat & Pricing
+                Close
               </button>
             </div>
           </div>

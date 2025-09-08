@@ -485,41 +485,70 @@ const UserManagement = () => {
 
       {userData.role === 'vendor' && (
         <div className="bg-gray-50 rounded-lg p-3 mb-4">
-          <div className="grid grid-cols-2 gap-3">
-            {userData.skills && userData.skills.length > 0 && (
+          <div className="space-y-3">
+            {/* Service Categories */}
+            {(userData.serviceCategories || userData.vendorProfile?.serviceCategories) && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">Skills</p>
+                <p className="text-xs text-gray-500 mb-2">Service Categories</p>
                 <div className="flex flex-wrap gap-1">
-                  {userData.skills.slice(0, 2).map((skill, idx) => (
-                    <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                      {skill}
+                  {(userData.serviceCategories || userData.vendorProfile?.serviceCategories || []).slice(0, 3).map((category, idx) => (
+                    <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+                      {category.charAt(0).toUpperCase() + category.slice(1)}
                     </span>
                   ))}
-                  {userData.skills.length > 2 && (
+                  {(userData.serviceCategories || userData.vendorProfile?.serviceCategories || []).length > 3 && (
                     <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs">
-                      +{userData.skills.length - 2}
+                      +{(userData.serviceCategories || userData.vendorProfile?.serviceCategories || []).length - 3}
                     </span>
                   )}
                 </div>
               </div>
             )}
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Experience</p>
-              <p className="text-sm font-medium">{userData.experience} years</p>
-            </div>
-            {userData.hourlyRate > 0 && (
+            
+            <div className="grid grid-cols-2 gap-3">
+              {userData.skills && userData.skills.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Skills</p>
+                  <div className="flex flex-wrap gap-1">
+                    {userData.skills.slice(0, 2).map((skill, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                        {skill}
+                      </span>
+                    ))}
+                    {userData.skills.length > 2 && (
+                      <span className="px-2 py-1 bg-gray-200 text-gray-600 rounded-full text-xs">
+                        +{userData.skills.length - 2}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
               <div>
-                <p className="text-xs text-gray-500 mb-1">Rate</p>
-                <p className="text-sm font-medium">${userData.hourlyRate}/hr</p>
+                <p className="text-xs text-gray-500 mb-1">Experience</p>
+                <p className="text-sm font-medium">{userData.experience || userData.vendorProfile?.experience || 0} years</p>
+              </div>
+              {(userData.hourlyRate > 0 || userData.vendorProfile?.hourlyRate > 0) && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Rate</p>
+                  <p className="text-sm font-medium">${userData.hourlyRate || userData.vendorProfile?.hourlyRate}/hr</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Rating</p>
+                <div className="flex items-center">
+                  <Star className="w-4 h-4 text-yellow-500 mr-1" />
+                  <span className="text-sm font-medium">{userData.rating || userData.vendorProfile?.averageRating || 0}/5</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Service Area */}
+            {(userData.serviceArea || userData.vendorProfile?.serviceArea) && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Service Area</p>
+                <p className="text-sm font-medium">{userData.serviceArea || userData.vendorProfile?.serviceArea}</p>
               </div>
             )}
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Rating</p>
-              <div className="flex items-center">
-                <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                <span className="text-sm font-medium">{userData.rating || 0}/5</span>
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -636,9 +665,27 @@ const UserManagement = () => {
         )}
         
         <div className="flex items-center space-x-2">
-          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+          <button 
+            onClick={() => setEditingUser(userData)}
+            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+            title="Edit user"
+          >
             <Edit2 className="w-4 h-4" />
           </button>
+          {userData.role === 'vendor' && (
+            <button
+              onClick={() => {
+                // Navigate to vendor management or show vendor details modal
+                console.log('Managing vendor data for:', userData._id);
+                toast.success(`Opening vendor management for ${userData.firstName} ${userData.lastName}`);
+                // TODO: Implement vendor management modal or navigation
+              }}
+              className="p-2 text-purple-600 hover:text-purple-800 rounded-lg hover:bg-purple-50"
+              title="Manage vendor data"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
           {user.isSuper && (
             <button
               onClick={() => deleteUser(userData._id)}

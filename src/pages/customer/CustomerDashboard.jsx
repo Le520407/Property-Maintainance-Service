@@ -12,8 +12,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
-import MembershipWidget from '../customer/MembershipWidget';
-import toast from 'react-hot-toast';
+import MembershipCard from '../customer/MembershipCard';
 
 const CustomerDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
@@ -29,6 +28,7 @@ const CustomerDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchDashboardData = async () => {
@@ -233,7 +233,11 @@ const CustomerDashboard = () => {
                 dashboardData.recentJobs.map((job) => {
                   const StatusIcon = getStatusIcon(job.status);
                   return (
-                    <div key={job._id} className="p-6 hover:bg-gray-50 transition-colors">
+                    <Link
+                      key={job._id}
+                      to={`/jobs/${job._id}`}
+                      className="block p-6 hover:bg-gray-50 transition-colors"
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 mr-4">
@@ -260,7 +264,7 @@ const CustomerDashboard = () => {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   );
                 })
               ) : (
@@ -284,8 +288,8 @@ const CustomerDashboard = () => {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Membership Widget */}
-          <MembershipWidget />
+          {/* Membership Card */}
+          <MembershipCard />
 
           {/* Quick Actions */}
           <motion.div

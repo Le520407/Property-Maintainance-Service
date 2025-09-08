@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import { User, Mail, Lock, Eye, EyeOff, Gift, CheckCircle, Shield, Award, TrendingUp } from 'lucide-react';
 import { api } from '../../services/api';
 
-const AgentRegisterPage = () => {
+const AgentRegisterPage = ({ embedded = false }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -33,14 +33,14 @@ const AgentRegisterPage = () => {
     
     setIsValidatingCode(true);
     try {
-      const response = await api.post('/api/invite-codes/validate', { code });
-      if (response.data.success) {
+      const response = await api.post('/invite-codes/validate', { code });
+      if (response.success) {
         setCodeValidated(true);
         toast.success('Valid invite code!');
       }
     } catch (error) {
       setCodeValidated(false);
-      toast.error(error.response?.data?.message || 'Invalid invite code');
+      toast.error(error.message || 'Invalid invite code');
     } finally {
       setIsValidatingCode(false);
     }
@@ -80,20 +80,25 @@ const AgentRegisterPage = () => {
       return;
     }
 
+    if (!data.inviteCode) {
+      toast.error('Invite code is required');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const response = await api.post('/auth/register', {
+      const response = await api.post('/auth/register-agent', {
         ...data,
         role: 'referral'
       });
 
-      if (response.data.success) {
+      if (response.token) {
         toast.success('Agent registration successful! Please verify your email.');
         navigate('/login');
       }
     } catch (error) {
       console.error('Registration error:', error);
-      const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
+      const errorMessage = error.message || 'Registration failed. Please try again.';
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);
@@ -101,47 +106,55 @@ const AgentRegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4">
+    <div className={embedded ? "" : "min-h-screen bg-gray-50 py-12"}>
+      <div className={embedded ? "" : "container mx-auto px-4"}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="max-w-4xl mx-auto"
+          className={embedded ? "" : "max-w-4xl mx-auto"}
         >
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-orange-600 to-orange-700 rounded-xl flex items-center justify-center">
-                <Award className="text-white" size={32} />
-              </div>
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900">Agent Registration</h2>
-            <p className="mt-2 text-gray-600">Join our exclusive referral agent program</p>
           </div>
 
-          {/* Agent Benefits Card */}
+          {/* Agent Benefits Section */}
           <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-lg p-6 text-white mb-8">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <TrendingUp size={20} className="mr-2" />
-              Agent Benefits
-            </h3>
-            <div className="grid grid-cols-1 gap-3 text-sm">
-              <div className="flex items-center">
-                <CheckCircle size={16} className="mr-2 text-orange-200" />
-                <span>15% commission on every successful referral</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+              <div>
+                <h3 className="text-xl font-semibold mb-4 flex items-center">
+                  <TrendingUp size={24} className="mr-2" />
+                  Agent Benefits
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>15% commission on every successful referral</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Higher earning potential for property agents</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Bronze to Platinum tier progression system</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Exclusive agent dashboard and analytics</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center">
-                <CheckCircle size={16} className="mr-2 text-orange-200" />
-                <span>Higher earning potential for property agents</span>
-              </div>
-              <div className="flex items-center">
-                <CheckCircle size={16} className="mr-2 text-orange-200" />
-                <span>Bronze to Platinum tier progression system</span>
-              </div>
-              <div className="flex items-center">
-                <CheckCircle size={16} className="mr-2 text-orange-200" />
-                <span>Exclusive agent dashboard and analytics</span>
+              <div className="hidden md:block">
+                <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+                  <div className="flex justify-center items-center h-32">
+                    <div className="text-center">
+                      <Award size={48} className="mx-auto mb-2 text-orange-200" />
+                      <p className="text-sm text-orange-100">Grow Your Network</p>
+                      <p className="text-xs text-orange-200">earn more commissions</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -157,7 +170,11 @@ const AgentRegisterPage = () => {
                         ? 'bg-orange-600 border-orange-600 text-white' 
                         : 'bg-gray-100 border-gray-300 text-gray-500'
                     }`}>
-                      <step.icon size={20} />
+                      {currentStep > step.number ? (
+                        <CheckCircle size={20} />
+                      ) : (
+                        <span className="text-sm font-bold">{step.number}</span>
+                      )}
                     </div>
                     <div className="ml-3 text-sm font-medium text-gray-700">
                       {step.title}

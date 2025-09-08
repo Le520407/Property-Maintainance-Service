@@ -19,7 +19,7 @@ import {
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
 
-const VendorRegisterPage = () => {
+const VendorRegisterPage = ({ embedded = false }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,14 +44,18 @@ const VendorRegisterPage = () => {
   ];
 
   const serviceCategories = [
-    { id: 'plumbing', name: 'Plumbing', icon: '🔧' },
-    { id: 'electrical', name: 'Electrical', icon: '⚡' },
-    { id: 'cleaning', name: 'Cleaning', icon: '🧹' },
-    { id: 'gardening', name: 'Gardening', icon: '🌱' },
-    { id: 'painting', name: 'Painting', icon: '🎨' },
-    { id: 'security', name: 'Security', icon: '🔒' },
-    { id: 'hvac', name: 'HVAC', icon: '❄️' },
-    { id: 'general', name: 'General Maintenance', icon: '🛠️' }
+    { id: 'home-repairs', name: 'Home Repairs' },
+    { id: 'painting-services', name: 'Painting Services' },
+    { id: 'electrical-services', name: 'Electrical Services' },
+    { id: 'plumbing-services', name: 'Plumbing Services' },
+    { id: 'carpentry-services', name: 'Carpentry Services' },
+    { id: 'flooring-services', name: 'Flooring Services' },
+    { id: 'appliance-installation', name: 'Appliance Installation' },
+    { id: 'furniture-assembly', name: 'Furniture Assembly' },
+    { id: 'moving-services', name: 'Moving Services' },
+    { id: 'renovation', name: 'Renovation' },
+    { id: 'safety-security', name: 'Safety and Security' },
+    { id: 'cleaning-services', name: 'Cleaning Services' }
   ];
 
   const handleFileUpload = (event) => {
@@ -136,22 +140,54 @@ const VendorRegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4">
+    <div className={embedded ? "" : "min-h-screen bg-gray-50 py-12"}>
+      <div className={embedded ? "" : "container mx-auto px-4"}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="max-w-4xl mx-auto"
+          className={embedded ? "" : "max-w-4xl mx-auto"}
         >
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Vendor Registration
-            </h1>
-            <p className="text-gray-600">
-              Join our vendor network to provide quality services to more customers
-            </p>
+          </div>
+
+          {/* Vendor Benefits Section */}
+          <div className="bg-gradient-to-r from-orange-600 to-orange-700 rounded-lg p-6 text-white mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+              <div>
+                <h3 className="text-xl font-semibold mb-4">Why Join Our Network?</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Access to thousands of potential customers</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Secure payment processing and protection</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Marketing support and business tools</span>
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle size={20} className="mr-3 text-orange-200 flex-shrink-0" />
+                    <span>Professional certification verification</span>
+                  </div>
+                </div>
+              </div>
+              <div className="hidden md:block">
+                <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
+                  <div className="flex justify-center items-center h-32">
+                    <div className="text-center">
+                      <Building size={48} className="mx-auto mb-2 text-orange-200" />
+                      <p className="text-sm text-orange-100">Build Your Business</p>
+                      <p className="text-xs text-orange-200">with our platform</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Progress Steps */}
@@ -159,7 +195,7 @@ const VendorRegisterPage = () => {
             <div className="flex items-center justify-between">
               {steps.map((step, index) => (
                 <div key={step.number} className="flex items-center">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 ${
                     currentStep >= step.number 
                       ? 'bg-orange-600 border-orange-600 text-white' 
                       : 'border-gray-300 text-gray-500'

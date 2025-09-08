@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 
 // Layout Components
 import Header from './components/layout/Header.jsx';
@@ -13,11 +13,10 @@ import ProductsPage from './pages/ProductsPage.jsx';
 import AboutPage from './pages/AboutPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
-import RegisterPage from './pages/auth/RegisterPage.jsx';
 import CustomerRegisterPage from './pages/auth/CustomerRegisterPage.jsx';
 import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
 import AgentRegisterPage from './pages/auth/AgentRegisterPage.jsx';
-import DashboardPage from './pages/dashboard/DashboardPage.jsx';
+import RegisterSelectionPage from './pages/auth/RegisterSelectionPage.jsx';
 import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
 import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
@@ -25,6 +24,8 @@ import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import ServiceDetailPage from './pages/ServiceDetailPage.jsx';
 import CartPage from './pages/CartPage.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
+import OrdersPage from './pages/OrdersPage.jsx';
+import OrderSuccessPage from './pages/OrderSuccessPage.jsx';
 import ReferralPage from './pages/ReferralPage.jsx';
 import VendorDashboardPage from './pages/vendor/VendorDashboardPage.jsx';
 import SubscriptionPage from './pages/SubscriptionPage.jsx';
@@ -42,6 +43,7 @@ import OrderSubmissionPage from './pages/OrderSubmissionPage.jsx';
 import UnifiedMessagesPage from './pages/UnifiedMessagesPage.jsx';
 import PaymentPage from './pages/PaymentPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
+import JobDetailsPage from './pages/jobs/JobDetailsPage.jsx';
 import ApiTest from './components/ApiTest.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 
@@ -154,10 +156,12 @@ function App() {
                       <Route path="/agent-agreement" element={<AgentAgreementPage />} />
                       
                       <Route path="/login" element={<LoginPage />} />
-                      <Route path="/register" element={<RegisterPage />} />
+                      <Route path="/register-selection" element={<RegisterSelectionPage />} />
                       <Route path="/customer-register" element={<CustomerRegisterPage />} />
                       <Route path="/vendor-register" element={<VendorRegisterPage />} />
                       <Route path="/agent-register" element={<AgentRegisterPage />} />
+                      {/* Legacy route redirects */}
+                      <Route path="/register" element={<CustomerRegisterPage />} />
                       <Route path="/booking" element={<BookingPage />} />
                       <Route path="/order-request" element={
                         <ProtectedRoute>
@@ -174,8 +178,23 @@ function App() {
                           <PaymentPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/jobs/:jobId" element={
+                        <ProtectedRoute>
+                          <JobDetailsPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/cart" element={<CartPage />} />
                       <Route path="/checkout" element={<CheckoutPage />} />
+                      <Route path="/orders" element={
+                        <ProtectedRoute>
+                          <OrdersPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/orders/:orderId/success" element={
+                        <ProtectedRoute>
+                          <OrderSuccessPage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/referral" element={<ReferralPage />} />
                       <Route path="/referral-dashboard" element={
                         <ProtectedRoute>
