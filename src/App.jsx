@@ -43,6 +43,7 @@ import OrderSubmissionPage from './pages/OrderSubmissionPage.jsx';
 import UnifiedMessagesPage from './pages/UnifiedMessagesPage.jsx';
 import PaymentPage from './pages/PaymentPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
+import JobDetailsPage from './pages/jobs/JobDetailsPage.jsx';
 import ApiTest from './components/ApiTest.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 
@@ -162,6 +163,11 @@ function App() {
                       <Route path="/payment/:jobId" element={
                         <ProtectedRoute requiredRole="customer">
                           <PaymentPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/jobs/:jobId" element={
+                        <ProtectedRoute>
+                          <JobDetailsPage />
                         </ProtectedRoute>
                       } />
                       <Route path="/cart" element={<CartPage />} />

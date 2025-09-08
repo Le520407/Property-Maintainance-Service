@@ -30,8 +30,8 @@ const PaymentPage = () => {
         setJob(data.job);
         
         // Check if payment is allowed
-        if (data.job.status !== 'QUOTE_ACCEPTED') {
-          setError('Payment is not available for this job. Quote must be accepted first.');
+        if (data.job.status !== 'ACCEPTED' || !data.job.totalAmount) {
+          setError('Payment is not available for this job. Job must be accepted with pricing first.');
         }
       } else {
         setError(data.message || 'Failed to fetch job details');
