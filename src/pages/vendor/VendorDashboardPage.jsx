@@ -1,38 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  User, 
-  Calendar, 
-  DollarSign, 
-  Star, 
-  TrendingUp, 
-  Award, 
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Settings,
-  FileText,
+import {
   Activity,
+  AlertCircle,
+  Award,
   BarChart3,
-  Users,
-  MapPin,
-  Plus,
+  Calendar,
+  CheckCircle,
+  Clock,
+  DollarSign,
   Edit2,
-  Trash2,
-  Save,
-  X,
-  ArrowLeft,
-  CreditCard,
+  FileText,
+  MapPin,
   MessageSquare,
-  Shield,
-  History,
-  Send
+  Plus,
+  Save,
+  Settings,
+  Star,
+  Trash2,
+  TrendingUp,
+  User,
+  Users,
+  X
 } from 'lucide-react';
-import { api } from '../../services/api';
-import toast from 'react-hot-toast';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
 import VendorPricingManagement from '../../components/vendor/VendorPricingManagement';
-import { CurrentPlanTab, UpgradePlansTab, UsageStatsTab, BillingHistoryTab } from '../../components/vendor/VendorMembership';
+import { api } from '../../services/api';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
   const [activeSection, setActiveSection] = useState(initialSection || 'services');
@@ -831,10 +826,11 @@ const VendorDashboardPage = () => {
       name: 'Job Assignments', 
       section: 'assignments',
       icon: AlertCircle,
-      description: 'Pending & New Jobs',
+      description: 'Job Management & History',
       tabs: [
         { name: 'Pending Assignments', tab: 'pending' },
-        { name: 'Accepted Jobs', tab: 'accepted' },
+        { name: 'Active Jobs', tab: 'active' },
+        { name: 'Job History', tab: 'history' },
         { name: 'Completed Jobs', tab: 'completed' }
       ]
     },
@@ -842,14 +838,7 @@ const VendorDashboardPage = () => {
       name: 'Business', 
       section: 'business',
       icon: FileText,
-      description: 'Jobs & Services',
-      tabs: [
-        { name: 'Active Jobs', tab: 'jobs' },
-        { name: 'Job History', tab: 'job-history' },
-        { name: 'Service Packages', tab: 'services' },
-        { name: 'Pricing', tab: 'pricing' },
-        { name: 'Schedule', tab: 'schedule' }
-      ]
+      description: 'Services & Operations'
     },
     { 
       name: 'Earnings', 
@@ -873,18 +862,6 @@ const VendorDashboardPage = () => {
         { name: 'Customer List', tab: 'customer-list' },
         { name: 'Feedback', tab: 'feedback' },
         { name: 'Communication', tab: 'communication' }
-      ]
-    },
-    { 
-      name: 'Membership', 
-      section: 'membership',
-      icon: CreditCard,
-      description: 'Plans & Benefits',
-      tabs: [
-        { name: 'Current Plan', tab: 'current-plan' },
-        { name: 'Upgrade Plans', tab: 'upgrade-plans' },
-        { name: 'Usage Stats', tab: 'usage-stats' },
-        { name: 'Billing History', tab: 'billing-history' }
       ]
     },
     { 
@@ -1128,27 +1105,14 @@ const VendorDashboardPage = () => {
     // Job Assignments Section
     if (activeSection === 'assignments') {
       if (activeTab === 'pending') return <VendorJobAssignments status="ASSIGNED" />;
-      if (activeTab === 'accepted') return <VendorJobAssignments status="IN_DISCUSSION,QUOTE_SENT,QUOTE_ACCEPTED,PAID,IN_PROGRESS" />;
+      if (activeTab === 'active') return <VendorJobAssignments status="IN_DISCUSSION,QUOTE_SENT,QUOTE_ACCEPTED,PAID,IN_PROGRESS" />;
+      if (activeTab === 'history') return <VendorJobAssignments status="COMPLETED,CANCELLED,REJECTED" />;
       if (activeTab === 'completed') return <VendorJobAssignments status="COMPLETED" />;
     }
 
     // Business Section
     if (activeSection === 'business') {
-      if (activeTab === 'jobs') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Active Jobs</h3>
-          <p className="text-gray-600">Job management interface coming soon...</p>
-        </div>
-      );
-      if (activeTab === 'job-history') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Job History</h3>
-          <p className="text-gray-600">Job history interface coming soon...</p>
-        </div>
-      );
-      if (activeTab === 'services') return <ProfileTab vendor={vendor} onUpdate={fetchDashboardData} activeSection="services" />;
-      if (activeTab === 'pricing') return <VendorPricingManagement />;
-      if (activeTab === 'schedule') return <ProfileTab vendor={vendor} onUpdate={fetchDashboardData} activeSection="schedule" />;
+      return <BusinessManagement vendor={vendor} onUpdate={fetchDashboardData} />;
     }
 
     // Earnings Section
@@ -1205,14 +1169,6 @@ const VendorDashboardPage = () => {
           <p className="text-gray-600">Communication tools coming soon...</p>
         </div>
       );
-    }
-
-    // Membership Section
-    if (activeSection === 'membership') {
-      if (activeTab === 'current-plan') return <CurrentPlanTab />;
-      if (activeTab === 'upgrade-plans') return <UpgradePlansTab />;
-      if (activeTab === 'usage-stats') return <UsageStatsTab />;
-      if (activeTab === 'billing-history') return <BillingHistoryTab />;
     }
 
     // Account Section  
@@ -1325,7 +1281,10 @@ const VendorDashboardPage = () => {
                     key={item.section}
                     onClick={() => {
                       setActiveSection(item.section);
-                      setActiveTab(item.tabs[0].tab);
+                      // Only set activeTab if the section has tabs
+                      if (item.tabs && item.tabs.length > 0) {
+                        setActiveTab(item.tabs[0].tab);
+                      }
                     }}
                     className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                       activeSection === item.section
@@ -1345,7 +1304,7 @@ const VendorDashboardPage = () => {
           </div>
           
           {/* Sub Navigation */}
-          {activeSection && (
+          {activeSection && mainNavigation.find(item => item.section === activeSection)?.tabs && (
             <div className="px-6 py-3 bg-gray-50">
               <nav className="flex space-x-6">
                 {mainNavigation.find(item => item.section === activeSection)?.tabs?.map((tab) => (
@@ -1380,11 +1339,7 @@ const VendorJobAssignments = ({ status }) => {
   const [showJobDetails, setShowJobDetails] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadJobs();
-  }, [status]);
-
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     try {
       setLoading(true);
       console.log('Loading jobs with status:', status); // Debug log
@@ -1400,7 +1355,11 @@ const VendorJobAssignments = ({ status }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [status]);
+
+  useEffect(() => {
+    loadJobs();
+  }, [loadJobs]);
 
   const handleJobResponse = async (jobId, response, reason = '') => {
     // If rejecting, ask for a reason
@@ -1445,7 +1404,9 @@ const VendorJobAssignments = ({ status }) => {
         <div>
           <h3 className="text-lg font-medium text-gray-900">
             {status === 'ASSIGNED' ? 'Pending Job Assignments' : 
-             status.includes('COMPLETED') ? 'Completed Jobs' : 'Active Jobs'}
+             status.includes('IN_DISCUSSION') ? 'Active Jobs' :
+             status.includes('COMPLETED,CANCELLED,REJECTED') ? 'Job History' :
+             status === 'COMPLETED' ? 'Completed Jobs' : 'Jobs'}
           </h3>
           <p className="text-sm text-gray-500 mt-1">
             Status filter: {status} | Found: {jobs.length} jobs
@@ -1462,7 +1423,9 @@ const VendorJobAssignments = ({ status }) => {
           <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
           <p className="text-gray-600">
             {status === 'ASSIGNED' ? 'No pending assignments at the moment.' :
-             status.includes('COMPLETED') ? 'No completed jobs yet.' : 'No active jobs currently.'}
+             status.includes('IN_DISCUSSION') ? 'No active jobs currently.' :
+             status.includes('COMPLETED,CANCELLED,REJECTED') ? 'No job history available yet.' :
+             status === 'COMPLETED' ? 'No completed jobs yet.' : 'No jobs available.'}
           </p>
         </div>
       ) : (
@@ -1683,6 +1646,62 @@ const VendorJobAssignments = ({ status }) => {
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Business Management Component with integrated tabs
+const BusinessManagement = ({ vendor, onUpdate }) => {
+  const [activeTab, setActiveTab] = useState('services');
+
+  const tabs = [
+    { id: 'services', name: 'Operation & Services', icon: FileText },
+    // { id: 'pricing', name: 'Price Lists', icon: DollarSign },
+    // { id: 'schedule', name: 'Schedule Time', icon: Calendar }
+  ];
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'services':
+        return <ProfileTab vendor={vendor} onUpdate={onUpdate} activeSection="services" />;
+      case 'pricing':
+        return <VendorPricingManagement />;
+      case 'schedule':
+        return <ProfileTab vendor={vendor} onUpdate={onUpdate} activeSection="schedule" />;
+      default:
+        return <ProfileTab vendor={vendor} onUpdate={onUpdate} activeSection="services" />;
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm">
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200">
+        <nav className="flex space-x-8 px-6">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Icon className="h-5 w-5 mr-2" />
+                {tab.name}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      <div className="p-6">
+        {renderTabContent()}
+      </div>
     </div>
   );
 };

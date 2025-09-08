@@ -397,11 +397,11 @@ const HomepageManagement = () => {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white"
+            className="bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl p-6 text-white"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm">Active Banners</p>
+                <p className="text-orange-100 text-sm">Active Banners</p>
                 <h3 className="text-3xl font-bold">{banners.filter(b => b.isActive).length}</h3>
               </div>
               <div className="bg-white bg-opacity-20 p-3 rounded-lg">
@@ -414,11 +414,11 @@ const HomepageManagement = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white"
+            className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm">Featured Services</p>
+                <p className="text-orange-100 text-sm">Featured Services</p>
                 <h3 className="text-3xl font-bold">{services.filter(s => s.isActive).length}</h3>
               </div>
               <div className="bg-white bg-opacity-20 p-3 rounded-lg">
@@ -431,11 +431,11 @@ const HomepageManagement = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white"
+            className="bg-gradient-to-br from-orange-600 to-red-600 rounded-xl p-6 text-white"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm">Statistics</p>
+                <p className="text-orange-100 text-sm">Statistics</p>
                 <h3 className="text-3xl font-bold">{stats.filter(s => s.isActive).length}</h3>
               </div>
               <div className="bg-white bg-opacity-20 p-3 rounded-lg">

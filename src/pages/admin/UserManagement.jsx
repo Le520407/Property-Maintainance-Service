@@ -419,9 +419,9 @@ const UserManagement = () => {
   // 获取角色样式
   const getRoleStyle = (role) => {
     const styles = {
-      'customer': 'bg-blue-100 text-blue-800 border-blue-200',
-      'vendor': 'bg-purple-100 text-purple-800 border-purple-200',
-      'admin': 'bg-orange-100 text-orange-800 border-orange-200'
+      'customer': 'bg-orange-100 text-orange-700 border-orange-200',
+      'vendor': 'bg-orange-200 text-orange-800 border-orange-300',
+      'admin': 'bg-orange-300 text-orange-900 border-orange-400'
     };
     return styles[role] || 'bg-gray-100 text-gray-800';
   };
@@ -436,7 +436,7 @@ const UserManagement = () => {
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-4">
           <div className="relative">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
               {userData.firstName?.[0] || userData.email[0].toUpperCase()}
             </div>
             {userData.status === 'ACTIVE' && (

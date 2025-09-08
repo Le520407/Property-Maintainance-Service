@@ -1,43 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, 
-  Filter, 
-  Eye, 
-  UserCheck, 
-  Clock, 
-  MapPin, 
-  DollarSign,
-  Calendar,
-  Phone,
-  Mail,
-  FileText,
-  Star,
+import {
   AlertCircle,
+  BarChart3,
+  Calendar,
+  Camera,
   CheckCircle,
-  XCircle,
-  Users,
-  Wrench,
   ChevronDown,
   ChevronRight,
-  RefreshCw,
+  Clock,
+  DollarSign,
+  Download,
+  Eye,
+  FileText,
+  Filter,
   Grid,
   List,
-  BarChart3,
-  TrendingUp,
-  Package,
-  Plus,
-  Download,
+  Mail,
+  MapPin,
   MoreHorizontal,
-  X,
+  Package,
+  Phone,
+  Plus,
+  RefreshCw,
+  Search,
+  Star,
   Trash2,
-  Camera,
-  Video
+  TrendingUp,
+  UserCheck,
+  Users,
+  Video,
+  Wrench,
+  X,
+  XCircle
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+
+import PricingMonitor from '../../components/admin/PricingMonitor';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
-import PricingMonitor from '../../components/admin/PricingMonitor';
 
 const OrderManagement = () => {
   const { user } = useAuth();
@@ -82,14 +83,14 @@ const OrderManagement = () => {
   });
 
   const statusColors = {
-    PENDING: 'bg-yellow-100 text-yellow-800',
-    ASSIGNED: 'bg-blue-100 text-blue-800',
-    IN_DISCUSSION: 'bg-purple-100 text-purple-800',
-    QUOTE_SENT: 'bg-indigo-100 text-indigo-800',
+    PENDING: 'bg-orange-100 text-orange-800',
+    ASSIGNED: 'bg-orange-200 text-orange-800',
+    IN_DISCUSSION: 'bg-orange-300 text-orange-900',
+    QUOTE_SENT: 'bg-orange-400 text-orange-900',
     QUOTE_ACCEPTED: 'bg-green-100 text-green-800',
-    PAID: 'bg-emerald-100 text-emerald-800',
-    IN_PROGRESS: 'bg-orange-100 text-orange-800',
-    COMPLETED: 'bg-green-200 text-green-900',
+    PAID: 'bg-green-200 text-green-800',
+    IN_PROGRESS: 'bg-orange-500 text-white',
+    COMPLETED: 'bg-green-300 text-green-900',
     CANCELLED: 'bg-red-100 text-red-800',
     REJECTED: 'bg-gray-100 text-gray-800'
   };
@@ -1092,7 +1093,7 @@ const OrderManagement = () => {
               
               <button
                 onClick={() => window.print()}
-                className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+                className="flex items-center px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
               >
                 <Download className="w-5 h-5 mr-2" />
                 Export
