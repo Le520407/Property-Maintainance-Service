@@ -187,24 +187,39 @@ class MembershipService {
     console.log('Plan cancel - Stripe Demo mode:', isStripeDemo, 'HitPay Demo mode:', isHitPayDemo);
 
     try {
-      // Handle HitPay subscription cancellation - Cancel both recurring billing AND plan
+      // Handle HitPay subscription cancellation - Use saved billing ID
       if (membership.paymentMethod === 'HITPAY') {
         console.log('🛑 Cancelling HitPay subscription...');
         console.log('🔍 Frontend→Backend: PUT /api/membership/cancel (internal API)');
         console.log('🔍 Backend→HitPay: Will use DELETE methods (external APIs)');
+        console.log('📊 Cancellation Context:');
+        console.log('  - Customer ID:', membership.customer);
+        console.log('  - Membership ID:', membership._id);
+        console.log('  - HitPay Billing ID:', membership.hitpayRecurringBillingId);
+        console.log('  - HitPay Plan ID:', membership.hitpayPlanId);
+        console.log('  - Tier:', membership.tier?.name);
+        console.log('  - Status:', membership.status);
         
         const hitpayService = require('./hitpayService');
         
-        // Step 1: Cancel recurring billing (this shows in HitPay dashboard)
+        // Step 1: Cancel recurring billing (this shows in HitPay dashboard) 
+        // 🎯 This uses the billing ID we saved during subscription creation
         if (membership.hitpayRecurringBillingId && !membership.hitpayRecurringBillingId.includes('demo_')) {
           console.log('🔄 [HITPAY DELETE] Cancelling recurring billing:', membership.hitpayRecurringBillingId);
           console.log('🌐 Method: DELETE /v1/recurring-billing/' + membership.hitpayRecurringBillingId);
+          console.log('💡 This billing ID was saved when user subscribed');
           try {
             const recurringResult = await hitpayService.cancelRecurringBilling(membership.hitpayRecurringBillingId);
             console.log('✅ HitPay DELETE recurring billing - SUCCESS');
+            console.log('📊 Cancellation confirmed for billing ID:', membership.hitpayRecurringBillingId);
           } catch (recurringError) {
             console.warn('⚠️ HitPay DELETE recurring billing - FAILED:', recurringError.message);
           }
+        } else if (membership.hitpayRecurringBillingId?.includes('demo_')) {
+          console.log('⚠️ Skipping HitPay cancellation for demo billing ID:', membership.hitpayRecurringBillingId);
+        } else {
+          console.log('❌ No billing ID found - cannot cancel HitPay subscription');
+          console.log('💡 This might be a legacy subscription or manual entry');
         }
         
         // Step 2: Delete subscription plan (cleanup)

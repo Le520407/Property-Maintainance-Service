@@ -207,22 +207,43 @@ class MembershipController {
       
       try {
         recurringBilling = await hitpayService.createRecurringBilling(billingData);
-        console.log('HitPay recurring billing created:', recurringBilling);
+        console.log('✅ HitPay recurring billing created successfully');
+        console.log('📋 REAL BILLING ID CAPTURED:', {
+          billingId: recurringBilling.id,
+          planId: recurringBilling.plan_id || planId,
+          status: recurringBilling.status,
+          customerEmail: recurringBilling.customer_email,
+          reference: recurringBilling.reference,
+          isRealBilling: !recurringBilling.id.startsWith('demo_'),
+          apiResponse: recurringBilling
+        });
+
+        // ✅ VALIDATE WE GOT A REAL BILLING ID
+        if (recurringBilling.id && !recurringBilling.id.startsWith('demo_')) {
+          console.log('🎯 SUCCESS: Real HitPay billing ID received:', recurringBilling.id);
+        } else {
+          console.warn('⚠️ WARNING: Received demo/test billing ID:', recurringBilling.id);
+        }
+        
       } catch (billingError) {
-        console.error('Failed to create HitPay billing:', billingError);
-        // If HitPay API fails, fall back to demo mode
+        console.error('❌ Failed to create HitPay billing:', billingError);
+        console.error('📄 Full error details:', billingError.message);
+        
+        // Only fall back to demo if API is completely unavailable
+        console.log('🔄 Creating fallback billing reference...');
         recurringBilling = {
-          id: `demo_billing_${Date.now()}`,
+          id: `fallback_billing_${userId}_${tierId}_${Date.now()}`,
           plan_id: planId,
           status: 'pending',
-          url: `${process.env.FRONTEND_URL}/membership/success?payment_id=demo_payment_${Date.now()}&recurring_billing_id=demo_billing_${Date.now()}&status=completed&demo=true`,
+          url: `${process.env.FRONTEND_URL}/membership/success?payment_id=fallback_payment_${Date.now()}&recurring_billing_id=fallback_billing_${userId}_${tierId}_${Date.now()}&status=completed&fallback=true`,
           customer_email: req.user.email,
           customer_name: req.user.fullName || `${req.user.firstName} ${req.user.lastName}`,
           start_date: startDate.toISOString().split('T')[0],
           reference: billingData.reference,
-          demo: true
+          fallback: true,
+          error: billingError.message
         };
-        console.log('Using demo billing fallback:', recurringBilling);
+        console.log('⚠️ Using fallback billing (API failure):', recurringBilling);
       }
 
       // Store the subscription details in our database (pending until payment)
@@ -235,7 +256,8 @@ class MembershipController {
         yearlyPrice: selectedTier.yearlyPrice,
         currentPrice: amount,
         hitpayPlanId: planId,
-        hitpayRecurringBillingId: recurringBilling.id,
+        hitpayRecurringBillingId: recurringBilling.id, // 🔑 BILLING ID FOR CANCELLATION
+        hitpayCustomerId: recurringBilling.customer_email, // Store customer reference
         nextBillingDate: startDate,
         startDate: new Date(),
         paymentMethod: 'HITPAY',
@@ -244,7 +266,17 @@ class MembershipController {
 
       await membership.save();
 
-      console.log('Membership created successfully:', membership._id);
+      console.log('✅ Membership created and billing ID saved');
+      console.log('📊 Membership Details:', {
+        membershipId: membership._id,
+        customerId: userId,
+        customerEmail: req.user.email,
+        hitpayBillingId: membership.hitpayRecurringBillingId, // 🎯 This will be used for cancellation
+        hitpayPlanId: membership.hitpayPlanId,
+        tier: selectedTier.name,
+        amount: amount,
+        billingCycle: billingCycle
+      });
 
       // Return the HitPay checkout URL for frontend redirect
       res.status(201).json({
@@ -1088,24 +1120,75 @@ class MembershipController {
 
   async handleHitPayPaymentCompleted(paymentData) {
     try {
-      const { payment_request_id, reference_number, amount } = paymentData;
+      const { payment_request_id, reference_number, amount, recurring_billing_id } = paymentData;
       
-      console.log('💰 Processing completed HitPay payment:', { payment_request_id, reference_number, amount });
+      console.log('💰 Processing completed HitPay payment');
+      console.log('📋 Payment Data:', { 
+        payment_request_id, 
+        reference_number, 
+        amount,
+        recurring_billing_id: recurring_billing_id || 'Not provided',
+        fullPaymentData: paymentData
+      });
 
-      // Find the membership by payment reference
+      // 🚀 CAPTURE REAL BILLING ID FROM HITPAY WEBHOOK
+      if (recurring_billing_id && !recurring_billing_id.startsWith('demo_')) {
+        console.log('🎯 REAL BILLING ID DETECTED IN WEBHOOK:', recurring_billing_id);
+      } else {
+        console.log('⚠️ No real billing ID in webhook data');
+      }
+
+      // Find the membership by payment reference or billing ID
       const membership = await CustomerMembership.findOne({
         $or: [
           { hitpayPlanId: payment_request_id },
-          { hitpayRecurringBillingId: reference_number }
+          { hitpayRecurringBillingId: reference_number },
+          { hitpayRecurringBillingId: recurring_billing_id }
         ]
       }).populate('tier');
 
       if (!membership) {
-        console.error('❌ Membership not found for payment:', { payment_request_id, reference_number });
+        console.error('❌ Membership not found for payment:', { 
+          payment_request_id, 
+          reference_number, 
+          recurring_billing_id 
+        });
         return;
       }
 
-      console.log('📋 Found membership:', { id: membership._id, status: membership.status });
+      console.log('✅ Membership found for payment:', membership._id);
+
+      // 🔑 UPDATE BILLING ID IF WE RECEIVED A REAL ONE FROM HITPAY
+      let billingIdUpdated = false;
+      if (recurring_billing_id && 
+          !recurring_billing_id.startsWith('demo_') && 
+          !recurring_billing_id.startsWith('fallback_') &&
+          membership.hitpayRecurringBillingId !== recurring_billing_id) {
+        
+        console.log('🔄 UPDATING BILLING ID FROM WEBHOOK:');
+        console.log('- Old Billing ID:', membership.hitpayRecurringBillingId);
+        console.log('- New Billing ID:', recurring_billing_id);
+        
+        membership.hitpayRecurringBillingId = recurring_billing_id;
+        billingIdUpdated = true;
+      }
+
+      console.log('📋 Found membership for billing cancellation:');
+      console.log('🔑 Membership ID:', membership._id);
+      console.log('🔑 HitPay Billing ID:', membership.hitpayRecurringBillingId);
+      console.log('🔑 HitPay Plan ID:', membership.hitpayPlanId);
+      console.log('🔑 Customer:', membership.customer);
+      console.log('🔑 Status:', membership.status);
+      if (billingIdUpdated) {
+        console.log('✅ BILLING ID UPDATED FROM WEBHOOK!');
+      }
+
+      // Update recurring billing ID if it wasn't captured before
+      if (recurring_billing_id && !membership.hitpayRecurringBillingId) {
+        console.log('🔄 Updating missing billing ID:', recurring_billing_id);
+        membership.hitpayRecurringBillingId = recurring_billing_id;
+        billingIdUpdated = true;
+      }
 
       // Update start date if this is the first payment (was pending)
       const wasPending = membership.status === 'PENDING';

@@ -94,7 +94,14 @@ class HitPayService {
    * Create recurring billing for customer (Step 2)
    */
   async createRecurringBilling(billingData) {
-    // Demo mode for testing without real HitPay credentials
+    console.log('🔍 HitPay Service Mode Check:');
+    console.log('- API Key:', this.apiKey ? `${this.apiKey.substring(0, 8)}...` : 'NOT SET');
+    console.log('- Base URL:', this.baseUrl);
+    console.log('- Is Demo:', this.isDemo);
+    console.log('- Is Test Mode:', this.isTestMode);
+    console.log('- Is Sandbox:', this.isSandbox);
+
+    // Only use demo mode if no valid API key
     if (this.isDemo) {
       console.log('🎯 HitPay Demo Mode: Creating recurring billing', billingData);
       const billingId = `demo_billing_${Date.now()}`;
@@ -120,6 +127,8 @@ class HitPayService {
       return demoResponse;
     }
 
+    // 🚀 REAL HITPAY API CALL (Test or Live mode)
+    console.log('🚀 Making REAL HitPay API call for recurring billing...');
     try {
       const formData = new URLSearchParams();
       formData.append('plan_id', billingData.planId);
@@ -140,6 +149,10 @@ class HitPayService {
         });
       }
 
+      console.log('📤 Sending request to HitPay API:');
+      console.log('- URL:', `${this.baseUrl}/recurring-billing`);
+      console.log('- Data:', Object.fromEntries(formData));
+
       const response = await fetch(`${this.baseUrl}/recurring-billing`, {
         method: 'POST',
         headers: {
@@ -150,14 +163,27 @@ class HitPayService {
         body: formData.toString()
       });
 
+      console.log('📥 HitPay API Response Status:', response.status);
+
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`HitPay API Error: ${error || response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ HitPay API Error Response:', errorText);
+        throw new Error(`HitPay API Error (${response.status}): ${errorText || response.statusText}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('✅ REAL BILLING ID RECEIVED FROM HITPAY:');
+      console.log('==========================================');
+      console.log('📊 Full API Response:', JSON.stringify(result, null, 2));
+      console.log('🆔 Billing ID:', result.id);
+      console.log('📋 Plan ID:', result.plan_id);
+      console.log('🔗 Payment URL:', result.url);
+      console.log('💳 Status:', result.status);
+      console.log('==========================================');
+
+      return result;
     } catch (error) {
-      console.error('Error creating HitPay recurring billing:', error);
+      console.error('❌ Error creating HitPay recurring billing:', error);
       throw error;
     }
   }
