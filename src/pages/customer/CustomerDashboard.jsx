@@ -8,11 +8,13 @@ import {
   TrendingUp,
   Users,
   Star,
-  Plus
+  Plus,
+  FileText,
+  Settings
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
-import MembershipCard from '../customer/MembershipCard';
+import MembershipCard from '../../components/customer/MembershipCard';
 
 const CustomerDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
@@ -322,6 +324,22 @@ const CustomerDashboard = () => {
               >
                 <span className="font-medium">Membership Plans</span>
                 <Star className="h-5 w-5" />
+              </Link>
+              
+              <Link
+                to="/subscription/manage"
+                className="w-full flex items-center justify-between p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
+              >
+                <span className="font-medium">Manage Subscription</span>
+                <Settings className="h-5 w-5" />
+              </Link>
+              
+              <Link
+                to="/subscription/billing-history"
+                className="w-full flex items-center justify-between p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                <span className="font-medium">Billing History</span>
+                <FileText className="h-5 w-5" />
               </Link>
             </div>
           </motion.div>

@@ -3,6 +3,8 @@ const router = express.Router();
 const hitpayService = require('../services/hitpayService');
 const { CustomerSubscription, SubscriptionTier } = require('../models/CustomerSubscription');
 const CustomerMembership = require('../models/CustomerMembership');
+const { VendorMembership } = require('../models/VendorMembership');
+const Vendor = require('../models/Vendor');
 const User = require('../models/User');
 const Payment = require('../models/Payment');
 const { auth } = require('../middleware/auth');
@@ -25,11 +27,30 @@ router.get('/demo/success', async (req, res) => {
       });
       
       if (membership) {
+        console.log('🧪 Demo: Activating pending membership:', {
+          membershipId: membership._id,
+          currentStatus: membership.status
+        });
+        
         membership.status = 'ACTIVE';
+        membership.isActive = true;
+        membership.startDate = new Date();
         membership.lastPaymentDate = new Date();
+        
+        // Set end date for demo
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + 1);
+        membership.endDate = endDate;
+        
         await membership.save();
         
-        console.log('Demo: Membership activated:', membership._id);
+        console.log('✅ Demo: Membership activated successfully:', {
+          membershipId: membership._id,
+          status: membership.status,
+          isActive: membership.isActive
+        });
+      } else {
+        console.log('❌ Demo: No pending membership found for recurring_billing_id:', recurring_billing_id);
       }
     }
     
@@ -546,12 +567,21 @@ async function handlePaymentWebhook(webhookData) {
     }).populate('tier');
 
     if (membership) {
-      console.log('Found membership payment record:', membership._id);
+      console.log('🔍 Found membership payment record:', {
+        membershipId: membership._id,
+        currentStatus: membership.status,
+        tier: membership.tier?.name,
+        customerId: membership.customer
+      });
 
       if (webhookData.status === 'completed' || webhookData.status === 'succeeded') {
+        console.log('💳 Processing successful payment for membership:', membership._id);
+        
         // Activate the membership
         membership.status = 'ACTIVE';
+        membership.isActive = true;
         membership.startDate = new Date();
+        membership.lastPaymentDate = new Date();
         
         // Set next billing date (for one-time payments, this is the end date)
         const endDate = new Date();
@@ -565,6 +595,14 @@ async function handlePaymentWebhook(webhookData) {
 
         // Initialize usage tracking
         await membership.resetMonthlyUsage();
+
+        console.log('✅ Customer membership activated successfully:', {
+          membershipId: membership._id,
+          status: membership.status,
+          isActive: membership.isActive,
+          startDate: membership.startDate,
+          endDate: membership.endDate
+        });
 
         console.log(`Membership ${membership._id} activated for user ${membership.customer}`);
       } else if (webhookData.status === 'failed') {
@@ -580,7 +618,44 @@ async function handlePaymentWebhook(webhookData) {
       return;
     }
 
-    console.error('Neither Payment nor Membership found for HitPay reference:', webhookData.reference);
+    // Check for vendor membership payment records
+    const vendorMembership = await VendorMembership.findOne({
+      hitpayReference: webhookData.reference
+    }).populate('vendorId');
+
+    if (vendorMembership) {
+      console.log('Found vendor membership payment record:', vendorMembership._id);
+
+      if (webhookData.status === 'completed' || webhookData.status === 'succeeded') {
+        // Activate the vendor membership
+        vendorMembership.subscriptionStatus = 'ACTIVE';
+        vendorMembership.paymentStatus = 'PAID';
+        vendorMembership.lastPaymentDate = new Date();
+        
+        // Activate vendor features
+        const vendor = await Vendor.findById(vendorMembership.vendorId);
+        if (vendor) {
+          await vendor.upgradeMembership(vendorMembership.currentTier);
+          console.log(`Vendor ${vendorMembership.vendorId} upgraded to ${vendorMembership.currentTier}`);
+        }
+        
+        console.log(`Vendor membership ${vendorMembership._id} activated`);
+      } else if (webhookData.status === 'failed') {
+        vendorMembership.subscriptionStatus = 'SUSPENDED';
+        vendorMembership.paymentStatus = 'FAILED';
+        console.log(`Vendor membership payment failed for ${vendorMembership._id}`);
+      } else if (webhookData.status === 'cancelled') {
+        vendorMembership.subscriptionStatus = 'CANCELLED';
+        vendorMembership.paymentStatus = 'CANCELLED';
+        console.log(`Vendor membership payment cancelled for ${vendorMembership._id}`);
+      }
+
+      await vendorMembership.save();
+      console.log(`Vendor membership ${vendorMembership._id} updated with payment status: ${webhookData.status}`);
+      return;
+    }
+
+    console.error('Neither Payment, Customer Membership, nor Vendor Membership found for HitPay reference:', webhookData.reference);
 
   } catch (error) {
     console.error('Error handling payment webhook:', error);

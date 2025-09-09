@@ -13,13 +13,17 @@ const MembershipSuccess = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Get payment parameters from URL
+    // Get payment parameters from URL - handle both HitPay format and demo format
     const paymentId = searchParams.get('payment_id');
+    const reference = searchParams.get('reference'); // HitPay uses 'reference' instead of 'payment_id'
     const recurringBillingId = searchParams.get('recurring_billing_id');
     const status = searchParams.get('status');
     const demo = searchParams.get('demo') === 'true';
 
-    if (status === 'completed' && paymentId) {
+    // Check if we have a valid payment identifier (either payment_id or reference)
+    const hasValidPayment = paymentId || reference;
+
+    if (status === 'completed' && hasValidPayment) {
       // For demo mode, trigger backend simulation to flip membership ACTIVE
       if (demo && recurringBillingId) {
         simulateDemoRecurring(recurringBillingId).finally(fetchMembershipData);
@@ -31,7 +35,7 @@ const MembershipSuccess = () => {
       setError('Payment was not completed. Please try again.');
       setLoading(false);
     } else {
-      // Check if we have the necessary parameters
+      // Check if we have the necessary parameters or just fetch membership data
       fetchMembershipData();
     }
   }, [searchParams]);
@@ -58,7 +62,12 @@ const MembershipSuccess = () => {
       }
     } catch (error) {
       console.error('Error fetching membership data:', error);
-      setError('Unable to verify membership status. Please contact support.');
+      // Check if it's an authentication error
+      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        setError('Please log in to view your membership status. Your payment was processed successfully.');
+      } else {
+        setError('Unable to verify membership status. Please contact support if your payment was completed.');
+      }
     } finally {
       setLoading(false);
     }
@@ -70,6 +79,10 @@ const MembershipSuccess = () => {
 
   const handleViewMembership = () => {
     navigate('/customer/membership');
+  };
+
+  const handleLogin = () => {
+    navigate('/login');
   };
 
   if (loading) {
@@ -97,6 +110,14 @@ const MembershipSuccess = () => {
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Payment Issue</h1>
           <p className="text-gray-600 mb-8">{error}</p>
           <div className="space-y-4">
+            {error && error.includes('log in') && (
+              <button
+                onClick={handleLogin}
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+              >
+                Log In to View Status
+              </button>
+            )}
             <button
               onClick={() => navigate('/customer/membership')}
               className="w-full bg-orange-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-orange-700 transition-colors"

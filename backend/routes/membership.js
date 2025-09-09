@@ -43,6 +43,10 @@ const changePlanValidation = [
 // Public routes
 router.get('/tiers', membershipController.getTiers);
 
+// Webhooks (public endpoints - must be before authentication middleware)
+router.post('/webhook', express.raw({type: 'application/json'}), membershipController.webhookHandler);
+router.post('/hitpay-webhook', express.json(), membershipController.hitpayWebhookHandler);
+
 // Protected routes (require authentication)
 router.use(authenticateToken);
 router.use(requireRole(['customer'])); // Only customers can access membership features
@@ -65,14 +69,22 @@ router.put('/change-plan', (req, res, next) => {
   });
   next();
 }, changePlanValidation, membershipController.changePlan);
+
+// Preview plan change cost
+router.post('/plan-change-preview', (req, res, next) => {
+  console.log('POST /api/membership/plan-change-preview - Request received:', {
+    body: req.body,
+    user: req.user?.email
+  });
+  next();
+}, changePlanValidation, membershipController.previewPlanChange);
+
 router.put('/cancel', membershipController.cancel);
+router.put('/reactivate', membershipController.reactivate);
 
 // Membership benefits and usage
 router.get('/eligibility', membershipController.checkServiceEligibility);
 router.get('/benefits', membershipController.getBenefits);
 router.get('/analytics', membershipController.getAnalytics);
-
-// Stripe webhook (public endpoint)
-router.post('/webhook', express.raw({type: 'application/json'}), membershipController.webhookHandler);
 
 module.exports = router;

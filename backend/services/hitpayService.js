@@ -11,7 +11,9 @@ class HitPayService {
     // Demo mode: Check for placeholder values or demo keys
     this.isDemo = !this.apiKey || 
                   this.apiKey === 'demo_api_key_for_development' ||
-                  this.apiKey.startsWith('demo_');
+                  this.apiKey === 'your_real_api_key_from_hitpay_dashboard' ||
+                  this.apiKey.startsWith('demo_') ||
+                  this.apiKey.startsWith('your_real_api_key');
     
     // Determine mode based on API key and configuration
     if (this.apiKey.startsWith('test_')) {

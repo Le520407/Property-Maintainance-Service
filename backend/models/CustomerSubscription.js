@@ -58,17 +58,21 @@ const customerSubscriptionSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
-  actualPrice: {
+  currentPrice: {
     type: Number,
     required: true,
     default: function() {
-      return this.billingCycle === 'YEARLY' ? this.monthlyPrice * 10 : this.monthlyPrice;
+      return this.billingCycle === 'YEARLY' ? this.monthlyPrice * 12 * 0.9 : this.monthlyPrice;
     }
   },
   status: {
     type: String,
-    enum: ['ACTIVE', 'PAUSED', 'CANCELLED', 'PENDING'],
-    default: 'ACTIVE'
+    enum: ['ACTIVE', 'PAUSED', 'CANCELLED', 'PENDING', 'CANCELLING'],
+    default: 'PENDING'
+  },
+  isActive: {
+    type: Boolean,
+    default: false
   },
   startDate: {
     type: Date,
@@ -77,6 +81,18 @@ const customerSubscriptionSchema = new mongoose.Schema({
   nextBillingDate: {
     type: Date,
     required: true
+  },
+  lastBillingDate: {
+    type: Date
+  },
+  cancelledAt: {
+    type: Date
+  },
+  willCancelAt: {
+    type: Date
+  },
+  cancelReason: {
+    type: String
   },
   paymentMethod: {
     type: {
@@ -91,9 +107,11 @@ const customerSubscriptionSchema = new mongoose.Schema({
   },
   // HitPay specific fields
   hitpayData: {
-    subscriptionId: String,
     planId: String,
+    recurringBillingId: String,
+    subscriptionId: String,
     paymentRequestId: String,
+    checkoutUrl: String,
     reference: String,
     webhookId: String
   },
@@ -114,11 +132,24 @@ const customerSubscriptionSchema = new mongoose.Schema({
     },
     status: {
       type: String,
-      enum: ['PAID', 'FAILED', 'PENDING', 'REFUNDED'],
+      enum: ['PAID', 'FAILED', 'PENDING', 'REFUNDED', 'CANCELLED', 'CREDIT', 'REFUND_PENDING', 'SCHEDULED_CANCELLATION'],
       default: 'PAID'
+    },
+    type: {
+      type: String,
+      enum: ['SUBSCRIPTION', 'PRORATION', 'CANCELLATION', 'REFUND', 'RENEWAL'],
+      default: 'SUBSCRIPTION'
+    },
+    description: {
+      type: String,
+      default: 'Subscription payment'
     },
     paymentMethod: String,
     transactionId: String,
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
     // HitPay specific fields
     hitpayPaymentId: String,
     hitpayReference: String,
@@ -160,12 +191,6 @@ const customerSubscriptionSchema = new mongoose.Schema({
       type: Number,
       default: 0
     }
-  },
-  cancelledAt: Date,
-  cancelReason: String,
-  isActive: {
-    type: Boolean,
-    default: true
   }
 }, {
   timestamps: true

@@ -308,6 +308,89 @@ const SubscriptionPage = () => {
         </div>
       </section>
 
+      {/* Billing Management Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Subscription Management
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Manage your subscription, view billing history, and update your plan preferences
+            </p>
+          </motion.div>
+          
+          <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white p-6 rounded-lg shadow-md text-center"
+            >
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Billing History</h3>
+              <p className="text-gray-600 mb-4">
+                View all your payment transactions, invoices, and billing details
+              </p>
+              <Link
+                to="/subscription/billing-history"
+                className="inline-flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                View History
+              </Link>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white p-6 rounded-lg shadow-md text-center"
+            >
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Settings className="h-6 w-6 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Manage Plan</h3>
+              <p className="text-gray-600 mb-4">
+                Upgrade, downgrade, or cancel your subscription with prorated billing
+              </p>
+              <Link
+                to="/subscription/manage"
+                className="inline-flex items-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Manage Plan
+              </Link>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white p-6 rounded-lg shadow-md text-center"
+            >
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BarChart3 className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Usage Analytics</h3>
+              <p className="text-gray-600 mb-4">
+                Track your service usage and optimize your subscription plan
+              </p>
+              <Link
+                to="/customer/dashboard"
+                className="inline-flex items-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                View Analytics
+              </Link>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-16 bg-orange-600">
         <div className="container mx-auto px-4 text-center">
