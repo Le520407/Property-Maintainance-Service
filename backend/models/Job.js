@@ -55,7 +55,7 @@ const jobItemSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['home-repairs', 'painting-services', 'painting', 'electrical-services', 'electrical', 'plumbing-services', 'plumbing', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services', 'cleaning', 'general', 'gardening', 'security', 'hvac', 'Support']
+    enum: ['maintenance', 'painting', 'electrical', 'plumbing', 'flooring', 'installation', 'assembly', 'moving', 'renovation', 'security', 'cleaning']
   },
   description: {
     type: String,
@@ -144,7 +144,7 @@ const jobSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['home-repairs', 'painting-services', 'painting', 'electrical-services', 'electrical', 'plumbing-services', 'plumbing', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services', 'cleaning', 'general', 'gardening', 'security', 'hvac', 'Support']
+    enum: ['maintenance', 'painting', 'electrical', 'plumbing', 'flooring', 'installation', 'assembly', 'moving', 'renovation', 'security', 'cleaning']
   },
   priority: {
     type: String,
