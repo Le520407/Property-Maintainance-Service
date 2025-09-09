@@ -82,11 +82,16 @@ const CustomerDashboard = () => {
   const getStatusColor = (status) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
+      assigned: 'bg-yellow-100 text-yellow-800',
+      in_discussion: 'bg-blue-100 text-blue-800',
+      quote_sent: 'bg-orange-100 text-orange-800',
+      quote_accepted: 'bg-purple-100 text-purple-800',
+      quote_rejected: 'bg-red-100 text-red-800',
       in_progress: 'bg-blue-100 text-blue-800',
       completed: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status.toLowerCase()] || 'bg-gray-100 text-gray-800';
   };
 
   const getStatusIcon = (status) => {
@@ -260,7 +265,11 @@ const CustomerDashboard = () => {
                             {job.status.replace('_', ' ').toUpperCase()}
                           </span>
                           <div className="text-right">
-                            <p className="text-sm font-medium text-gray-900">${job.totalAmount}</p>
+                            <p className={`text-sm font-medium ${
+                              job.totalAmount ? 'text-green-600' : 'text-gray-500'
+                            }`}>
+                              {job.totalAmount ? `$${job.totalAmount.toLocaleString()}` : 'Quote pending'}
+                            </p>
                           </div>
                         </div>
                       </div>

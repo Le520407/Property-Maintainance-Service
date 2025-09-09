@@ -55,7 +55,7 @@ const jobItemSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services', 'Support']
+    enum: ['home-repairs', 'painting-services', 'painting', 'electrical-services', 'electrical', 'plumbing-services', 'plumbing', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services', 'cleaning', 'general', 'gardening', 'security', 'hvac', 'Support']
   },
   description: {
     type: String,
@@ -82,7 +82,7 @@ const jobStatusHistorySchema = new mongoose.Schema({
   status: {
     type: String,
     enum: [
-      'PENDING', 'ASSIGNED', 'IN_DISCUSSION', 'QUOTE_SENT', 'QUOTE_ACCEPTED', 
+      'PENDING', 'ASSIGNED', 'IN_DISCUSSION', 'QUOTE_SENT', 'QUOTE_ACCEPTED', 'QUOTE_REJECTED',
       'PAID', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED', 'SUPPORT_PENDING'
     ],
     required: true
@@ -144,7 +144,7 @@ const jobSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services', 'Support']
+    enum: ['home-repairs', 'painting-services', 'painting', 'electrical-services', 'electrical', 'plumbing-services', 'plumbing', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services', 'cleaning', 'general', 'gardening', 'security', 'hvac', 'Support']
   },
   priority: {
     type: String,
@@ -222,6 +222,7 @@ const jobSchema = new mongoose.Schema({
       'IN_DISCUSSION',  // Vendor contacted customer, discussing details/price
       'QUOTE_SENT',     // Vendor sent price quote to customer
       'QUOTE_ACCEPTED', // Customer accepted quote
+      'QUOTE_REJECTED', // Customer rejected quote
       'PAID',           // Customer paid, ready to start work
       'IN_PROGRESS',    // Work is being done
       'COMPLETED',      // Work finished

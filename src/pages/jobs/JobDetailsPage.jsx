@@ -158,6 +158,29 @@ const JobDetailsPage = () => {
     toast.success('Thank you for your feedback!');
   };
 
+  const handleQuoteResponse = async (jobId, response) => {
+    try {
+      console.log('Responding to quote:', { jobId, response });
+      
+      const result = await api.customer.respondToQuote(jobId, { response });
+      
+      setJob(prev => ({ 
+        ...prev, 
+        status: response 
+      }));
+      
+      if (response === 'QUOTE_ACCEPTED') {
+        toast.success('Quote accepted! The vendor can now start work.');
+      } else {
+        toast.success('Quote rejected. You can discuss with the vendor for a new quote.');
+      }
+      
+    } catch (error) {
+      console.error('Error responding to quote:', error);
+      toast.error(`Failed to ${response === 'QUOTE_ACCEPTED' ? 'accept' : 'reject'} quote: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'COMPLETED': 
@@ -165,9 +188,14 @@ const JobDetailsPage = () => {
         return 'bg-green-100 text-green-800 border-green-200';
       case 'IN_PROGRESS': 
         return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'QUOTE_ACCEPTED':
       case 'ACCEPTED':
       case 'PAID':
         return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'QUOTE_SENT':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'QUOTE_REJECTED':
+        return 'bg-red-100 text-red-800 border-red-200';
       case 'ASSIGNED': 
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'PENDING': 
@@ -232,16 +260,6 @@ const JobDetailsPage = () => {
                 {job.status.replace('_', ' ')}
               </span>
               
-              {/* Pay Now Button */}
-              {isCustomer && job.status === 'ACCEPTED' && job.totalAmount && (
-                <button
-                  onClick={() => navigate(`/payment/${job._id}`)}
-                  className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-                >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  Pay Now
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -493,46 +511,77 @@ const JobDetailsPage = () => {
               )}
             </div>
 
-            {/* Payment Information */}
-            {job.paymentStatus && (
+            {/* Pricing Information */}
+            {(job.totalAmount || job.status === 'QUOTE_SENT' || job.status === 'QUOTE_ACCEPTED' || job.status === 'PAID') && (
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <DollarSign className="w-5 h-5 mr-2" />
+                  Pricing & Quote
+                </h3>
                 
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Status:</span>
-                    <span className={`font-medium ${
-                      job.paymentStatus === 'PAID' ? 'text-green-600' :
-                      job.paymentStatus === 'PENDING' ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
-                      {job.paymentStatus}
-                    </span>
-                  </div>
-                  
-                  {job.paymentMethod && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Method:</span>
-                      <span className="text-gray-900">{job.paymentMethod}</span>
+                <div className="space-y-4">
+                  {job.totalAmount ? (
+                    <>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-blue-800 font-medium">Vendor Quote:</span>
+                          <span className="text-2xl font-bold text-blue-600">${job.totalAmount.toLocaleString()}</span>
+                        </div>
+                        {job.status === 'QUOTE_SENT' && (
+                          <div className="mt-4">
+                            <p className="text-sm text-blue-600 mb-3">
+                              ⏳ Waiting for your approval of this quote
+                            </p>
+                            <div className="flex space-x-3">
+                              <button
+                                onClick={() => handleQuoteResponse(job._id, 'QUOTE_ACCEPTED')}
+                                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                              >
+                                ✅ Accept Quote
+                              </button>
+                              <button
+                                onClick={() => handleQuoteResponse(job._id, 'QUOTE_REJECTED')}
+                                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                              >
+                                ❌ Reject Quote
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {job.status === 'QUOTE_ACCEPTED' && (
+                          <p className="text-sm text-green-600 mt-2">
+                            ✅ Quote accepted - Vendor can now start work
+                          </p>
+                        )}
+                        {job.status === 'QUOTE_REJECTED' && (
+                          <p className="text-sm text-red-600 mt-2">
+                            ❌ Quote rejected - You can discuss a new quote with the vendor
+                          </p>
+                        )}
+                      </div>
+                      
+                      {job.estimatedBudget && job.totalAmount !== job.estimatedBudget && (
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>Your estimated budget:</span>
+                          <span>${job.estimatedBudget}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Vendor Quote:</span>
+                        <span className="text-gray-500">Pending</span>
+                      </div>
+                      <p className="text-sm text-gray-500 mt-2">
+                        The vendor is reviewing your request and will provide a quote soon.
+                      </p>
                     </div>
                   )}
-                  
-                  {job.paymentDate && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Date:</span>
-                      <span className="text-gray-900">
-                        {new Date(job.paymentDate).toLocaleDateString()}
-                      </span>
-                    </div>
-                  )}
-                  
-                  <div className="flex justify-between text-lg font-semibold">
-                    <span className="text-gray-900">Total:</span>
-                    <span className="text-gray-900">${job.totalAmount}</span>
-                  </div>
                 </div>
               </div>
             )}
+
 
             {/* Quick Actions */}
             <div className="bg-white rounded-lg shadow-md p-6">

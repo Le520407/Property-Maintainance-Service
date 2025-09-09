@@ -183,6 +183,7 @@ const SimpleDashboard = () => {
       case 'IN_DISCUSSION': return <MessageSquare className="w-4 h-4 text-purple-500" />;
       case 'QUOTE_SENT': return <FileText className="w-4 h-4 text-indigo-500" />;
       case 'QUOTE_ACCEPTED': return <CheckCircle className="w-4 h-4 text-teal-500" />;
+      case 'QUOTE_REJECTED': return <X className="w-4 h-4 text-red-500" />;
       case 'PAID': return <DollarSign className="w-4 h-4 text-green-600" />;
       case 'IN_PROGRESS': return <Clock className="w-4 h-4 text-blue-500" />;
       case 'COMPLETED': return <CheckCircle className="w-4 h-4 text-green-500" />;
@@ -199,6 +200,7 @@ const SimpleDashboard = () => {
       case 'IN_DISCUSSION': return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'QUOTE_SENT': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       case 'QUOTE_ACCEPTED': return 'bg-teal-50 text-teal-700 border-teal-200';
+      case 'QUOTE_REJECTED': return 'bg-red-50 text-red-700 border-red-200';
       case 'PAID': return 'bg-green-50 text-green-700 border-green-200';
       case 'IN_PROGRESS': return 'bg-blue-50 text-blue-700 border-blue-200';
       case 'COMPLETED': return 'bg-green-50 text-green-700 border-green-200';
@@ -214,7 +216,8 @@ const SimpleDashboard = () => {
       case 'ASSIGNED': return 'Assigned to vendor';
       case 'IN_DISCUSSION': return 'Discussing details with vendor';
       case 'QUOTE_SENT': return 'Quote sent for approval';
-      case 'QUOTE_ACCEPTED': return 'Quote accepted, awaiting payment';
+      case 'QUOTE_ACCEPTED': return 'Quote accepted, vendor can start work';
+      case 'QUOTE_REJECTED': return 'Quote rejected, discuss new quote with vendor';
       case 'PAID': return 'Payment completed, work scheduled';
       case 'IN_PROGRESS': return 'Work in progress';
       case 'COMPLETED': return 'Work completed successfully';
@@ -1507,6 +1510,31 @@ const OrderDetailsModal = ({ order, onClose, onCancelOrder, getStatusIcon, getSt
     setZoomedImage(imageSrc);
   };
 
+  const handleQuoteResponse = async (jobId, response) => {
+    try {
+      console.log('Responding to quote:', { jobId, response });
+      
+      const result = await api.customer.respondToQuote(jobId, { response });
+      
+      // Update the order status locally
+      order.status = response;
+      
+      if (response === 'QUOTE_ACCEPTED') {
+        toast.success('Quote accepted! The vendor can now start work.');
+      } else {
+        toast.success('Quote rejected. You can discuss with the vendor for a new quote.');
+      }
+      
+      // Close the modal and refresh the dashboard
+      onClose();
+      window.location.reload(); // Simple way to refresh the data
+      
+    } catch (error) {
+      console.error('Error responding to quote:', error);
+      toast.error(`Failed to ${response === 'QUOTE_ACCEPTED' ? 'accept' : 'reject'} quote: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
       <div className="bg-white rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -1745,52 +1773,103 @@ const OrderDetailsModal = ({ order, onClose, onCancelOrder, getStatusIcon, getSt
             )}
 
             {/* Quote Information */}
-            {order.vendorQuote?.amount && (
-              <div className="bg-green-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Vendor Quote</h3>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Quoted Amount</span>
-                    <span className="text-2xl font-bold text-green-600">
-                      ${order.vendorQuote.amount}
-                    </span>
-                  </div>
-                  {order.vendorQuote.description && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Quote Details</label>
-                      <p className="text-gray-900 text-sm">{order.vendorQuote.description}</p>
+            {(order.totalAmount || order.status === 'QUOTE_SENT' || order.status === 'QUOTE_ACCEPTED') && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+                  <DollarSign className="w-5 h-5 mr-2" />
+                  Pricing & Quote
+                </h3>
+                
+                {order.totalAmount ? (
+                  <>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-blue-800 font-medium">Vendor Quote:</span>
+                      <span className="text-2xl font-bold text-blue-600">${order.totalAmount.toLocaleString()}</span>
                     </div>
-                  )}
-                  {order.vendorQuote.validUntil && (
-                    <p className="text-gray-600 text-sm">
-                      Valid until: {new Date(order.vendorQuote.validUntil).toLocaleDateString()}
+                    
+                    {order.status === 'QUOTE_SENT' && (
+                      <div className="mt-4">
+                        <p className="text-sm text-blue-600 mb-3">
+                          ⏳ Waiting for your approval of this quote
+                        </p>
+                        <div className="flex space-x-3">
+                          <button
+                            onClick={() => handleQuoteResponse(order._id, 'QUOTE_ACCEPTED')}
+                            className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                          >
+                            ✅ Accept Quote
+                          </button>
+                          <button
+                            onClick={() => handleQuoteResponse(order._id, 'QUOTE_REJECTED')}
+                            className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                          >
+                            ❌ Reject Quote
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {order.status === 'QUOTE_ACCEPTED' && (
+                      <p className="text-sm text-green-600 mt-2">
+                        ✅ Quote accepted - Vendor can now start work
+                      </p>
+                    )}
+                    
+                    {order.status === 'QUOTE_REJECTED' && (
+                      <p className="text-sm text-red-600 mt-2">
+                        ❌ Quote rejected - You can discuss a new quote with the vendor
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Vendor Quote:</span>
+                      <span className="text-gray-500">Pending</span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">
+                      The vendor is reviewing your request and will provide a quote soon.
                     </p>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Work Progress */}
-            {order.workProgress?.percentage > 0 && (
+            {/* Work Progress & Completion */}
+            {(order.workProgress?.percentage > 0 || order.status === 'COMPLETED') && (
               <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Work Progress</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  {order.status === 'COMPLETED' ? 'Work Completed' : 'Work Progress'}
+                </h3>
                 <div className="space-y-3">
                   <div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Completion</span>
-                      <span className="font-medium">{order.workProgress.percentage}%</span>
+                      <span className="font-medium">
+                        {order.status === 'COMPLETED' ? '100' : order.workProgress?.percentage || 0}%
+                      </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
                       <div 
-                        className="bg-blue-600 h-2 rounded-full" 
-                        style={{ width: `${order.workProgress.percentage}%` }}
+                        className={`h-2 rounded-full ${order.status === 'COMPLETED' ? 'bg-green-600' : 'bg-blue-600'}`}
+                        style={{ width: `${order.status === 'COMPLETED' ? '100' : order.workProgress?.percentage || 0}%` }}
                       ></div>
                     </div>
                   </div>
-                  {order.workProgress.workNotes && (
+                  
+                  {order.workProgress?.workNotes && (
                     <div>
-                      <label className="text-sm font-medium text-gray-600">Progress Notes</label>
+                      <label className="text-sm font-medium text-gray-600">
+                        {order.status === 'COMPLETED' ? 'Completion Details' : 'Progress Notes'}
+                      </label>
                       <p className="text-gray-900 text-sm">{order.workProgress.workNotes}</p>
+                    </div>
+                  )}
+                  
+                  {order.status === 'COMPLETED' && !order.workProgress?.workNotes && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Status</label>
+                      <p className="text-green-600 text-sm font-medium">✅ Work has been completed successfully</p>
                     </div>
                   )}
                 </div>
@@ -1877,11 +1956,6 @@ const OrderDetailsModal = ({ order, onClose, onCancelOrder, getStatusIcon, getSt
             >
               Close
             </button>
-            {['QUOTE_SENT', 'QUOTE_ACCEPTED'].includes(order.status) && (
-              <button className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                Accept Quote & Pay
-              </button>
-            )}
           </div>
         </div>
       </div>

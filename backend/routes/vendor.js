@@ -282,6 +282,13 @@ router.get('/jobs', authenticateToken, requireRole(['vendor']), async (req, res)
     const total = await Job.countDocuments(filter);
     
     console.log('Found', jobs.length, 'jobs for vendor', req.user._id); // Debug log
+    
+    // Log job amounts for debugging
+    jobs.forEach(job => {
+      if (job.status === 'QUOTE_SENT') {
+        console.log(`📊 FETCHED JOB ${job.jobNumber}: totalAmount=${job.totalAmount}, estimatedBudget=${job.estimatedBudget}`);
+      }
+    });
 
     res.json({
       jobs,
@@ -301,15 +308,39 @@ router.get('/jobs', authenticateToken, requireRole(['vendor']), async (req, res)
 router.patch('/jobs/:jobId/status', authenticateToken, requireRole(['vendor']), async (req, res) => {
   try {
     const { jobId } = req.params;
-    const { status, notes } = req.body;
+    const { status, notes, totalAmount } = req.body;
+
+    console.log('Job status update request:', { jobId, status, totalAmount, notes });
 
     const job = await Job.findOne({ _id: jobId, vendorId: req.user._id });
+    
+    if (job) {
+      console.log('📋 JOB DETAILS:', {
+        jobNumber: job.jobNumber,
+        category: job.category,
+        itemsCategories: job.items.map(item => ({ serviceName: item.serviceName, category: item.category }))
+      });
+    }
     
     if (!job) {
       return res.status(404).json({ message: 'Job not found' });
     }
 
+    // Update totalAmount if provided (for quote updates)
+    if (totalAmount !== undefined && totalAmount !== null) {
+      console.log('🔄 BEFORE UPDATE - Job totalAmount:', job.totalAmount);
+      console.log('🔄 UPDATING to:', totalAmount);
+      job.totalAmount = totalAmount;
+      console.log('🔄 AFTER ASSIGNMENT - Job totalAmount:', job.totalAmount);
+      job.markModified('totalAmount'); // Ensure mongoose knows this field changed
+    }
+
     await job.updateStatus(status, req.user._id, notes);
+    
+    console.log('💾 BEFORE SAVE - Job totalAmount:', job.totalAmount);
+    const savedJob = await job.save(); // Ensure all changes are saved to database
+    console.log('✅ AFTER SAVE - Job totalAmount:', savedJob.totalAmount);
+    console.log('✅ SAVE COMPLETE - Job ID:', savedJob._id);
 
     // Update vendor stats if job is completed
     if (status === 'COMPLETED') {
