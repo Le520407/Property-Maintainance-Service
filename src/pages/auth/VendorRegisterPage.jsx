@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
+import { SERVICE_CATEGORIES_OBJECT_FORMAT } from '../../constants/serviceCategories';
 
 const VendorRegisterPage = ({ embedded = false }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -43,20 +44,7 @@ const VendorRegisterPage = ({ embedded = false }) => {
     { number: 4, title: 'Certification' }
   ];
 
-  const serviceCategories = [
-    { id: 'home-repairs', name: 'Home Repairs' },
-    { id: 'painting-services', name: 'Painting Services' },
-    { id: 'electrical-services', name: 'Electrical Services' },
-    { id: 'plumbing-services', name: 'Plumbing Services' },
-    { id: 'carpentry-services', name: 'Carpentry Services' },
-    { id: 'flooring-services', name: 'Flooring Services' },
-    { id: 'appliance-installation', name: 'Appliance Installation' },
-    { id: 'furniture-assembly', name: 'Furniture Assembly' },
-    { id: 'moving-services', name: 'Moving Services' },
-    { id: 'renovation', name: 'Renovation' },
-    { id: 'safety-security', name: 'Safety and Security' },
-    { id: 'cleaning-services', name: 'Cleaning Services' }
-  ];
+  const serviceCategories = SERVICE_CATEGORIES_OBJECT_FORMAT;
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];

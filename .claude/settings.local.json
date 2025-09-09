@@ -56,7 +56,8 @@
       "Read(/C:\\Users\\Le520\\Documents\\Property-Maintainance-Service\\src\\services/**)",
       "Read(/C:\\Users\\Le520\\Documents\\Property-Maintainance-Service\\src\\services/**)",
       "Read(/C:\\Users\\Le520\\Documents\\Property-Maintainance-Service\\src\\services/**)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(npm start)"
     ],
     "deny": [],
     "ask": [],

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Search, Filter } from 'lucide-react';
 import ImageService from '../services/ImageService';
+import { SERVICE_CATEGORIES_OBJECT_FORMAT } from '../constants/serviceCategories';
 
 const ServicesPage = () => {
   const { t } = useLanguage();
@@ -12,17 +13,7 @@ const ServicesPage = () => {
 
   const categories = [
     { id: 'all', name: 'All Services' },
-    { id: 'maintenance', name: 'Home Repairs' },
-    { id: 'painting', name: 'Painting' },
-    { id: 'electrical', name: 'Electrical' },
-    { id: 'plumbing', name: 'Plumbing' },
-    { id: 'flooring', name: 'Flooring' },
-    { id: 'installation', name: 'Appliance Installation' },
-    { id: 'assembly', name: 'Furniture Assembly' },
-    { id: 'moving', name: 'Moving Services' },
-    { id: 'renovation', name: 'Renovation' },
-    { id: 'security', name: 'Safety & Security' },
-    { id: 'cleaning', name: 'Cleaning' }
+    ...SERVICE_CATEGORIES_OBJECT_FORMAT
   ];
 
   const services = [

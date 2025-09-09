@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { SERVICE_CATEGORIES_SIMPLE } from '../../constants/serviceCategories';
 import { 
   User, 
   Calendar, 
@@ -53,17 +54,59 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
     description: vendor.description || ''
   });
 
-  const serviceCategories = ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services'];
+  const serviceCategories = SERVICE_CATEGORIES_SIMPLE;
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  // Category migration mapping - old categories to new categories
+  const categoryMigrationMap = {
+    'home-repairs': 'maintenance',
+    'painting-services': 'painting',
+    'electrical-services': 'electrical',
+    'plumbing-services': 'plumbing',
+    'carpentry-services': 'maintenance',
+    'flooring-services': 'flooring',
+    'appliance-installation': 'installation',
+    'furniture-assembly': 'assembly',
+    'moving-services': 'moving',
+    'safety-security': 'security',
+    'cleaning-services': 'cleaning',
+    'general': 'maintenance',
+    'gardening': 'maintenance',
+    'hvac': 'maintenance'
+  };
+
+  // Function to migrate and validate categories
+  const migrateCategories = (categories) => {
+    if (!Array.isArray(categories)) return [];
+    
+    const migratedCategories = categories
+      .map(category => categoryMigrationMap[category] || category)
+      .filter(category => serviceCategories.includes(category));
+    
+    // Remove duplicates
+    return [...new Set(migratedCategories)];
+  };
 
   const saveProfile = async (updatedData) => {
     try {
       setLoading(true);
-      await api.vendor.updateProfile(updatedData);
+      
+      // Migrate and validate categories before sending
+      const migratedData = {
+        ...updatedData,
+        serviceCategories: migrateCategories(updatedData.serviceCategories)
+      };
+      
+      console.log('Original categories:', updatedData.serviceCategories); // Debug log
+      console.log('Migrated categories:', migratedData.serviceCategories); // Debug log
+      console.log('Available categories:', serviceCategories); // Debug available categories
+      
+      await api.vendor.updateProfile(migratedData);
       toast.success('Profile updated successfully!');
       onUpdate();
     } catch (error) {
       console.error('Error updating profile:', error);
+      console.error('Profile data that failed:', updatedData); // Debug log
       toast.error('Failed to update profile');
     } finally {
       setLoading(false);
@@ -1862,27 +1905,6 @@ const VendorJobAssignments = ({ status }) => {
                     </div>
                   )}
 
-                  {job.status === 'COMPLETED' && (
-                    <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
-                      <button
-                        onClick={() => navigate(`/jobs/${job._id}`)}
-                        className="flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        View Details
-                      </button>
-                      <button
-                        onClick={() => {
-                          // Update job status to next stage
-                          console.log('Update job progress for:', job._id);
-                        }}
-                        className="flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Update Status
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             </motion.div>

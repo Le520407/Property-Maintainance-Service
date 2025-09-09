@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { SERVICE_CATEGORIES_SELECT_FORMAT } from '../constants/serviceCategories';
 import toast from 'react-hot-toast';
 
 const OrderSubmissionPage = () => {
@@ -135,20 +136,7 @@ const OrderSubmissionPage = () => {
     }
   }, [location.search, location.state, user]);
 
-  const serviceCategories = [
-    { value: 'home-repairs', label: 'Home Repairs' },
-    { value: 'painting-services', label: 'Painting Services' },
-    { value: 'electrical-services', label: 'Electrical Services' },
-    { value: 'plumbing-services', label: 'Plumbing Services' },
-    { value: 'carpentry-services', label: 'Carpentry Services' },
-    { value: 'flooring-services', label: 'Flooring Services' },
-    { value: 'appliance-installation', label: 'Appliance Installation' },
-    { value: 'furniture-assembly', label: 'Furniture Assembly' },
-    { value: 'moving-services', label: 'Moving Services' },
-    { value: 'renovation', label: 'Renovation' },
-    { value: 'safety-security', label: 'Safety and Security' },
-    { value: 'cleaning-services', label: 'Cleaning Services' }
-  ];
+  const serviceCategories = SERVICE_CATEGORIES_SELECT_FORMAT;
 
 
   const handleInputChange = (field, value) => {
