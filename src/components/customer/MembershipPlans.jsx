@@ -109,8 +109,8 @@ const MembershipPlans = () => {
           billingCycle: billingCycle
         });
       } else {
-        // Use membership payment endpoint for new subscriptions
-        response = await api.post('/membership/payment', {
+        // Use membership subscribe endpoint for new subscriptions (recurring payments)
+        response = await api.post('/membership/subscribe', {
           tierId: tier._id,
           billingCycle: billingCycle
         });
@@ -119,7 +119,8 @@ const MembershipPlans = () => {
       // Dismiss loading toast
       toast.dismiss('preparing');
 
-      if (response.paymentUrl) {
+      const redirectUrl = response.paymentUrl || response.checkoutUrl;
+      if (redirectUrl) {
         // Show redirect message
         toast.success(
           isUpgrade 
@@ -130,7 +131,7 @@ const MembershipPlans = () => {
         
         // Small delay for better UX, then redirect to HitPay
         setTimeout(() => {
-          window.location.href = response.paymentUrl;
+          window.location.href = redirectUrl;
         }, 1500);
         
       } else if (response.success) {
@@ -178,16 +179,17 @@ const MembershipPlans = () => {
           billingCycle: billingCycle
         });
       } else {
-        response = await api.post('/membership/payment', {
+        response = await api.post('/membership/subscribe', {
           tierId: selectedTier._id,
           billingCycle: billingCycle
         });
       }
 
-      if (response.paymentUrl) {
+      const redirectUrl = response.paymentUrl || response.checkoutUrl;
+      if (redirectUrl) {
         setShowPaymentModal(false);
         setSelectedTier(null);
-        window.location.href = response.paymentUrl;
+        window.location.href = redirectUrl;
       } else if (response.success) {
         toast.success(isUpgrade ? 'Plan upgraded!' : 'Membership activated!');
         setCurrentMembership(response.membership);

@@ -68,6 +68,10 @@ const customerMembershipSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // Cancellation tracking
+  cancelledAt: Date, // When the user requested cancellation
+  willExpireAt: Date, // Explicit field showing when access will end
+  cancellationReason: String, // Optional reason for cancellation
   paymentMethod: {
     type: String,
     enum: ['STRIPE', 'HITPAY', 'MANUAL'],
@@ -79,7 +83,9 @@ const customerMembershipSchema = new mongoose.Schema({
   // HitPay fields
   hitpayPlanId: String,
   hitpayRecurringBillingId: String,
+  hitpaySubscriptionId: String, // Track active subscription for cancellation
   hitpayCustomerId: String,
+  hitpayPaymentId: String, // Track individual payment IDs for refunds
   currentUsage: {
     month: String, // Format: 'YYYY-MM'
     serviceRequestsUsed: { type: Number, default: 0 },

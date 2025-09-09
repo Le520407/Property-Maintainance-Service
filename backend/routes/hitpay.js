@@ -834,4 +834,128 @@ router.post('/subscription-plan', async (req, res) => {
   }
 });
 
+/**
+ * Update subscription plan using HitPay API V2
+ * PUT /api/hitpay/subscription-plan/:planId
+ */
+router.put('/subscription-plan/:planId', async (req, res) => {
+  try {
+    const { planId } = req.params;
+    const updateData = req.body;
+
+    console.log('🔄 Updating subscription plan:', planId, 'with data:', updateData);
+
+    // Call the HitPay service method
+    const result = await hitpayService.updateSubscriptionPlan(planId, updateData);
+
+    if (result.success) {
+      console.log('✅ Subscription plan updated successfully');
+      return res.status(200).json({
+        success: true,
+        message: 'Subscription plan updated successfully',
+        data: result.data
+      });
+    } else {
+      console.log('❌ Failed to update subscription plan:', result.error);
+      return res.status(400).json({
+        success: false,
+        message: result.error,
+        data: result.data
+      });
+    }
+
+  } catch (error) {
+    console.error('💥 Error in update subscription plan endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Cancel subscription plan using HitPay API V2
+ * DELETE /api/hitpay/subscription-plan/:planId
+ */
+router.delete('/subscription-plan/:planId', async (req, res) => {
+  try {
+    const { planId } = req.params;
+
+    console.log('🗑️ Cancelling subscription plan:', planId);
+
+    // Call the HitPay service method
+    const result = await hitpayService.cancelSubscriptionPlan(planId);
+
+    if (result.success) {
+      console.log('✅ Subscription plan cancelled successfully');
+      return res.status(200).json({
+        success: true,
+        message: 'Subscription plan cancelled successfully',
+        data: result.data
+      });
+    } else {
+      console.log('❌ Failed to cancel subscription plan:', result.error);
+      return res.status(400).json({
+        success: false,
+        message: result.error,
+        data: result.data
+      });
+    }
+
+  } catch (error) {
+    console.error('💥 Error in cancel subscription plan endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Process refund using HitPay API V2
+ * POST /api/hitpay/refund
+ */
+router.post('/refund', async (req, res) => {
+  try {
+    const { amount, payment_id, webhook, send_email, email } = req.body;
+
+    console.log('💰 Processing refund:', req.body);
+
+    // Call the HitPay service method
+    const result = await hitpayService.processRefund({
+      amount,
+      payment_id,
+      webhook,
+      send_email,
+      email
+    });
+
+    if (result.success) {
+      console.log('✅ Refund processed successfully');
+      return res.status(200).json({
+        success: true,
+        message: 'Refund processed successfully',
+        data: result.data
+      });
+    } else {
+      console.log('❌ Failed to process refund:', result.error);
+      return res.status(400).json({
+        success: false,
+        message: result.error,
+        data: result.data
+      });
+    }
+
+  } catch (error) {
+    console.error('💥 Error in refund endpoint:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

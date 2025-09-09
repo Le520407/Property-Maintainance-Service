@@ -12,18 +12,35 @@ const MembershipSuccess = () => {
   const [membershipData, setMembershipData] = useState(null);
   const [error, setError] = useState(null);
 
+  // Helper to detect recurring payment
+  const isRecurringPayment = () => {
+    const recurringBillingId = searchParams.get('recurring_billing_id');
+    return !!(recurringBillingId || (membershipData?.autoRenew && membershipData?.hitpayRecurringBillingId));
+  };
+
   useEffect(() => {
     // Get payment parameters from URL - handle both HitPay format and demo format
     const paymentId = searchParams.get('payment_id');
     const reference = searchParams.get('reference'); // HitPay uses 'reference' instead of 'payment_id'
     const recurringBillingId = searchParams.get('recurring_billing_id');
     const status = searchParams.get('status');
+    const type = searchParams.get('type'); // recurring payment type
     const demo = searchParams.get('demo') === 'true';
 
     // Check if we have a valid payment identifier (either payment_id or reference)
     const hasValidPayment = paymentId || reference;
 
-    if (status === 'completed' && hasValidPayment) {
+    // Set initial state for recurring payment
+    if (recurringBillingId || type === 'recurring') {
+      console.log('🔄 Recurring billing detected:', recurringBillingId || reference);
+    }
+
+    // Handle different status scenarios
+    if (status === 'active' && reference) {
+      // HitPay returned with active status and reference - activate membership
+      console.log('✅ HitPay payment completed successfully, activating membership');
+      activateMembershipByReference(reference).finally(fetchMembershipData);
+    } else if (status === 'completed' && hasValidPayment) {
       // For demo mode, trigger backend simulation to flip membership ACTIVE
       if (demo && recurringBillingId) {
         simulateDemoRecurring(recurringBillingId).finally(fetchMembershipData);
@@ -48,6 +65,27 @@ const MembershipSuccess = () => {
       });
     } catch (e) {
       console.warn('Demo simulate recurring failed:', e);
+    }
+  };
+
+  const activateMembershipByReference = async (reference) => {
+    try {
+      console.log('🔄 Activating membership with reference:', reference);
+      
+      // Use our dedicated activation endpoint
+      const response = await api.post('/membership/activate-by-reference', {
+        reference: reference
+      });
+      
+      if (response.success) {
+        console.log('✅ Membership activated successfully');
+        toast.success('🎉 Your membership has been activated!');
+      } else {
+        console.warn('Activation response:', response);
+      }
+    } catch (error) {
+      console.error('Failed to activate membership:', error);
+      // Don't show error toast here, let the membership fetch handle it
     }
   };
 
@@ -160,7 +198,7 @@ const MembershipSuccess = () => {
           transition={{ delay: 0.3 }}
           className="text-3xl font-bold text-gray-900 mb-4"
         >
-          Welcome to Swift Fix Pro!
+          {isRecurringPayment() ? 'Recurring Subscription Activated!' : 'Welcome to Swift Fix Pro!'}
         </motion.h1>
 
         {/* Description */}
@@ -170,11 +208,26 @@ const MembershipSuccess = () => {
           transition={{ delay: 0.4 }}
           className="text-gray-600 mb-8"
         >
-          Your membership has been activated successfully. You now have access to all the benefits of your{' '}
-          <span className="font-semibold text-orange-600">
-            {membershipData?.tier?.displayName || 'Premium'}
-          </span>{' '}
-          plan.
+          {isRecurringPayment() ? (
+            <>
+              Your recurring membership has been activated successfully! Your{' '}
+              <span className="font-semibold text-orange-600">
+                {membershipData?.tier?.displayName || 'Premium'}
+              </span>{' '}
+              plan will automatically renew every{' '}
+              <span className="font-semibold">
+                {membershipData?.billingCycle?.toLowerCase() === 'yearly' ? 'year' : 'month'}
+              </span>.
+            </>
+          ) : (
+            <>
+              Your membership has been activated successfully. You now have access to all the benefits of your{' '}
+              <span className="font-semibold text-orange-600">
+                {membershipData?.tier?.displayName || 'Premium'}
+              </span>{' '}
+              plan.
+            </>
+          )}
         </motion.p>
 
         {/* Membership Details */}
@@ -199,6 +252,18 @@ const MembershipSuccess = () => {
                 <span className="text-gray-600">Status:</span>
                 <span className="font-medium text-green-600">{membershipData.status}</span>
               </div>
+              {isRecurringPayment() && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Payment Type:</span>
+                  <span className="font-medium text-blue-600">🔄 Recurring</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-600">Auto Renew:</span>
+                <span className={`font-medium ${membershipData.autoRenew ? 'text-green-600' : 'text-orange-600'}`}>
+                  {membershipData.autoRenew ? '✅ Enabled' : '❌ Disabled'}
+                </span>
+              </div>
               {membershipData.nextBillingDate && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Next Billing:</span>
@@ -207,6 +272,12 @@ const MembershipSuccess = () => {
                   </span>
                 </div>
               )}
+              <div className="flex justify-between">
+                <span className="text-gray-600">Current Price:</span>
+                <span className="font-medium">${membershipData.currentPrice || membershipData.monthlyPrice}/
+                  {membershipData.billingCycle?.toLowerCase() === 'yearly' ? 'year' : 'month'}
+                </span>
+              </div>
             </div>
           </motion.div>
         )}
@@ -225,6 +296,77 @@ const MembershipSuccess = () => {
           </p>
         </motion.div>
 
+        {/* Recurring Payment Benefits */}
+        {isRecurringPayment() && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65 }}
+            className="bg-blue-50 rounded-xl p-4 mb-8"
+          >
+            <h4 className="font-semibold text-blue-800 mb-2">🔄 Recurring Payment Benefits</h4>
+            <div className="space-y-1 text-sm text-blue-700">
+              <div className="flex items-center">
+                <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></div>
+                Never worry about missing a payment
+              </div>
+              <div className="flex items-center">
+                <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></div>
+                Uninterrupted access to all services
+              </div>
+              <div className="flex items-center">
+                <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></div>
+                Easy to manage or cancel anytime
+              </div>
+              {membershipData?.billingCycle?.toLowerCase() === 'yearly' && (
+                <div className="flex items-center">
+                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></div>
+                  Save money with annual billing
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Next Payment Information */}
+        {isRecurringPayment() && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="bg-gray-50 rounded-xl p-4 mb-8"
+          >
+            <h4 className="font-semibold text-gray-800 mb-3">📅 Payment Schedule</h4>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Next billing date:</span>
+                <span className="text-sm font-medium text-gray-800">
+                  {(() => {
+                    const nextBilling = new Date();
+                    if (membershipData?.billingCycle?.toLowerCase() === 'monthly') {
+                      nextBilling.setMonth(nextBilling.getMonth() + 1);
+                    } else if (membershipData?.billingCycle?.toLowerCase() === 'yearly') {
+                      nextBilling.setFullYear(nextBilling.getFullYear() + 1);
+                    } else {
+                      nextBilling.setMonth(nextBilling.getMonth() + 1); // default to monthly
+                    }
+                    return nextBilling.toLocaleDateString();
+                  })()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Payment method:</span>
+                <span className="text-sm font-medium text-gray-800">
+                  Auto-charge enabled
+                </span>
+              </div>
+              <div className="text-xs text-gray-500 mt-2">
+                You can modify or cancel your subscription anytime from your dashboard.
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Action Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -236,7 +378,7 @@ const MembershipSuccess = () => {
             onClick={handleViewMembership}
             className="w-full bg-orange-600 text-white py-3 px-6 rounded-xl font-semibold hover:bg-orange-700 transition-colors flex items-center justify-center group"
           >
-            View My Membership
+            {isRecurringPayment() ? 'Manage Subscription' : 'View My Membership'}
             <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
           </button>
           
@@ -264,11 +406,23 @@ const MembershipSuccess = () => {
             </div>
             <div className="flex items-center">
               <div className="w-2 h-2 bg-orange-400 rounded-full mr-3"></div>
-              Access your member-exclusive benefits
+              Explore all available services in your area
             </div>
+            {isRecurringPayment() && (
+              <>
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
+                  Your next payment will be processed automatically
+                </div>
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
+                  Manage subscription settings anytime from your dashboard
+                </div>
+              </>
+            )}
             <div className="flex items-center">
               <div className="w-2 h-2 bg-orange-400 rounded-full mr-3"></div>
-              Join our community for tips and updates
+              Contact support if you need any assistance
             </div>
           </div>
         </motion.div>

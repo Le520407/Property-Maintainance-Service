@@ -1,534 +1,460 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Settings, 
   AlertTriangle, 
-  XCircle,
   ArrowUpCircle,
-  FileText,
-  Shield
+  ArrowDownCircle,
+  Calendar,
+  DollarSign,
+  CheckCircle,
+  Clock,
+  Home,
+  Building,
+  Building2,
+  Briefcase,
+  Loader2
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { api } from '../services/api';
+import toast from 'react-hot-toast';
 
 const SubscriptionManagementPage = () => {
-  const [currentSubscription, setCurrentSubscription] = useState(null);
+  const [membership, setMembership] = useState(null);
+  const [availableTiers, setAvailableTiers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('');
-  const [prorationAmount, setProrationAmount] = useState(0);
+  const [showPlanChangeModal, setShowPlanChangeModal] = useState(false);
+  const [selectedTier, setSelectedTier] = useState(null);
+  const [planChangePreview, setPlanChangePreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [changingPlan, setChangingPlan] = useState(false);
 
-  const subscriptionPlans = useMemo(() => ({
-    HDB: { name: 'HDB', price: 19.90, description: 'Basic maintenance services' },
-    CONDOMINIUM: { name: 'Condominium', price: 29.90, description: 'Standard maintenance services' },
-    LANDED: { name: 'Landed Property', price: 49.90, description: 'Premium maintenance services' },
-    COMMERCIAL: { name: 'Commercial', price: 89.90, description: 'Professional maintenance services' }
-  }), []);
+  // Fetch current membership and available tiers
+  useEffect(() => {
+    fetchMembershipData();
+    fetchAvailableTiers();
+  }, []);
 
-  const fetchCurrentSubscription = useCallback(async () => {
+  const fetchMembershipData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        console.error('No token found in localStorage');
-        setCurrentSubscription(null);
-        return;
-      }
-      
-      console.log('Making API call to /api/users/membership with token:', token ? 'Present' : 'Missing');
-      
-      const response = await fetch('/api/users/membership', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      console.log('API Response status:', response.status);
-      console.log('API Response ok:', response.ok);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('📊 Raw membership data from API:', JSON.stringify(data, null, 2));
-        
-        if (data.success && data.membership) {
-          // Convert membership data to subscription format for compatibility
-          console.log('📋 Tier data:', data.membership.tier);
-          console.log('📋 Tier name:', data.membership.tier?.name);
-          console.log('📋 Tier displayName:', data.membership.tier?.displayName);
-          
-          const subscription = {
-            id: data.membership.id,
-            propertyType: data.membership.tier?.name || 'Unknown',
-            billingCycle: data.membership.billingCycle || 'MONTHLY',
-            status: data.membership.status,
-            price: data.membership.currentPrice || 0,
-            nextBillingDate: data.membership.nextBillingDate,
-            tier: data.membership.tier,
-            autoRenew: data.membership.autoRenew
-          };
-          
-          console.log('🔄 Mapped subscription data:', JSON.stringify(subscription, null, 2));
-          console.log('🔑 Available subscription plans:', Object.keys(subscriptionPlans));
-          
-          setCurrentSubscription(subscription);
-          console.log('✅ Successfully set current subscription');
-        } else {
-          console.warn('❌ API returned success:false or no membership data:', data);
-          setCurrentSubscription(null);
-        }
-      } else {
-        const errorText = await response.text();
-        console.error('❌ API call failed:', response.status, errorText);
-        setCurrentSubscription(null);
+      const response = await api.get('/membership/my-membership');
+      if (response.success && response.membership) {
+        setMembership(response.membership);
       }
     } catch (error) {
-      console.error('💥 Error fetching membership:', error);
-      setCurrentSubscription(null);
+      console.error('Error fetching membership:', error);
+      toast.error('Failed to load membership data');
     } finally {
       setLoading(false);
     }
-  }, [subscriptionPlans]);
+  };
 
-  useEffect(() => {
-    fetchCurrentSubscription();
-  }, [fetchCurrentSubscription]);
-
-  const calculateProration = async (newPlan) => {
+  const fetchAvailableTiers = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/subscriptions/calculate-proration`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          subscriptionId: currentSubscription.id,
-          newPropertyType: newPlan
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setProrationAmount(data.data.amount);
+      const response = await api.get('/membership/tiers');
+      if (response.success && response.tiers) {
+        setAvailableTiers(response.tiers);
       }
     } catch (error) {
-      console.error('Error calculating proration:', error);
-      // Demo calculation with null checks
-      const currentPlan = subscriptionPlans[currentSubscription?.propertyType];
-      const newPlanData = subscriptionPlans[newPlan];
-      
-      if (currentPlan && newPlanData) {
-        const currentPrice = currentPlan.price;
-        const newPrice = newPlanData.price;
-        const remainingDays = 15; // Demo: 15 days remaining
-        const daysInMonth = 30;
-        const prorated = ((newPrice - currentPrice) * remainingDays) / daysInMonth;
-        setProrationAmount(prorated);
-      } else {
-        setProrationAmount(0);
-      }
+      console.error('Error fetching tiers:', error);
     }
   };
 
-  const handlePlanChange = async (newPlan) => {
-    if (newPlan === currentSubscription.propertyType) return;
+  const getTierIcon = (tierName) => {
+    const icons = {
+      'HDB': <Home className="w-6 h-6" />,
+      'CONDOMINIUM': <Building className="w-6 h-6" />,
+      'LANDED_PROPERTY': <Building2 className="w-6 h-6" />,
+      'COMMERCIAL': <Briefcase className="w-6 h-6" />
+    };
+    return icons[tierName] || <Home className="w-6 h-6" />;
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Not set';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getDaysUntilExpiry = (endDate) => {
+    if (!endDate) return 0;
+    const end = new Date(endDate);
+    const now = new Date();
+    const diffTime = end - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+  };
+
+  const handlePlanChangeRequest = async (tier) => {
+    if (!membership || tier._id === membership.tier._id) return;
     
-    setSelectedPlan(newPlan);
-    await calculateProration(newPlan);
-    setShowUpgradeModal(true);
+    setSelectedTier(tier);
+    setPreviewLoading(true);
+    
+    try {
+      const response = await api.post('/membership/plan-change-preview', {
+        newTierId: tier._id,
+        billingCycle: membership.billingCycle
+      });
+      
+      if (response.success) {
+        setPlanChangePreview(response.preview);
+        setShowPlanChangeModal(true);
+      }
+    } catch (error) {
+      console.error('Error getting plan preview:', error);
+      toast.error('Failed to calculate plan change cost');
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const confirmPlanChange = async () => {
+    if (!selectedTier || !membership) return;
+    
+    setChangingPlan(true);
+    
     try {
+      // Debug logging
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/subscriptions/update/${currentSubscription.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          propertyType: selectedPlan
-        })
+      console.log('🔍 Debug - Auth token exists:', !!token);
+      console.log('🔍 Debug - Request data:', {
+        newTierId: selectedTier._id,
+        billingCycle: membership.billingCycle
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentSubscription(data.data.subscription);
-        setShowUpgradeModal(false);
-        alert('Plan updated successfully!');
-      } else {
-        alert('Failed to update plan. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error updating plan:', error);
-      alert('Error updating plan. Please try again.');
-    }
-  };
-
-  const handleCancelSubscription = async (immediate = false) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/subscriptions/cancel/${currentSubscription.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          immediate
-        })
+      // Use the change-plan endpoint for plan changes with refund processing
+      const response = await api.put('/membership/change-plan', {
+        newTierId: selectedTier._id,
+        billingCycle: membership.billingCycle
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentSubscription(data.data.subscription);
-        setShowCancelModal(false);
-        alert(immediate ? 'Subscription cancelled immediately with refund.' : 'Subscription will cancel at the end of the billing period.');
-      } else {
-        alert('Failed to cancel subscription. Please try again.');
+      if (response.success) {
+        // Show refund information if applicable
+        if (response.refundInfo && response.refundInfo.refundAmount > 0) {
+          toast.success(`Plan change initiated! Refund of $${response.refundInfo.refundAmount.toFixed(2)} processed.`);
+        }
+        
+        // Redirect to HitPay checkout
+        if (response.checkoutUrl) {
+          window.location.href = response.checkoutUrl;
+        } else {
+          toast.success(response.message || 'Plan change completed!');
+          setShowPlanChangeModal(false);
+          fetchMembershipData();
+        }
       }
     } catch (error) {
-      console.error('Error cancelling subscription:', error);
-      alert('Error cancelling subscription. Please try again.');
+      console.error('Error changing plan:', error);
+      toast.error('Failed to change plan');
+    } finally {
+      setChangingPlan(false);
     }
   };
 
   if (loading) {
-    console.log('⏳ Loading subscription data...');
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading subscription data...</p>
+          <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading subscription details...</p>
         </div>
       </div>
     );
   }
 
-  if (!currentSubscription) {
-    console.log('🚫 No current subscription detected. State value:', currentSubscription);
+  if (!membership) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">No Active Subscription</h2>
-          <p className="text-gray-600 mb-2">You don't have an active subscription.</p>
-          <p className="text-sm text-gray-500 mb-6">Debug: currentSubscription = {JSON.stringify(currentSubscription)}</p>
-          <Link
-            to="/subscription"
+          <AlertTriangle className="h-12 w-12 text-orange-600 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">No Active Subscription</h2>
+          <p className="text-gray-600 mb-6">You don't have an active subscription.</p>
+          <button
+            onClick={() => window.location.href = '/membership/plans'}
             className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
           >
-            View Subscription Plans
-          </Link>
-          <button
-            onClick={fetchCurrentSubscription}
-            className="ml-4 bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            Retry
+            Browse Plans
           </button>
         </div>
       </div>
     );
   }
 
+  const daysRemaining = getDaysUntilExpiry(membership.endDate);
+  const isExpiringSoon = daysRemaining <= 7;
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                <Settings className="mr-3 text-blue-600" />
-                Subscription Management
-              </h1>
-              <p className="mt-2 text-gray-600">
-                Manage your subscription plan, billing, and cancellation options
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Subscription Management</h1>
+          <p className="text-gray-600">Manage your current subscription and change plans</p>
+        </motion.div>
+
+        {/* Current Subscription Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-2xl shadow-xl p-6 mb-8"
+        >
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-blue-100 rounded-xl">
+                {getTierIcon(membership.tier?.name)}
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">{membership.tier?.displayName}</h2>
+                <div className="flex items-center space-x-2 mt-1">
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    membership.status === 'ACTIVE' 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {membership.status}
+                  </span>
+                  <span className="text-gray-500">•</span>
+                  <span className="text-gray-600 capitalize">{membership.billingCycle?.toLowerCase()}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex space-x-4">
-              <Link
-                to="/subscription/billing-history"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Billing History
-              </Link>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-gray-900">
+                ${membership.currentPrice}
+                <span className="text-lg text-gray-500">/{membership.billingCycle === 'YEARLY' ? 'year' : 'month'}</span>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Subscription Details */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="flex items-center space-x-3">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="text-sm text-gray-500">Next Billing Date</p>
+                <p className="font-medium text-gray-900">{formatDate(membership.nextBillingDate)}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <Clock className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="text-sm text-gray-500">Period End Date</p>
+                <p className="font-medium text-gray-900">{formatDate(membership.endDate)}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <DollarSign className="w-5 h-5 text-blue-600" />
+              <div>
+                <p className="text-sm text-gray-500">Days Remaining</p>
+                <p className={`font-medium ${isExpiringSoon ? 'text-orange-600' : 'text-gray-900'}`}>
+                  {daysRemaining} days
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Expiry Warning */}
+          {isExpiringSoon && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+              <div className="flex items-center space-x-3">
+                <AlertTriangle className="w-5 h-5 text-orange-600" />
+                <div>
+                  <p className="text-orange-800 font-medium">Subscription Expiring Soon</p>
+                  <p className="text-orange-700 text-sm">Your subscription will expire in {daysRemaining} days</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Current Plan Features */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="font-medium text-gray-900 mb-3">Current Plan Features</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-gray-700">
+                  {membership.tier?.features?.serviceRequestsPerMonth === -1 
+                    ? 'Unlimited' 
+                    : membership.tier?.features?.serviceRequestsPerMonth || 0} service requests/month
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-gray-700">
+                  {membership.tier?.features?.responseTimeHours || 0} hour response time
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-gray-700">
+                  {membership.tier?.features?.materialDiscountPercent || 0}% material discount
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-gray-700">
+                  {membership.tier?.features?.annualInspections || 0} annual inspections
+                </span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Available Plans */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white rounded-2xl shadow-xl p-6"
+        >
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Change Your Plan</h2>
           
-          {/* Current Subscription */}
-          <div className="lg:col-span-2">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-lg shadow-md p-6 mb-8"
-            >
-              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                <Shield className="h-5 w-5 mr-2 text-green-600" />
-                Current Subscription
-              </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {availableTiers.map((tier) => {
+              const isCurrentPlan = tier._id === membership.tier._id;
+              const isUpgrade = tier.monthlyPrice > membership.tier.monthlyPrice;
+              const isDowngrade = tier.monthlyPrice < membership.tier.monthlyPrice;
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <div className="flex items-center mb-4">
-                    <div className={`w-3 h-3 rounded-full mr-3 ${
-                      currentSubscription.status === 'ACTIVE' ? 'bg-green-500' : 
-                      currentSubscription.status === 'CANCELLED' ? 'bg-red-500' : 'bg-yellow-500'
-                    }`}></div>
-                    <span className="font-medium text-gray-900">
-                      {subscriptionPlans[currentSubscription?.propertyType]?.name || 'Unknown'} Plan
-                    </span>
+              return (
+                <motion.div
+                  key={tier._id}
+                  whileHover={!isCurrentPlan ? { scale: 1.02 } : {}}
+                  className={`border rounded-xl p-4 transition-all ${
+                    isCurrentPlan 
+                      ? 'border-blue-200 bg-blue-50' 
+                      : 'border-gray-200 hover:border-blue-300 hover:shadow-md cursor-pointer'
+                  }`}
+                  onClick={() => !isCurrentPlan && handlePlanChangeRequest(tier)}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2 bg-gray-100 rounded-lg">
+                      {getTierIcon(tier.name)}
+                    </div>
+                    {isCurrentPlan && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
+                        Current
+                      </span>
+                    )}
+                    {!isCurrentPlan && isUpgrade && (
+                      <ArrowUpCircle className="w-4 h-4 text-green-600" />
+                    )}
+                    {!isCurrentPlan && isDowngrade && (
+                      <ArrowDownCircle className="w-4 h-4 text-orange-600" />
+                    )}
                   </div>
                   
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Status:</span>
-                      <span className={`font-medium ${
-                        currentSubscription.status === 'ACTIVE' ? 'text-green-600' : 
-                        currentSubscription.status === 'CANCELLED' ? 'text-red-600' : 'text-yellow-600'
-                      }`}>
-                        {currentSubscription.status}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Billing Cycle:</span>
-                      <span className="font-medium text-gray-900">{currentSubscription.billingCycle}</span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Amount:</span>
-                      <span className="font-medium text-gray-900">SGD {currentSubscription.amount}</span>
-                    </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">{tier.displayName}</h3>
+                  <div className="text-2xl font-bold text-gray-900 mb-2">
+                    ${membership.billingCycle === 'YEARLY' ? tier.yearlyPrice : tier.monthlyPrice}
+                    <span className="text-sm text-gray-500">/{membership.billingCycle === 'YEARLY' ? 'yr' : 'mo'}</span>
                   </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Billing Information</h4>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Next Billing:</span>
-                      <span className="font-medium text-gray-900">
-                        {new Date(currentSubscription.nextBillingDate).toLocaleDateString()}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Period End:</span>
-                      <span className="font-medium text-gray-900">
-                        {new Date(currentSubscription.currentPeriodEnd).toLocaleDateString()}
-                      </span>
-                    </div>
+                  
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <div>{tier.features?.serviceRequestsPerMonth === -1 ? 'Unlimited' : tier.features?.serviceRequestsPerMonth} requests</div>
+                    <div>{tier.features?.responseTimeHours}h response</div>
+                    <div>{tier.features?.materialDiscountPercent}% discount</div>
                   </div>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Plan Options */}
-            {currentSubscription && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-white rounded-lg shadow-md p-6"
-              >
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Change Your Plan</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Object.entries(subscriptionPlans).map(([planId, plan]) => {
-                  if (!plan || !currentSubscription) return null;
                   
-                  const currentPlan = subscriptionPlans[currentSubscription.propertyType];
-                  if (!currentPlan) return null;
-                  
-                  return (
-                    <div
-                      key={planId}
-                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                        planId === currentSubscription.propertyType 
-                          ? 'border-blue-500 bg-blue-50' 
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => handlePlanChange(planId)}
+                  {!isCurrentPlan && (
+                    <button
+                      disabled={previewLoading}
+                      className={`w-full mt-4 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                        isUpgrade 
+                          ? 'bg-green-600 text-white hover:bg-green-700' 
+                          : 'bg-orange-600 text-white hover:bg-orange-700'
+                      } disabled:opacity-50`}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-gray-900">{plan.name}</h3>
-                        {planId === currentSubscription.propertyType && (
-                          <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">CURRENT</span>
-                        )}
-                      </div>
-                      
-                      <p className="text-gray-600 text-sm mb-3">{plan.description}</p>
-                      
-                      <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-gray-900">SGD {plan.price}</span>
-                        {planId !== currentSubscription.propertyType && (
-                          <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                            {plan.price > currentPlan.price ? 'Upgrade' : 'Downgrade'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </motion.div>
-            )}
+                      {previewLoading ? 'Loading...' : isUpgrade ? 'Upgrade' : 'Downgrade'}
+                    </button>
+                  )}
+                </motion.div>
+              );
+            })}
           </div>
+        </motion.div>
 
-          {/* Quick Actions */}
-          <div className="space-y-6">
+        {/* Plan Change Modal */}
+        {showPlanChangeModal && planChangePreview && selectedTier && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-lg shadow-md p-6"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-2xl p-6 max-w-md w-full"
             >
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Plan Change Summary</h3>
               
-              <div className="space-y-3">
-                <Link
-                  to="/subscription/billing-history"
-                  className="w-full flex items-center justify-between p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
-                >
-                  <span className="font-medium">View Billing History</span>
-                  <FileText className="h-5 w-5" />
-                </Link>
-                
-                <button
-                  onClick={() => setShowCancelModal(true)}
-                  className="w-full flex items-center justify-between p-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
-                >
-                  <span className="font-medium">Cancel Subscription</span>
-                  <XCircle className="h-5 w-5" />
-                </button>
-                
-                <Link
-                  to="/customer/dashboard"
-                  className="w-full flex items-center justify-between p-3 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <span className="font-medium">Back to Dashboard</span>
-                  <ArrowUpCircle className="h-5 w-5" />
-                </Link>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white rounded-lg shadow-md p-6"
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Need Help?</h3>
-              <p className="text-gray-600 text-sm mb-4">
-                Have questions about your subscription or need assistance with plan changes?
-              </p>
-              <button className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors">
-                Contact Support
-              </button>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-
-      {/* Plan Change Modal */}
-      {showUpgradeModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Plan Change</h3>
-            
-            <div className="mb-4">
-              <p className="text-gray-600 mb-2">
-                You're changing from <strong>{subscriptionPlans[currentSubscription.propertyType]?.name}</strong> to <strong>{subscriptionPlans[selectedPlan]?.name}</strong>
-              </p>
-              
-              {prorationAmount !== 0 && (
-                <div className={`p-3 rounded-lg ${prorationAmount > 0 ? 'bg-yellow-50' : 'bg-green-50'}`}>
-                  <p className={`text-sm ${prorationAmount > 0 ? 'text-yellow-800' : 'text-green-800'}`}>
-                    {prorationAmount > 0 
-                      ? `Additional charge: SGD ${prorationAmount.toFixed(2)} (prorated for remaining period)`
-                      : `Refund: SGD ${Math.abs(prorationAmount).toFixed(2)} (prorated for remaining period)`
-                    }
-                  </p>
+              <div className="space-y-4 mb-6">
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-gray-600">Current Plan</span>
+                  <span className="font-medium">{planChangePreview.currentPlan.name}</span>
                 </div>
-              )}
-            </div>
-            
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowUpgradeModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmPlanChange}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Confirm Change
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* Cancellation Modal */}
-      {showCancelModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
-              Cancel Subscription
-            </h3>
-            
-            <p className="text-gray-600 mb-6">
-              Choose how you'd like to cancel your subscription:
-            </p>
-            
-            <div className="space-y-3 mb-6">
-              <button
-                onClick={() => handleCancelSubscription(false)}
-                className="w-full p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-left"
-              >
-                <div className="font-medium text-gray-900">Cancel at period end</div>
-                <div className="text-sm text-gray-600">Continue until {new Date(currentSubscription.currentPeriodEnd).toLocaleDateString()}</div>
-              </button>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-gray-600">New Plan</span>
+                  <span className="font-medium">{planChangePreview.newPlan.name}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-gray-600">Refund from Current Plan</span>
+                  <span className="font-medium text-green-600">
+                    ${planChangePreview.financial.refundFromCurrentPlan.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-gray-600">New Plan Cost</span>
+                  <span className="font-medium">${planChangePreview.financial.newPlanCost.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between py-2 text-lg font-bold">
+                  <span>Net Amount</span>
+                  <span className={
+                    planChangePreview.financial.needsPayment 
+                      ? 'text-blue-600' 
+                      : planChangePreview.financial.refundToCustomer > 0 
+                        ? 'text-green-600' 
+                        : 'text-gray-600'
+                  }>
+                    {planChangePreview.financial.needsPayment 
+                      ? `Pay $${(planChangePreview.financial.netAmountToPay || 0).toFixed(2)}`
+                      : planChangePreview.financial.refundToCustomer > 0
+                        ? `Refund $${planChangePreview.financial.refundToCustomer.toFixed(2)}`
+                        : 'No change ($0.00)'
+                    }
+                  </span>
+                </div>
+              </div>
               
-              <button
-                onClick={() => handleCancelSubscription(true)}
-                className="w-full p-4 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors text-left"
-              >
-                <div className="font-medium text-red-900">Cancel immediately</div>
-                <div className="text-sm text-red-600">Get prorated refund for unused time</div>
-              </button>
-            </div>
-            
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setShowCancelModal(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Keep Subscription
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+              <p className="text-sm text-gray-600 mb-6 bg-blue-50 p-3 rounded-lg">
+                {planChangePreview.summary}
+              </p>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowPlanChangeModal(false)}
+                  className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  disabled={changingPlan}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmPlanChange}
+                  disabled={changingPlan}
+                  className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {changingPlan ? 'Processing...' : 'Confirm Change'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

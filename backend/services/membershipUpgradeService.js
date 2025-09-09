@@ -11,7 +11,15 @@ class MembershipUpgradeService {
     const endDate = new Date(currentMembership.endDate || currentMembership.nextBillingDate);
     const startDate = new Date(currentMembership.startDate);
     
+    console.log('🔍 Refund Calculation Debug:', {
+      now: now.toISOString(),
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      currentPrice: currentMembership.currentPrice
+    });
+    
     if (endDate <= now) {
+      console.log('❌ No refund - membership already expired');
       return 0; // No refund if membership already expired
     }
     
@@ -25,6 +33,14 @@ class MembershipUpgradeService {
     const paidAmount = currentMembership.currentPrice || currentMembership.monthlyPrice;
     const refundAmount = Math.round((paidAmount * unusedDays / totalPeriodDays) * 100) / 100;
     
+    console.log('💰 Refund Calculation:', {
+      totalPeriodDays,
+      unusedDays,
+      paidAmount,
+      refundPercentage: (unusedDays / totalPeriodDays * 100).toFixed(2) + '%',
+      refundAmount
+    });
+    
     return Math.max(0, refundAmount);
   }
   
@@ -35,16 +51,17 @@ class MembershipUpgradeService {
     const refundAmount = this.calculateRefund(currentMembership);
     const newAmount = billingCycle === 'YEARLY' ? newTier.yearlyPrice : newTier.monthlyPrice;
     
-    // Net amount = New plan cost - Refund from old plan
-    const netAmount = Math.max(0, newAmount - refundAmount);
+    // Calculate the actual net amount (can be negative for refunds)
+    const rawNetAmount = newAmount - refundAmount;
     
     return {
       newPlanAmount: newAmount,
       refundAmount: refundAmount,
-      netAmount: netAmount,
+      netAmount: Math.max(0, rawNetAmount), // Amount to charge (0 if customer gets refund)
       isUpgrade: newAmount > (currentMembership.currentPrice || currentMembership.monthlyPrice),
-      needsPayment: netAmount > 0,
-      refundToCustomer: netAmount < 0 ? Math.abs(netAmount) : 0
+      needsPayment: rawNetAmount > 0,
+      refundToCustomer: rawNetAmount < 0 ? Math.abs(rawNetAmount) : 0,
+      rawNetAmount: rawNetAmount // Add raw calculation for debugging
     };
   }
   
