@@ -5,10 +5,9 @@ import CustomerDashboard from '../pages/customer/CustomerDashboard';
 import MembershipPlans from '../components/customer/MembershipPlans';
 import MembershipDashboard from '../components/customer/MembershipDashboard';
 import MembershipSuccess from '../pages/MembershipSuccess.jsx';
-import JobCreate from '../pages/customer/JobCreate';
-import JobList from '../pages/customer/JobList';
-import JobDetail from '../pages/customer/JobDetail';
 import CustomerProfile from '../pages/customer/CustomerProfile';
+import RateVendor from '../pages/customer/RateVendor';
+import CustomerFeedback from '../pages/customer/CustomerFeedback';
 
 const CustomerRoutes = () => {
   return (
@@ -18,10 +17,12 @@ const CustomerRoutes = () => {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<CustomerDashboard />} />
         
-        {/* Job Management */}
-        <Route path="/jobs" element={<JobList />} />
-        <Route path="/jobs/create" element={<JobCreate />} />
-        <Route path="/jobs/:id" element={<JobDetail />} />
+        {/* Job Management - Redirect to feedback page */}
+        <Route path="/jobs" element={<Navigate to="/feedback" replace />} />
+        
+        {/* Rating & Feedback */}
+        <Route path="/feedback" element={<CustomerFeedback />} />
+        <Route path="/rate-vendor/:jobId" element={<RateVendor />} />
         
         {/* Membership */}
         <Route path="/membership" element={<Navigate to="/membership/plans" replace />} />

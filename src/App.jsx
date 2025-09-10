@@ -17,7 +17,9 @@ import { CartProvider } from './contexts/CartContext';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import CustomerDashboard from './pages/customer/CustomerDashboard.jsx';
+import CustomerFeedback from './pages/customer/CustomerFeedback.jsx';
 import CustomerRegisterPage from './pages/auth/CustomerRegisterPage.jsx';
+import RateVendor from './pages/customer/RateVendor.jsx';
 import FAQManagement from './pages/admin/FAQManagement.jsx';
 import FAQPage from './pages/FAQPage.jsx';
 import Footer from './components/layout/Footer.jsx';
@@ -288,6 +290,27 @@ function App() {
                       <Route path="/customer/dashboard" element={
                         <ProtectedRoute requiredRole="customer">
                           <CustomerDashboard />
+                        </ProtectedRoute>
+                      } />
+                      
+                      {/* Customer Feedback Route */}
+                      <Route path="/customer/feedback" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <CustomerFeedback />
+                        </ProtectedRoute>
+                      } />
+                      
+                      {/* Legacy feedback route for backward compatibility */}
+                      <Route path="/feedback" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <CustomerFeedback />
+                        </ProtectedRoute>
+                      } />
+                      
+                      {/* Rate Vendor Route */}
+                      <Route path="/rate-vendor/:jobId" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <RateVendor />
                         </ProtectedRoute>
                       } />
                       

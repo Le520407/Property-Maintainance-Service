@@ -402,6 +402,14 @@ const CustomerDashboard = () => {
               </Link>
               
               <Link
+                to="/feedback"
+                className="w-full flex items-center justify-between p-3 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors"
+              >
+                <span className="font-medium">Rate Services</span>
+                <Star className="h-5 w-5" />
+              </Link>
+              
+              <Link
                 to="/membership/plans"
                 className="w-full flex items-center justify-between p-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors"
               >
