@@ -46,9 +46,15 @@ const MembershipPlans = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const forceRefresh = urlParams.get('refresh') === 'true';
       
+      if (forceRefresh) {
+        // Force cache invalidation if refresh parameter is present
+        cachedApi.invalidateMembershipCache(user.id);
+        console.log('🔄 Force refresh detected - cache invalidated');
+      }
+      
       const [tiersResponse, membershipResponse] = await Promise.all([
         cachedApi.getMembershipTiers(forceRefresh),
-        cachedApi.getMembership(user.id, forceRefresh)
+        cachedApi.request('/membership/my-membership', {}, `my-membership_${user.id}`)
       ]);
 
       console.log('Tiers:', tiersResponse.tiers);
@@ -68,9 +74,12 @@ const MembershipPlans = () => {
     setLoading(true);
     toast.loading('Refreshing membership status...', { id: 'refresh' });
     try {
+      // Invalidate cache first
+      cachedApi.invalidateMembershipCache(user.id);
+      
       const [tiersResponse, membershipResponse] = await Promise.all([
         cachedApi.getMembershipTiers(true),
-        cachedApi.getMembership(user.id, true)
+        cachedApi.request('/membership/my-membership', {}, `my-membership_${user.id}`)
       ]);
       setTiers(tiersResponse.tiers);
       setCurrentMembership(membershipResponse.membership);

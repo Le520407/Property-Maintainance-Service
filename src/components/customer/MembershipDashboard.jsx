@@ -107,8 +107,19 @@ const MembershipDashboard = () => {
           : 'Auto-renewal stopped - access continues until end of period';
         toast.success(message);
         setShowCancelModal(false);
+        
+        // Clear cache and refresh data
+        import('../../utils/globalCache').then(module => {
+          const { cachedApi } = module;
+          const token = localStorage.getItem('token');
+          if (token) {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            cachedApi.invalidateMembershipCache(payload.id);
+          }
+        });
+        
         fetchMembershipData(); // Refresh data
-        console.log('✅ Membership cancelled successfully');
+        console.log('✅ Membership cancelled successfully, cache invalidated');
       } else if (response?.success === false) {
         console.error('❌ API returned unsuccessful response:', response);
         toast.error(response.message || 'Failed to cancel membership');
@@ -213,6 +224,35 @@ const MembershipDashboard = () => {
     );
   }
 
+  // Create fallback analytics data from membership if analytics is null
+  const effectiveAnalytics = analytics || {
+    tier: membership.tier?.displayName || 'Unknown Plan',
+    billingCycle: membership.billingCycle || 'MONTHLY',
+    nextBillingDate: membership.nextBillingDate || membership.endDate,
+    usage: {
+      serviceRequests: {
+        used: membership.currentUsage?.serviceRequestsUsed || 0,
+        limit: membership.tier?.features?.serviceRequestsPerMonth || 'Unlimited',
+        remaining: membership.tier?.features?.serviceRequestsPerMonth 
+          ? Math.max(0, membership.tier.features.serviceRequestsPerMonth - (membership.currentUsage?.serviceRequestsUsed || 0))
+          : 'Unlimited'
+      },
+      materialDiscount: {
+        totalSaved: 0,
+        percentage: membership.tier?.features?.materialDiscountPercent || 0
+      },
+      inspections: {
+        available: membership.tier?.features?.annualInspections || 0
+      }
+    },
+    benefits: {
+      responseTime: membership.tier?.features?.responseTimeHours ? `${membership.tier.features.responseTimeHours} hours` : 'Standard',
+      prioritySupport: membership.tier?.features?.prioritySupport || false,
+      emergencyService: membership.tier?.features?.emergencyService || false,
+      dedicatedManager: membership.tier?.features?.dedicatedManager || false
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Page Title with Status */}
@@ -261,7 +301,7 @@ const MembershipDashboard = () => {
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-green-900">Membership Active</h3>
                 <p className="text-green-700 text-sm">
-                  Your {analytics.tier} plan is active and ready to use. Next billing: {new Date(analytics.nextBillingDate).toLocaleDateString()}
+                  Your {effectiveAnalytics.tier} plan is active and ready to use. Next billing: {new Date(effectiveAnalytics.nextBillingDate).toLocaleDateString()}
                 </p>
               </div>
               <div className="text-right">
@@ -393,9 +433,9 @@ const MembershipDashboard = () => {
               <Shield className="h-8 w-8 text-orange-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">{analytics.tier}</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{effectiveAnalytics.tier}</h2>
               <p className="text-gray-600">
-                {analytics.billingCycle} billing • Next payment: {new Date(analytics.nextBillingDate).toLocaleDateString()}
+                {effectiveAnalytics.billingCycle} billing • Next payment: {new Date(effectiveAnalytics.nextBillingDate).toLocaleDateString()}
               </p>
             </div>
           </div>
@@ -468,9 +508,9 @@ const MembershipDashboard = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Service Requests</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {analytics.usage.serviceRequests.used}
+                {effectiveAnalytics.usage.serviceRequests.used}
                 <span className="text-base font-normal text-gray-500">
-                  /{analytics.usage.serviceRequests.limit}
+                  /{effectiveAnalytics.usage.serviceRequests.limit}
                 </span>
               </p>
             </div>
@@ -479,15 +519,15 @@ const MembershipDashboard = () => {
           <div className="mt-4">
             <div className="flex justify-between text-sm text-gray-600 mb-1">
               <span>Usage this month</span>
-              <span>{analytics.usage.serviceRequests.remaining} remaining</span>
+              <span>{effectiveAnalytics.usage.serviceRequests.remaining} remaining</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-blue-600 h-2 rounded-full" 
                 style={{ 
-                  width: `${analytics.usage.serviceRequests.limit === 'Unlimited' 
+                  width: `${effectiveAnalytics.usage.serviceRequests.limit === 'Unlimited' 
                     ? 50 
-                    : (analytics.usage.serviceRequests.used / parseInt(analytics.usage.serviceRequests.limit)) * 100}%` 
+                    : (effectiveAnalytics.usage.serviceRequests.used / parseInt(effectiveAnalytics.usage.serviceRequests.limit)) * 100}%` 
                 }}
               ></div>
             </div>
@@ -504,13 +544,13 @@ const MembershipDashboard = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Savings This Month</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                ${analytics.usage.materialDiscount.totalSaved.toFixed(2)}
+                ${effectiveAnalytics.usage.materialDiscount.totalSaved.toFixed(2)}
               </p>
             </div>
             <TrendingUp className="h-8 w-8 text-green-500" />
           </div>
           <p className="text-sm text-gray-600 mt-2">
-            {analytics.usage.materialDiscount.percentage}% discount on materials
+            {effectiveAnalytics.usage.materialDiscount.percentage}% discount on materials
           </p>
         </motion.div>
 
@@ -524,7 +564,7 @@ const MembershipDashboard = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Response Time</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {analytics.benefits.responseTime}
+                {effectiveAnalytics.benefits.responseTime}
               </p>
             </div>
             <Clock className="h-8 w-8 text-orange-500" />
@@ -545,19 +585,19 @@ const MembershipDashboard = () => {
           <div className="space-y-3">
             <div className="flex items-center text-sm">
               <div className={`w-4 h-4 rounded-full mr-3 ${
-                analytics.benefits.prioritySupport ? 'bg-green-500' : 'bg-gray-300'
+                effectiveAnalytics.benefits.prioritySupport ? 'bg-green-500' : 'bg-gray-300'
               }`}></div>
               <span>Priority Support</span>
             </div>
             <div className="flex items-center text-sm">
               <div className={`w-4 h-4 rounded-full mr-3 ${
-                analytics.benefits.emergencyService ? 'bg-green-500' : 'bg-gray-300'
+                effectiveAnalytics.benefits.emergencyService ? 'bg-green-500' : 'bg-gray-300'
               }`}></div>
               <span>Emergency Service</span>
             </div>
             <div className="flex items-center text-sm">
               <div className={`w-4 h-4 rounded-full mr-3 ${
-                analytics.benefits.dedicatedManager ? 'bg-green-500' : 'bg-gray-300'
+                effectiveAnalytics.benefits.dedicatedManager ? 'bg-green-500' : 'bg-gray-300'
               }`}></div>
               <span>Dedicated Account Manager</span>
             </div>
@@ -565,15 +605,15 @@ const MembershipDashboard = () => {
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span>Material Discount</span>
-              <span className="font-medium">{analytics.usage.materialDiscount.percentage}%</span>
+              <span className="font-medium">{effectiveAnalytics.usage.materialDiscount.percentage}%</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span>Annual Inspections</span>
-              <span className="font-medium">{analytics.usage.inspections.available}</span>
+              <span className="font-medium">{effectiveAnalytics.usage.inspections.available}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span>Response Time</span>
-              <span className="font-medium">{analytics.benefits.responseTime}</span>
+              <span className="font-medium">{effectiveAnalytics.benefits.responseTime}</span>
             </div>
           </div>
         </div>

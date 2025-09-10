@@ -7,13 +7,54 @@ if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'sk_test_
 }
 
 class MembershipService {
+
+  // Get customer's current membership (ACTIVE only)
+  async getCustomerMembership(customerId) {
+    return await CustomerMembership.findOne({ 
+      customer: customerId, 
+      status: 'ACTIVE' 
+    }).populate('tier');
+  }
+
+  // Get customer's latest membership (any status - for display purposes)
+  async getCustomerMembershipAnyStatus(customerId) {
+    // First try to find an ACTIVE membership
+    let membership = await CustomerMembership.findOne({ 
+      customer: customerId,
+      status: 'ACTIVE'
+    }).populate('tier').sort({ createdAt: -1 });
+    
+    if (membership) {
+      return membership;
+    }
+    
+    // If no active, find the most recent cancelled membership that still has access
+    const cancelledMemberships = await CustomerMembership.find({ 
+      customer: customerId,
+      status: 'CANCELLED'
+    }).populate('tier').sort({ createdAt: -1 });
+    
+    // Find the first cancelled membership that still has active access
+    for (const cancelledMembership of cancelledMemberships) {
+      if (cancelledMembership.hasActiveAccess()) {
+        return cancelledMembership;
+      }
+    }
+    
+    // If none have access, return the most recent membership
+    membership = await CustomerMembership.findOne({ 
+      customer: customerId 
+    }).populate('tier').sort({ createdAt: -1 });
+    
+    return membership;
+  }
   
   // Get all available membership tiers
   async getMembershipTiers() {
     return await MembershipTier.find({ isActive: true }).sort({ monthlyPrice: 1 });
   }
 
-  // Get customer's current membership
+  // Get customer's current membership (ACTIVE only)
   async getCustomerMembership(customerId) {
     return await CustomerMembership.findOne({ 
       customer: customerId, 

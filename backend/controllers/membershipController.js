@@ -40,13 +40,14 @@ class MembershipController {
   async getMyMembership(req, res) {
     try {
       const userId = req.user._id;
-      const membership = await membershipService.getCustomerMembership(userId);
+      // Use the new method that returns memberships with any status
+      const membership = await membershipService.getCustomerMembershipAnyStatus(userId);
       
       if (!membership) {
         return res.json({
           success: true,
           membership: null,
-          message: 'No active membership found'
+          message: 'No membership found'
         });
       }
 
