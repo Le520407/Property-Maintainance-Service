@@ -1,48 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { SERVICE_CATEGORIES_SIMPLE } from '../../constants/serviceCategories';
-import { 
-  User, 
-  Calendar, 
-  DollarSign, 
-  Star, 
-  TrendingUp, 
-  Award, 
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Settings,
-  FileText,
+import {
   Activity,
+  AlertCircle,
+  AlertTriangle,
+  Award,
   BarChart3,
-  Users,
-  MapPin,
-  Plus,
-  Edit2,
-  Trash2,
-  Save,
-  X,
-  ArrowLeft,
+  Briefcase,
+  Calculator,
+  Calendar,
+  CheckCircle,
+  Clock,
   CreditCard,
+  DollarSign,
+  Edit2,
+  FileText,
+  Info,
+  MapPin,
   MessageSquare,
-  Shield,
-  History,
-  Send
+  Plus,
+  Save,
+  Settings,
+  Star,
+  Trash2,
+  TrendingUp,
+  User,
+  Users,
+  X
 } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+import { SERVICE_CATEGORIES_SIMPLE } from '../../constants/serviceCategories';
+import VendorCalendar from '../../components/vendor/VendorCalendar';
 import { api } from '../../services/api';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import VendorPricingManagement from '../../components/vendor/VendorPricingManagement';
-import { CurrentPlanTab, UpgradePlansTab, UsageStatsTab, BillingHistoryTab } from '../../components/vendor/VendorMembership';
 
 const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
   const [activeSection, setActiveSection] = useState(initialSection || 'profile');
   const [servicePackages, setServicePackages] = useState(vendor.servicePackages || []);
   const [priceLists, setPriceLists] = useState(vendor.priceLists || []);
-  const [availabilitySchedule, setAvailabilitySchedule] = useState(vendor.availabilitySchedule || []);
   const [editingPackage, setEditingPackage] = useState(null);
   const [editingPrice, setEditingPrice] = useState(null);
-  const [editingSchedule, setEditingSchedule] = useState(null);
   const [loading, setLoading] = useState(false);
   
   // Vendor profile editing states
@@ -55,7 +53,6 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
   });
 
   const serviceCategories = SERVICE_CATEGORIES_SIMPLE;
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   // Category migration mapping - old categories to new categories
   const categoryMigrationMap = {
@@ -178,38 +175,6 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
     const updatedPriceLists = priceLists.filter(p => (p.id || p._id) !== priceId);
     setPriceLists(updatedPriceLists);
     await saveProfile({ priceLists: updatedPriceLists });
-  };
-
-  const handleAddAvailabilitySlot = () => {
-    const newSlot = {
-      id: Date.now(),
-      dayOfWeek: 1,
-      startTime: '09:00',
-      endTime: '17:00',
-      isAvailable: true
-    };
-    setEditingSchedule(newSlot);
-  };
-
-  const handleSaveAvailabilitySlot = async () => {
-    if (editingSchedule.startTime >= editingSchedule.endTime) {
-      toast.error('End time must be after start time');
-      return;
-    }
-
-    const updatedSchedule = editingSchedule.id && availabilitySchedule.find(s => s.id === editingSchedule.id)
-      ? availabilitySchedule.map(s => s.id === editingSchedule.id ? editingSchedule : s)
-      : [...availabilitySchedule, { ...editingSchedule, id: editingSchedule._id || Date.now() }];
-
-    setAvailabilitySchedule(updatedSchedule);
-    await saveProfile({ availabilitySchedule: updatedSchedule });
-    setEditingSchedule(null);
-  };
-
-  const handleDeleteAvailabilitySlot = async (slotId) => {
-    const updatedSchedule = availabilitySchedule.filter(s => (s.id || s._id) !== slotId);
-    setAvailabilitySchedule(updatedSchedule);
-    await saveProfile({ availabilitySchedule: updatedSchedule });
   };
 
   // Handle profile form submission
@@ -756,154 +721,9 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
         </div>
       )}
 
-      {/* Availability Schedule Section */}
+      {/* Enhanced Availability Calendar Section */}
       {activeSection === 'schedule' && (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-medium text-gray-900">Availability Schedule</h3>
-            <button
-              onClick={handleAddAvailabilitySlot}
-              className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Time Slot
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {availabilitySchedule.map((slot) => (
-              <div key={slot.id || slot._id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{days[slot.dayOfWeek]}</h4>
-                    <div className="flex items-center space-x-4 mt-1">
-                      <span className="text-sm text-gray-600">{slot.startTime} - {slot.endTime}</span>
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        slot.isAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {slot.isAvailable ? 'Available' : 'Unavailable'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setEditingSchedule(slot)}
-                      className="p-2 text-gray-400 hover:text-orange-600"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteAvailabilitySlot(slot.id || slot._id)}
-                      className="p-2 text-gray-400 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {availabilitySchedule.length === 0 && (
-              <div className="text-center py-8">
-                <Calendar className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                <p className="text-gray-500">No availability schedule set</p>
-              </div>
-            )}
-          </div>
-
-          {/* Edit Availability Slot Modal */}
-          {editingSchedule && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    {editingSchedule._id ? 'Edit Time Slot' : 'Add Time Slot'}
-                  </h3>
-                  <button
-                    onClick={() => setEditingSchedule(null)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Day of Week *
-                    </label>
-                    <select
-                      value={editingSchedule.dayOfWeek}
-                      onChange={(e) => setEditingSchedule({ ...editingSchedule, dayOfWeek: parseInt(e.target.value) })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                    >
-                      {days.map((day, index) => (
-                        <option key={index} value={index}>
-                          {day}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Start Time *
-                      </label>
-                      <input
-                        type="time"
-                        value={editingSchedule.startTime}
-                        onChange={(e) => setEditingSchedule({ ...editingSchedule, startTime: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        End Time *
-                      </label>
-                      <input
-                        type="time"
-                        value={editingSchedule.endTime}
-                        onChange={(e) => setEditingSchedule({ ...editingSchedule, endTime: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={editingSchedule.isAvailable}
-                      onChange={(e) => setEditingSchedule({ ...editingSchedule, isAvailable: e.target.checked })}
-                      className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
-                    />
-                    <label className="ml-2 block text-sm text-gray-700">
-                      Available for bookings
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end space-x-3 mt-6">
-                  <button
-                    onClick={() => setEditingSchedule(null)}
-                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveAvailabilitySlot}
-                    disabled={loading}
-                    className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {loading ? 'Saving...' : 'Save Slot'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <VendorCalendar vendor={vendor} onUpdate={onUpdate} />
       )}
     </div>
   );
@@ -1006,10 +826,11 @@ const VendorDashboardPage = () => {
       name: 'Job Assignments', 
       section: 'assignments',
       icon: AlertCircle,
-      description: 'Pending & New Jobs',
+      description: 'Job Management & History',
       tabs: [
         { name: 'Pending Assignments', tab: 'pending' },
-        { name: 'Accepted Jobs', tab: 'accepted' },
+        { name: 'Active Jobs', tab: 'active' },
+        { name: 'Job History', tab: 'history' },
         { name: 'Completed Jobs', tab: 'completed' }
       ]
     },
@@ -1017,14 +838,7 @@ const VendorDashboardPage = () => {
       name: 'Business', 
       section: 'business',
       icon: FileText,
-      description: 'Jobs & Services',
-      tabs: [
-        { name: 'Active Jobs', tab: 'jobs' },
-        { name: 'Job History', tab: 'job-history' },
-        { name: 'Service Packages', tab: 'services' },
-        { name: 'Pricing', tab: 'pricing' },
-        { name: 'Schedule', tab: 'schedule' }
-      ]
+      description: 'Services & Operations'
     },
     { 
       name: 'Earnings', 
@@ -1048,18 +862,6 @@ const VendorDashboardPage = () => {
         { name: 'Customer List', tab: 'customer-list' },
         { name: 'Feedback', tab: 'feedback' },
         { name: 'Communication', tab: 'communication' }
-      ]
-    },
-    { 
-      name: 'Membership', 
-      section: 'membership',
-      icon: CreditCard,
-      description: 'Plans & Benefits',
-      tabs: [
-        { name: 'Current Plan', tab: 'current-plan' },
-        { name: 'Upgrade Plans', tab: 'upgrade-plans' },
-        { name: 'Usage Stats', tab: 'usage-stats' },
-        { name: 'Billing History', tab: 'billing-history' }
       ]
     },
     { 
@@ -1104,39 +906,6 @@ const VendorDashboardPage = () => {
 
   const OverviewTab = () => (
     <div className="space-y-6">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Jobs"
-          value={stats.jobs.completed || 0}
-          change="+12% this month"
-          changeType="positive"
-          icon={FileText}
-          color="blue"
-        />
-        <StatCard
-          title="Total Earnings"
-          value={`$${stats.earnings.total?.toLocaleString() || '0'}`}
-          change="+18% this month"
-          changeType="positive"
-          icon={DollarSign}
-          color="green"
-        />
-        <StatCard
-          title="Average Rating"
-          value={stats.ratings.averageRating?.toFixed(1) || '0.0'}
-          change="★ from ratings"
-          icon={Star}
-          color="yellow"
-        />
-        <StatCard
-          title="Active Jobs"
-          value={stats.jobs.in_progress || 0}
-          icon={Activity}
-          color="orange"
-        />
-      </div>
-
       {/* Verification Status */}
       {vendor.verificationStatus !== 'VERIFIED' && (
         <motion.div
@@ -1219,66 +988,26 @@ const VendorDashboardPage = () => {
         </div>
       </div>
 
-      {/* Performance Metrics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Performance Score</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Quality Score</span>
-              <span className="text-sm font-medium">{vendor.qualityScore}/5</span>
+      {/* Service Areas */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Service Areas</h3>
+        <div className="space-y-3">
+          {vendor.serviceCategories?.map((category) => (
+            <div key={category} className="flex items-center">
+              <div className="w-2 h-2 bg-orange-600 rounded-full mr-3"></div>
+              <span className="text-sm text-gray-700 capitalize">
+                {category.replace('_', ' ')}
+              </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-orange-600 h-2 rounded-full" 
-                style={{ width: `${(vendor.qualityScore / 5) * 100}%` }}
-              ></div>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">On-Time Performance</span>
-              <span className="text-sm font-medium">{vendor.onTimePercentage}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-green-600 h-2 rounded-full" 
-                style={{ width: `${vendor.onTimePercentage}%` }}
-              ></div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Customer Satisfaction</span>
-              <span className="text-sm font-medium">{vendor.customerSatisfactionScore}/5</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full" 
-                style={{ width: `${(vendor.customerSatisfactionScore / 5) * 100}%` }}
-              ></div>
-            </div>
-          </div>
+          ))}
         </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Service Areas</h3>
-          <div className="space-y-3">
-            {vendor.serviceCategories?.map((category) => (
-              <div key={category} className="flex items-center">
-                <div className="w-2 h-2 bg-orange-600 rounded-full mr-3"></div>
-                <span className="text-sm text-gray-700 capitalize">
-                  {category.replace('_', ' ')}
-                </span>
-              </div>
-            ))}
+        
+        <div className="mt-6">
+          <div className="flex items-center text-sm text-gray-600 mb-2">
+            <MapPin className="h-4 w-4 mr-1" />
+            Service Area
           </div>
-          
-          <div className="mt-6">
-            <div className="flex items-center text-sm text-gray-600 mb-2">
-              <MapPin className="h-4 w-4 mr-1" />
-              Service Area
-            </div>
-            <p className="text-sm font-medium text-gray-900">{vendor.serviceArea}</p>
-          </div>
+          <p className="text-sm font-medium text-gray-900">{vendor.serviceArea}</p>
         </div>
       </div>
     </div>
@@ -1289,15 +1018,123 @@ const VendorDashboardPage = () => {
     if (activeSection === 'dashboard') {
       if (activeTab === 'overview') return <OverviewTab />;
       if (activeTab === 'analytics') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Business Analytics</h3>
-          <p className="text-gray-600">Analytics dashboard coming soon...</p>
+        <div className="space-y-6">
+          {/* Stats Grid */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-6">Business Analytics</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <StatCard
+                title="Total Jobs"
+                value={stats.jobs.completed || 0}
+                change="+12% this month"
+                changeType="positive"
+                icon={FileText}
+                color="orange"
+              />
+              <StatCard
+                title="Total Earnings"
+                value={`$${stats.earnings.total?.toLocaleString() || '0'}`}
+                change="+18% this month"
+                changeType="positive"
+                icon={DollarSign}
+                color="orange"
+              />
+              <StatCard
+                title="Average Rating"
+                value={stats.ratings.averageRating?.toFixed(1) || '0.0'}
+                change="★ from ratings"
+                icon={Star}
+                color="orange"
+              />
+              <StatCard
+                title="Active Jobs"
+                value={stats.jobs.in_progress || 0}
+                icon={Activity}
+                color="orange"
+              />
+            </div>
+          </div>
+          
+          {/* Additional Analytics Content */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h4 className="text-lg font-medium text-gray-900 mb-4">Performance Trends</h4>
+            <p className="text-gray-600">Advanced analytics and trends coming soon...</p>
+          </div>
         </div>
       );
       if (activeTab === 'performance') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Performance Metrics</h3>
-          <p className="text-gray-600">Performance tracking coming soon...</p>
+        <div className="space-y-6">
+          {/* Performance Metrics */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Performance Score</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Quality Score</span>
+                  <span className="text-sm font-medium">{vendor.qualityScore}/5</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-orange-600 h-2 rounded-full" 
+                    style={{ width: `${(vendor.qualityScore / 5) * 100}%` }}
+                  ></div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">On-Time Performance</span>
+                  <span className="text-sm font-medium">{vendor.onTimePercentage}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-orange-600 h-2 rounded-full" 
+                    style={{ width: `${vendor.onTimePercentage}%` }}
+                  ></div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Customer Satisfaction</span>
+                  <span className="text-sm font-medium">{vendor.customerSatisfactionScore}/5</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-orange-600 h-2 rounded-full" 
+                    style={{ width: `${(vendor.customerSatisfactionScore / 5) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Performance Insights</h3>
+              <div className="space-y-4">
+                <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center">
+                    <CheckCircle className="h-5 w-5 text-orange-600 mr-2" />
+                    <span className="text-sm font-medium text-orange-800">Strong Performance</span>
+                  </div>
+                  <p className="text-xs text-orange-700 mt-1">
+                    Your overall performance is excellent. Keep up the good work!
+                  </p>
+                </div>
+                
+                <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center">
+                    <TrendingUp className="h-5 w-5 text-orange-600 mr-2" />
+                    <span className="text-sm font-medium text-orange-800">Growth Opportunity</span>
+                  </div>
+                  <p className="text-xs text-orange-700 mt-1">
+                    Focus on improving response time to get more job assignments.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Performance Metrics */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h4 className="text-lg font-medium text-gray-900 mb-4">Detailed Performance Tracking</h4>
+            <p className="text-gray-600">Advanced performance analytics and historical trends coming soon...</p>
+          </div>
         </div>
       );
     }
@@ -1305,55 +1142,27 @@ const VendorDashboardPage = () => {
     // Job Assignments Section
     if (activeSection === 'assignments') {
       if (activeTab === 'pending') return <VendorJobAssignments status="ASSIGNED" />;
-      if (activeTab === 'accepted') return <VendorJobAssignments status="IN_DISCUSSION,QUOTE_SENT,QUOTE_ACCEPTED,PAID,IN_PROGRESS" />;
+      if (activeTab === 'active') return <VendorJobAssignments status="IN_DISCUSSION,QUOTE_SENT,QUOTE_ACCEPTED,PAID,IN_PROGRESS" />;
+      if (activeTab === 'history') return <VendorJobAssignments status="COMPLETED,CANCELLED,REJECTED" />;
       if (activeTab === 'completed') return <VendorJobAssignments status="COMPLETED" />;
     }
 
     // Business Section
     if (activeSection === 'business') {
-      if (activeTab === 'jobs') return (
+      return (
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Active Jobs</h3>
-          <p className="text-gray-600">Job management interface coming soon...</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Business Management</h3>
+          <p className="text-gray-600">Business management features coming soon...</p>
         </div>
       );
-      if (activeTab === 'job-history') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Job History</h3>
-          <p className="text-gray-600">Job history interface coming soon...</p>
-        </div>
-      );
-      if (activeTab === 'services') return <ProfileTab vendor={vendor} onUpdate={fetchDashboardData} activeSection="services" />;
-      if (activeTab === 'pricing') return <VendorPricingManagement />;
-      if (activeTab === 'schedule') return <ProfileTab vendor={vendor} onUpdate={fetchDashboardData} activeSection="schedule" />;
     }
 
     // Earnings Section
     if (activeSection === 'earnings') {
-      if (activeTab === 'earnings-overview') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Earnings Overview</h3>
-          <p className="text-gray-600">Earnings dashboard coming soon...</p>
-        </div>
-      );
-      if (activeTab === 'transactions') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Transaction History</h3>
-          <p className="text-gray-600">Transaction history coming soon...</p>
-        </div>
-      );
-      if (activeTab === 'payouts') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Payouts</h3>
-          <p className="text-gray-600">Payout management coming soon...</p>
-        </div>
-      );
-      if (activeTab === 'tax-reports') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Tax Reports</h3>
-          <p className="text-gray-600">Tax reporting coming soon...</p>
-        </div>
-      );
+      if (activeTab === 'earnings-overview') return <EarningsOverview />;
+      if (activeTab === 'transactions') return <TransactionHistory />;
+      if (activeTab === 'payouts') return <PayoutManagement />;
+      if (activeTab === 'tax-reports') return <TaxReports />;
     }
 
     // Customer Relations Section
@@ -1382,14 +1191,6 @@ const VendorDashboardPage = () => {
           <p className="text-gray-600">Communication tools coming soon...</p>
         </div>
       );
-    }
-
-    // Membership Section
-    if (activeSection === 'membership') {
-      if (activeTab === 'current-plan') return <CurrentPlanTab />;
-      if (activeTab === 'upgrade-plans') return <UpgradePlansTab />;
-      if (activeTab === 'usage-stats') return <UsageStatsTab />;
-      if (activeTab === 'billing-history') return <BillingHistoryTab />;
     }
 
     // Account Section  
@@ -1497,7 +1298,10 @@ const VendorDashboardPage = () => {
                     key={item.section}
                     onClick={() => {
                       setActiveSection(item.section);
-                      setActiveTab(item.tabs[0].tab);
+                      // Only set activeTab if the section has tabs
+                      if (item.tabs && item.tabs.length > 0) {
+                        setActiveTab(item.tabs[0].tab);
+                      }
                     }}
                     className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                       activeSection === item.section
@@ -1517,7 +1321,7 @@ const VendorDashboardPage = () => {
           </div>
           
           {/* Sub Navigation */}
-          {activeSection && (
+          {activeSection && mainNavigation.find(item => item.section === activeSection)?.tabs && (
             <div className="px-6 py-3 bg-gray-50">
               <nav className="flex space-x-6">
                 {mainNavigation.find(item => item.section === activeSection)?.tabs?.map((tab) => (
@@ -1550,16 +1354,13 @@ const VendorJobAssignments = ({ status }) => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   // Frontend-only price override until backend is fixed
+  // eslint-disable-next-line no-unused-vars
   const [localPriceOverrides, setLocalPriceOverrides] = useState({});
   const [showJobDetails, setShowJobDetails] = useState(null);
   const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, job: null });
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadJobs();
-  }, [status]);
-
-  const loadJobs = async () => {
+  const loadJobs = useCallback(async () => {
     try {
       setLoading(true);
       console.log('🔄 Loading jobs with status:', status); // Debug log
@@ -1597,7 +1398,11 @@ const VendorJobAssignments = ({ status }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [status, localPriceOverrides]);
+
+  useEffect(() => {
+    loadJobs();
+  }, [loadJobs]);
 
   const handleJobResponse = async (jobId, response, reason = '') => {
     // If rejecting, ask for a reason
@@ -1635,116 +1440,6 @@ const VendorJobAssignments = ({ status }) => {
     }
   };
 
-  const handleStatusUpdate = async (jobId, newStatus) => {
-    try {
-      console.log('Updating job status:', { jobId, newStatus });
-      console.log('🔍 Available jobs IDs:', jobs.map(j => j._id));
-      console.log('🔍 Looking for job with ID:', jobId);
-      
-      let result;
-      
-      // Find the job to get current details
-      const job = jobs.find(j => j._id === jobId);
-      if (!job) {
-        console.log('❌ Job not found in jobs array');
-        toast.error('Job not found');
-        return;
-      }
-      console.log('✅ Found job:', job.jobNumber);
-
-      let updateData = { status: newStatus };
-
-      // If sending a quote (setting price after communication), ask for price
-      if (newStatus === 'QUOTE_SENT') {
-        const currentPrice = job.totalAmount ? `\nCurrent price: $${job.totalAmount}` : '';
-        const isEditing = job.status === 'QUOTE_SENT';
-        const promptText = isEditing 
-          ? `Edit your quote price for this job (in dollars).${currentPrice}\n\nEnter new price:` 
-          : 'Please set your quote price for this job (in dollars).\nThis price will be sent to the customer for approval:';
-          
-        const price = window.prompt(promptText);
-        if (!price || isNaN(price) || parseFloat(price) <= 0) {
-          toast.error('Please provide a valid price for the quote');
-          return;
-        }
-        updateData.totalAmount = parseFloat(price);
-      } else {
-        // Keep existing price for other status updates
-        if (job.totalAmount) {
-          updateData.totalAmount = job.totalAmount;
-        }
-      }
-
-      // Always try to update via backend API first
-      console.log('📤 Sending status update to backend:', updateData);
-      try {
-        result = await api.vendor.updateJobStatus(jobId, updateData);
-        console.log('✅ Backend update successful:', result);
-      } catch (error) {
-        console.log('❌ Backend update failed:', error);
-        console.log('🚨 Falling back to frontend-only update');
-        
-        if (newStatus === 'QUOTE_SENT' && updateData.totalAmount) {
-          console.log('💾 Saving price locally:', { jobId, price: updateData.totalAmount });
-          
-          // Save price override in local state
-          setLocalPriceOverrides(prev => ({
-            ...prev,
-            [jobId]: updateData.totalAmount
-          }));
-          
-          result = {
-            message: 'Price updated locally (backend failed - customer may not see updated price)',
-            job: { ...job, totalAmount: updateData.totalAmount }
-          };
-        } else {
-          result = {
-            message: 'Status updated locally (backend failed)',
-            job: { ...job, status: newStatus }
-          };
-        }
-        
-        // Show warning that backend failed
-        toast.error('Backend update failed - using local update only. Customer may not see changes.', { duration: 4000 });
-      }
-      
-      console.log('📥 Update result:', result);
-      console.log('🔍 Returned job data:', result?.job || result?.data || result);
-      console.log('💰 Backend returned totalAmount:', (result?.job || result?.data || result)?.totalAmount);
-      
-      if (newStatus === 'QUOTE_SENT') {
-        const isEditing = job.status === 'QUOTE_SENT';
-        const backendWorked = !result.message.includes('locally');
-        const statusText = backendWorked ? 
-          (isEditing ? `Quote price updated to $${updateData.totalAmount}!` : `Quote sent with price $${updateData.totalAmount}!`) :
-          (isEditing ? `Quote price updated to $${updateData.totalAmount}! (Local only - customer may not see update)` : `Quote sent with price $${updateData.totalAmount}! (Local only - customer may not see update)`);
-        
-        if (backendWorked) {
-          toast.success(statusText);
-        } else {
-          toast.error(statusText, { duration: 6000 });
-        }
-      } else if (newStatus === 'IN_DISCUSSION') {
-        toast.success('Job status set to discussion. You can now communicate with the customer about requirements.');
-      } else if (newStatus === 'IN_PROGRESS') {
-        toast.success('Job work started! Payment will be processed through the website after completion.');
-      } else if (newStatus === 'COMPLETED') {
-        toast.success('Job marked as completed! Payment will be processed automatically through the website.');
-      } else {
-        toast.success(`Job status updated to ${newStatus.replace('_', ' ').toLowerCase()}!`);
-      }
-      
-      // Add a small delay to ensure backend has processed the update, then reload
-      setTimeout(() => {
-        console.log('🔄 Refreshing job list after status update...');
-        loadJobs();
-      }, 500);
-    } catch (error) {
-      console.error('Error updating job status:', error);
-      toast.error(`Failed to update job status: ${error.response?.data?.message || error.message}`);
-    }
-  };
-
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-6">
@@ -1765,7 +1460,9 @@ const VendorJobAssignments = ({ status }) => {
         <div>
           <h3 className="text-lg font-medium text-gray-900">
             {status === 'ASSIGNED' ? 'Pending Job Assignments' : 
-             status.includes('COMPLETED') ? 'Completed Jobs' : 'Active Jobs'}
+             status.includes('IN_DISCUSSION') ? 'Active Jobs' :
+             status.includes('COMPLETED,CANCELLED,REJECTED') ? 'Job History' :
+             status === 'COMPLETED' ? 'Completed Jobs' : 'Jobs'}
           </h3>
           <p className="text-sm text-gray-500 mt-1">
             Status filter: {status} | Found: {jobs.length} jobs
@@ -1782,7 +1479,9 @@ const VendorJobAssignments = ({ status }) => {
           <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
           <p className="text-gray-600">
             {status === 'ASSIGNED' ? 'No pending assignments at the moment.' :
-             status.includes('COMPLETED') ? 'No completed jobs yet.' : 'No active jobs currently.'}
+             status.includes('IN_DISCUSSION') ? 'No active jobs currently.' :
+             status.includes('COMPLETED,CANCELLED,REJECTED') ? 'No job history available yet.' :
+             status === 'COMPLETED' ? 'No completed jobs yet.' : 'No jobs available.'}
           </p>
         </div>
       ) : (
@@ -2272,6 +1971,626 @@ const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+// Earnings Overview Component
+const EarningsOverview = () => {
+  const [jobs, setJobs] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [timeFrame, setTimeFrame] = useState('all'); // all, month, week
+
+  useEffect(() => {
+    const loadEarningsData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch dashboard data (same as main overview)
+        const dashboardResponse = await api.vendor.getDashboard();
+        setStats(dashboardResponse.stats);
+        
+        // Fetch all jobs to calculate earnings
+        const jobsResponse = await api.vendor.getJobs();
+        const allJobs = jobsResponse.data || [];
+        
+        setJobs(allJobs);
+      } catch (error) {
+        console.error('Error loading earnings data:', error);
+        toast.error('Failed to load earnings data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEarningsData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-24 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Time Frame Filter */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-medium text-gray-900">Earnings Overview</h3>
+          <div className="flex items-center space-x-3">
+            {/* Debug Button */}
+            <button
+              onClick={() => {
+                console.log('=== MANUAL DEBUG TRIGGER ===');
+                console.log('Jobs state:', jobs);
+                console.log('Stats state:', stats);
+                console.log('Loading state:', loading);
+              }}
+              className="px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600"
+            >
+              Debug Data
+            </button>
+            {/* Refresh Button */}
+            <button
+              onClick={async () => {
+                console.log('=== MANUAL REFRESH TRIGGERED ===');
+                setLoading(true);
+                try {
+                  const dashboardResponse = await api.vendor.getDashboard();
+                  setStats(dashboardResponse.stats);
+                  
+                  const jobsResponse = await api.vendor.getJobs();
+                  const allJobs = jobsResponse.data || [];
+                  console.log('Refreshed data:', { stats: dashboardResponse.stats, jobs: allJobs });
+                  setJobs(allJobs);
+                  toast.success('Data refreshed successfully');
+                } catch (error) {
+                  console.error('Refresh error:', error);
+                  toast.error('Failed to refresh data');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
+            >
+              Refresh Data
+            </button>
+            <select
+              value={timeFrame}
+              onChange={(e) => setTimeFrame(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Time</option>
+              <option value="month">This Month</option>
+              <option value="week">This Week</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Earnings Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <DollarSign className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Total Earnings</p>
+                <p className="text-2xl font-bold text-orange-900">
+                  ${stats?.earnings?.total?.toLocaleString() || '0'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <Briefcase className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Completed Jobs</p>
+                <p className="text-2xl font-bold text-orange-900">{stats?.jobs?.completed || '0'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <TrendingUp className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Avg Job Value</p>
+                <p className="text-2xl font-bold text-orange-900">
+                  ${stats?.earnings?.averagePerJob?.toLocaleString() || '0'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <Clock className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Pending Payout</p>
+                <p className="text-2xl font-bold text-orange-900">
+                  ${stats?.earnings?.pending?.toLocaleString() || '0'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Completed Jobs */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h4 className="text-lg font-medium text-gray-900 mb-4">Recent Completed Jobs</h4>
+        <div className="space-y-4">
+          {jobs
+            .filter(job => (job.status === 'COMPLETED' || job.status === 'PAID') && job.totalAmount)
+            .slice(0, 5)
+            .map((job) => (
+              <div key={job._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <h5 className="font-medium text-gray-900">Job #{job.jobNumber}</h5>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      job.status === 'PAID' ? 'bg-orange-100 text-orange-800' : 'bg-orange-50 text-orange-600'
+                    }`}>
+                      {job.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">{job.description}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {job.customerId?.firstName} {job.customerId?.lastName} • {job.category}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-orange-600">
+                    ${job.totalAmount.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(job.completedAt || job.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          
+          {jobs.filter(job => (job.status === 'COMPLETED' || job.status === 'PAID') && job.totalAmount).length === 0 && (
+            <div className="text-center py-8">
+              <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">No completed jobs with earnings yet</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Transaction History Component
+const TransactionHistory = () => {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all'); // all, completed, paid
+
+  useEffect(() => {
+    const loadTransactions = async () => {
+      try {
+        setLoading(true);
+        const response = await api.vendor.getJobs();
+        const allJobs = response.data || [];
+        setJobs(allJobs.filter(job => job.totalAmount)); // Only jobs with set amounts
+      } catch (error) {
+        console.error('Error loading transactions:', error);
+        toast.error('Failed to load transaction history');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTransactions();
+  }, []);
+
+  const filteredJobs = jobs.filter(job => {
+    if (filter === 'completed') return job.status === 'COMPLETED';
+    if (filter === 'paid') return job.status === 'PAID';
+    return ['COMPLETED', 'PAID', 'QUOTE_ACCEPTED', 'IN_PROGRESS'].includes(job.status);
+  });
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-16 bg-gray-200 rounded"></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-medium text-gray-900">Transaction History</h3>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+        >
+          <option value="all">All Transactions</option>
+          <option value="completed">Completed Jobs</option>
+          <option value="paid">Paid Jobs</option>
+        </select>
+      </div>
+
+      <div className="space-y-4">
+        {filteredJobs.map((job) => {
+          const getStatusColor = (status) => {
+            switch (status) {
+              case 'PAID': return 'bg-orange-100 text-orange-800';
+              case 'COMPLETED': return 'bg-orange-50 text-orange-600';
+              case 'IN_PROGRESS': return 'bg-orange-50 text-orange-600';
+              case 'QUOTE_ACCEPTED': return 'bg-orange-50 text-orange-600';
+              default: return 'bg-gray-100 text-gray-800';
+            }
+          };
+
+          return (
+            <div key={job._id} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h4 className="font-medium text-gray-900">Job #{job.jobNumber}</h4>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(job.status)}`}>
+                      {job.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">{job.description}</p>
+                  <div className="flex items-center space-x-4 text-xs text-gray-500">
+                    <span>{job.customerId?.firstName} {job.customerId?.lastName}</span>
+                    <span>{job.category}</span>
+                    <span>{new Date(job.updatedAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-gray-900">
+                    ${job.totalAmount.toLocaleString()}
+                  </p>
+                  {job.status === 'COMPLETED' && (
+                    <p className="text-xs text-orange-600 font-medium">Pending Payout</p>
+                  )}
+                  {job.status === 'PAID' && (
+                    <p className="text-xs text-orange-600 font-medium">Paid Out</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {filteredJobs.length === 0 && (
+          <div className="text-center py-12">
+            <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No transactions found</h3>
+            <p className="text-gray-600">
+              {filter === 'completed' ? 'No completed jobs yet.' :
+               filter === 'paid' ? 'No paid transactions yet.' :
+               'No jobs with pricing set yet.'}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Payout Management Component
+const PayoutManagement = () => {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPayoutData = async () => {
+      try {
+        setLoading(true);
+        const response = await api.vendor.getJobs();
+        const allJobs = response.data || [];
+        setJobs(allJobs.filter(job => job.totalAmount));
+      } catch (error) {
+        console.error('Error loading payout data:', error);
+        toast.error('Failed to load payout information');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPayoutData();
+  }, []);
+
+  const pendingPayouts = jobs.filter(job => job.status === 'COMPLETED' && job.totalAmount);
+  const completedPayouts = jobs.filter(job => job.status === 'PAID' && job.totalAmount);
+  
+  const totalPending = pendingPayouts.reduce((sum, job) => sum + job.totalAmount, 0);
+  const totalPaid = completedPayouts.reduce((sum, job) => sum + job.totalAmount, 0);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[1, 2].map(i => (
+              <div key={i} className="h-32 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Payout Summary */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-6">Payout Summary</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <Clock className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Pending Payouts</p>
+                <p className="text-2xl font-bold text-orange-900">${totalPending.toLocaleString()}</p>
+                <p className="text-xs text-orange-700">{pendingPayouts.length} completed jobs</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <CheckCircle className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Total Paid Out</p>
+                <p className="text-2xl font-bold text-orange-900">${totalPaid.toLocaleString()}</p>
+                <p className="text-xs text-orange-700">{completedPayouts.length} paid jobs</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pending Payouts */}
+      {pendingPayouts.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h4 className="text-lg font-medium text-gray-900 mb-4">Pending Payouts</h4>
+          <div className="space-y-4">
+            {pendingPayouts.map((job) => (
+              <div key={job._id} className="border border-orange-200 rounded-lg p-4 bg-orange-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h5 className="font-medium text-gray-900">Job #{job.jobNumber}</h5>
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                        AWAITING PAYOUT
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-1">{job.description}</p>
+                    <p className="text-xs text-gray-500">
+                      Completed: {new Date(job.completedAt || job.updatedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-orange-700">
+                      ${job.totalAmount.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-orange-600">Processing...</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Payout Information */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h4 className="text-lg font-medium text-gray-900 mb-4">Payout Information</h4>
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <Info className="h-5 w-5 text-orange-600 mt-0.5 mr-3" />
+            <div>
+              <h5 className="font-medium text-orange-900 mb-2">How Payouts Work</h5>
+              <ul className="text-sm text-orange-800 space-y-1">
+                <li>• Payouts are processed weekly on Fridays</li>
+                <li>• Jobs must be marked as "COMPLETED" to be eligible for payout</li>
+                <li>• Funds typically arrive 3-5 business days after processing</li>
+                <li>• Platform fee of 10% is deducted from each payout</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Tax Reports Component
+const TaxReports = () => {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    const loadTaxData = async () => {
+      try {
+        setLoading(true);
+        const response = await api.vendor.getJobs();
+        const allJobs = response.data || [];
+        setJobs(allJobs.filter(job => job.totalAmount && job.status === 'PAID'));
+      } catch (error) {
+        console.error('Error loading tax data:', error);
+        toast.error('Failed to load tax information');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTaxData();
+  }, []);
+
+  // Filter jobs by selected year
+  const yearlyJobs = jobs.filter(job => {
+    const jobYear = new Date(job.completedAt || job.updatedAt).getFullYear();
+    return jobYear === selectedYear;
+  });
+
+  const totalIncome = yearlyJobs.reduce((sum, job) => sum + job.totalAmount, 0);
+  const totalJobs = yearlyJobs.length;
+
+  // Group by month
+  const monthlyData = Array.from({length: 12}, (_, i) => {
+    const month = i + 1;
+    const monthJobs = yearlyJobs.filter(job => {
+      const jobMonth = new Date(job.completedAt || job.updatedAt).getMonth() + 1;
+      return jobMonth === month;
+    });
+    const monthIncome = monthJobs.reduce((sum, job) => sum + job.totalAmount, 0);
+    return {
+      month: new Date(selectedYear, i).toLocaleString('default', { month: 'short' }),
+      jobs: monthJobs.length,
+      income: monthIncome
+    };
+  });
+
+  const availableYears = [...new Set(jobs.map(job => 
+    new Date(job.completedAt || job.updatedAt).getFullYear()
+  ))].sort((a, b) => b - a);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-32 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Tax Summary */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-medium text-gray-900">Tax Reports</h3>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+          >
+            {availableYears.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <FileText className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Total Income ({selectedYear})</p>
+                <p className="text-2xl font-bold text-orange-900">${totalIncome.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <Briefcase className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Jobs Completed</p>
+                <p className="text-2xl font-bold text-orange-900">{totalJobs}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <Calculator className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Avg Monthly Income</p>
+                <p className="text-2xl font-bold text-orange-900">
+                  ${(totalIncome / 12).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly Breakdown */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Month
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Jobs Completed
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Income
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {monthlyData.map((data, index) => (
+                <tr key={index}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {data.month} {selectedYear}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {data.jobs}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                    ${data.income.toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Tax Information */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h4 className="text-lg font-medium text-gray-900 mb-4">Tax Information</h4>
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5 mr-3" />
+            <div>
+              <h5 className="font-medium text-orange-900 mb-2">Important Tax Notes</h5>
+              <ul className="text-sm text-orange-800 space-y-1">
+                <li>• This report shows your total income from completed jobs</li>
+                <li>• You are responsible for reporting this income on your tax returns</li>
+                <li>• Consider consulting with a tax professional for guidance</li>
+                <li>• Keep records of business expenses for potential deductions</li>
+                <li>• 1099 forms will be provided for earnings over $600 annually</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

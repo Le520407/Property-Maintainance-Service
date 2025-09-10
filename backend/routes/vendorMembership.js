@@ -8,7 +8,7 @@ const hitpayService = require('../services/hitpayService');
 // Get all membership tiers (public)
 router.get('/tiers', async (req, res) => {
   try {
-    const tiers = await VendorMembershipTier.find({ isActive: true })
+    const tiers = await VendorMembership.find({ isActive: true })
       .sort({ sortOrder: 1 });
     
     res.json({ 

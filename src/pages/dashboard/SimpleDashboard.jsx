@@ -1,41 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  Home, 
-  User, 
-  Package,
-  Calendar, 
-  DollarSign,
-  Settings,
-  Bell,
-  Plus,
-  Clock,
-  CheckCircle,
+import {
   AlertCircle,
-  Edit,
-  LogOut,
+  Bell,
+  Calendar,
+  Camera,
+  CheckCircle,
   ChevronRight,
-  Gift,
+  Clock,
+  DollarSign,
+  Edit,
   FileText,
-  MessageSquare,
-  TrendingUp,
-  Save,
-  X,
+  Gift,
+  Home,
+  LogOut,
   Mail,
-  Phone,
   MapPin,
   Menu,
-  Camera,
-  Video
+  MessageSquare,
+  Package,
+  Phone,
+  Plus,
+  Save,
+  Settings,
+  TrendingUp,
+  User,
+  Video,
+  X
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+
 import { api } from '../../services/api';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const SimpleDashboard = () => {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -54,6 +56,15 @@ const SimpleDashboard = () => {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // Handle navigation state to set active tab
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+      // Clear the state after using it
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
 
   const loadDashboardData = async () => {
     try {
@@ -471,8 +482,8 @@ const OverviewTab = ({ dashboardData, getStatusIcon, getStatusColor, getStatusDe
           className="bg-white rounded-xl p-6 shadow-sm border"
         >
           <div className="flex items-center">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <Package className="w-6 h-6 text-blue-600" />
+            <div className="p-3 bg-orange-50 rounded-lg">
+              <Package className="w-6 h-6 text-orange-600" />
             </div>
             <div className="ml-4">
               <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.activeOrders}</p>
@@ -488,8 +499,8 @@ const OverviewTab = ({ dashboardData, getStatusIcon, getStatusColor, getStatusDe
           className="bg-white rounded-xl p-6 shadow-sm border"
         >
           <div className="flex items-center">
-            <div className="p-3 bg-green-50 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+              <div className="p-3 bg-orange-50 rounded-lg">
+              <CheckCircle className="w-6 h-6 text-orange-600" />
             </div>
             <div className="ml-4">
               <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.completedOrders}</p>
@@ -633,7 +644,7 @@ const OrdersTab = ({ orders, getStatusIcon, getStatusColor, getStatusDescription
   return (
     <div className="space-y-6">
       {/* Decorative Banner */}
-      <div className="bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 rounded-2xl p-8 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 rounded-2xl p-8 text-white shadow-lg">
         <div>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -642,7 +653,7 @@ const OrdersTab = ({ orders, getStatusIcon, getStatusColor, getStatusDescription
               </div>
               <div>
                 <h1 className="text-3xl font-bold mb-2">My Orders</h1>
-                <p className="text-blue-100 text-lg">Track and manage all your service requests</p>
+                <p className="text-orange-100 text-lg">Track and manage all your service requests</p>
               </div>
             </div>
             
@@ -650,15 +661,15 @@ const OrdersTab = ({ orders, getStatusIcon, getStatusColor, getStatusDescription
             <div className="hidden md:flex space-x-4">
               <div className="text-center bg-white bg-opacity-10 rounded-lg px-4 py-2">
                 <div className="text-xl font-bold">{orders.filter(o => ['PENDING', 'IN_PROGRESS', 'ASSIGNED'].includes(o.status)).length}</div>
-                <div className="text-xs text-blue-100">Active</div>
+                <div className="text-xs text-orange-100">Active</div>
               </div>
               <div className="text-center bg-white bg-opacity-10 rounded-lg px-4 py-2">
                 <div className="text-xl font-bold">{orders.filter(o => o.status === 'COMPLETED').length}</div>
-                <div className="text-xs text-blue-100">Completed</div>
+                <div className="text-xs text-orange-100">Completed</div>
               </div>
               <div className="text-center bg-white bg-opacity-10 rounded-lg px-4 py-2">
                 <div className="text-xl font-bold">{orders.length}</div>
-                <div className="text-xs text-blue-100">Total</div>
+                <div className="text-xs text-orange-100">Total</div>
               </div>
             </div>
           </div>
@@ -691,7 +702,7 @@ const OrdersTab = ({ orders, getStatusIcon, getStatusColor, getStatusDescription
                     
                     {/* Scheduled Date */}
                     {order.requestedTimeSlot?.date && (
-                      <div className="flex items-center text-sm text-purple-600">
+                      <div className="flex items-center text-sm text-orange-600">
                         <Calendar className="w-4 h-4 mr-1" />
                         <span>Scheduled: {new Date(order.requestedTimeSlot.date).toLocaleDateString()}</span>
                       </div>
@@ -700,7 +711,7 @@ const OrdersTab = ({ orders, getStatusIcon, getStatusColor, getStatusDescription
                   
                   {/* Vendor Information */}
                   {order.vendorId ? (
-                    <div className="flex items-center text-sm text-blue-600 mt-2">
+                    <div className="flex items-center text-sm text-orange-600 mt-2">
                       <User className="w-4 h-4 mr-1" />
                       <span>
                         <strong>Assigned to:</strong> {order.vendorId.firstName} {order.vendorId.lastName}
@@ -727,7 +738,7 @@ const OrdersTab = ({ orders, getStatusIcon, getStatusColor, getStatusDescription
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                         <div 
-                          className="bg-blue-600 h-1.5 rounded-full" 
+                          className="bg-orange-600 h-1.5 rounded-full" 
                           style={{ width: `${order.workProgress.percentage}%` }}
                         ></div>
                       </div>
@@ -818,7 +829,7 @@ const ProfileTab = ({ user, updateUser }) => {
   return (
     <div className="space-y-6">
       {/* Decorative Banner */}
-      <div className="bg-gradient-to-r from-purple-500 via-purple-600 to-pink-600 rounded-2xl p-8 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 rounded-2xl p-8 text-white shadow-lg">
         <div>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -827,7 +838,7 @@ const ProfileTab = ({ user, updateUser }) => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold mb-2">My Profile</h1>
-                <p className="text-purple-100 text-lg">Manage your account information</p>
+                <p className="text-orange-100 text-lg">Manage your account information</p>
               </div>
             </div>
             
@@ -847,7 +858,7 @@ const ProfileTab = ({ user, updateUser }) => {
             </div>
             <div>
               <div className="text-xl font-semibold">{user?.firstName} {user?.lastName}</div>
-              <div className="text-purple-100">{user?.email}</div>
+              <div className="text-orange-100">{user?.email}</div>
             </div>
           </div>
         </div>
@@ -977,7 +988,7 @@ const ProfileTab = ({ user, updateUser }) => {
 
 // Referrals Tab Component
 const ReferralsTab = () => {
-  const { user } = useAuth();
+  useAuth();
   const [referralData, setReferralData] = useState({
     hasReferralCode: false,
     referralCode: '',
@@ -1100,6 +1111,7 @@ const ReferralsTab = () => {
     const url = encodeURIComponent(referralData.referralLink);
     
     let shareUrl = '';
+    // eslint-disable-next-line default-case
     switch (platform) {
       case 'facebook':
         shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
@@ -1123,7 +1135,7 @@ const ReferralsTab = () => {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 rounded-2xl p-8 text-white shadow-lg">
+        <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 rounded-2xl p-8 text-white shadow-lg">
           <div className="animate-pulse">
             <div className="h-8 bg-white bg-opacity-20 rounded w-1/3 mb-4"></div>
             <div className="h-4 bg-white bg-opacity-20 rounded w-1/2"></div>
@@ -1142,7 +1154,7 @@ const ReferralsTab = () => {
   return (
     <div className="space-y-6">
       {/* Decorative Banner */}
-      <div className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 rounded-2xl p-8 text-white shadow-lg">
+      <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-red-600 rounded-2xl p-8 text-white shadow-lg">
         <div>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -1151,7 +1163,7 @@ const ReferralsTab = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold mb-2">Referral Program</h1>
-                <p className="text-yellow-100 text-lg">Earn points by referring friends</p>
+                <p className="text-orange-100 text-lg">Earn rewards by referring friends</p>
               </div>
             </div>
             
@@ -1159,11 +1171,11 @@ const ReferralsTab = () => {
             <div className="hidden md:flex space-x-4">
               <div className="text-center bg-white bg-opacity-10 rounded-lg px-4 py-2">
                 <div className="text-xl font-bold">{referralData.statistics?.totalReferrals || 0}</div>
-                <div className="text-xs text-yellow-100">Referrals</div>
+                <div className="text-xs text-orange-100">Referrals</div>
               </div>
               <div className="text-center bg-white bg-opacity-10 rounded-lg px-4 py-2">
-                <div className="text-xl font-bold">{referralData.statistics?.totalPoints || 0} pts</div>
-                <div className="text-xs text-yellow-100">Points Earned</div>
+                <div className="text-xl font-bold">${referralData.statistics?.totalEarned || 0}</div>
+                <div className="text-xs text-orange-100">Earned</div>
               </div>
             </div>
           </div>
@@ -1240,8 +1252,8 @@ const ReferralsTab = () => {
                   <div className="text-2xl font-bold text-green-600">{referralData.statistics?.activeReferrals || 0}</div>
                   <div className="text-sm text-gray-600">Active Referrals</div>
                 </div>
-                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                  <div className="text-2xl font-bold text-purple-600">{referralData.currentTier?.name || 'Bronze'}</div>
+                <div className="text-center p-4 bg-orange-50 rounded-lg">
+                  <div className="text-2xl font-bold text-orange-600">{referralData.currentTier?.name || 'Bronze'}</div>
                   <div className="text-sm text-gray-600">Current Tier</div>
                 </div>
               </div>

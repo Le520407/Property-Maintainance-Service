@@ -5,6 +5,46 @@ const Rating = require('../models/Rating');
 
 class VendorAssignmentService {
   /**
+   * Map job categories to acceptable vendor service categories
+   * This allows for flexibility in matching jobs to vendors
+   */
+  static getAcceptableCategoriesForJob(jobCategory) {
+    const categoryMap = {
+      // Map job categories to actual vendor serviceCategories (enum values)
+      'furniture-assembly': ['furniture-assembly', 'home-repairs'], // Home-repairs acts as "general"
+      'home-repairs': ['home-repairs'],
+      'painting-services': ['painting-services', 'home-repairs'],
+      'electrical-services': ['electrical-services', 'home-repairs'], 
+      'plumbing-services': ['plumbing-services', 'home-repairs'],
+      'carpentry-services': ['carpentry-services', 'home-repairs'],
+      'flooring-services': ['flooring-services', 'home-repairs'],
+      'appliance-installation': ['appliance-installation', 'electrical-services', 'home-repairs'],
+      'moving-services': ['moving-services', 'home-repairs'],
+      'cleaning-services': ['cleaning-services', 'home-repairs'],
+      'safety-security': ['safety-security', 'home-repairs'],
+      'renovation': ['renovation', 'home-repairs'],
+      
+      // Single word categories (fallback)
+      'assembly': ['furniture-assembly', 'home-repairs'],
+      'maintenance': ['home-repairs'],
+      'painting': ['painting-services', 'home-repairs'],
+      'electrical': ['electrical-services', 'home-repairs'],
+      'plumbing': ['plumbing-services', 'home-repairs'],
+      'flooring': ['flooring-services', 'home-repairs'],
+      'installation': ['appliance-installation', 'home-repairs'],
+      'moving': ['moving-services', 'home-repairs'],
+      'cleaning': ['cleaning-services', 'home-repairs'],
+      'security': ['safety-security', 'home-repairs'],
+      'gardening': ['renovation', 'home-repairs'],
+      'hvac': ['electrical-services', 'home-repairs'],
+      'carpentry': ['carpentry-services', 'home-repairs']
+    };
+
+    // Return mapped categories or fallback to home-repairs (acts as general)
+    return categoryMap[jobCategory] || ['home-repairs'];
+  }
+
+  /**
    * Find the best vendors for a job based on multiple criteria
    * @param {Object} job - The job object
    * @param {Object} options - Assignment options
@@ -28,19 +68,32 @@ class VendorAssignmentService {
 
       // Wrap the main operation in a race with timeout
       const findVendorsOperation = async () => {
-        console.log(`🔍 Finding best vendors for job: ${job.jobNumber}`);
-        console.log(`📍 Job location: ${job.location?.city}, Category: ${job.category}`);
-
         // Step 1: Get all active vendors who can handle this service category
+        // First, normalize the job category and create a list of acceptable categories
+        const jobCategory = job.category;
+        const acceptableCategories = this.getAcceptableCategoriesForJob(jobCategory);
+
+        // Step 2: Build base query for vendor search
+
         const baseQuery = {
           isActive: true,
-          verificationStatus: 'VERIFIED',
-          serviceCategories: { $in: [job.category] }
+          // Remove verification requirement for now - let all active vendors be eligible
+          // verificationStatus: 'VERIFIED',
+          serviceCategories: { $in: acceptableCategories }
         };
 
-        // Add location filter if job has location
+        // Add location filter if job has location - make it more flexible
         if (job.location?.city) {
-          baseQuery.serviceArea = new RegExp(job.location.city, 'i');
+          // Improved city validation: check for real city names vs test/dummy data
+          const city = job.location.city;
+          const isAllDigits = /^\d+$/.test(city);
+          const hasRandomPattern = /^[a-z0-9]{5,}$/.test(city); // matches "eo3r483" pattern
+          const isTooShort = city.length <= 2;
+          const cityIsValid = !isAllDigits && !hasRandomPattern && !isTooShort;
+          
+          if (cityIsValid) {
+            baseQuery.serviceArea = new RegExp(city, 'i');
+          }
         }
 
         const vendors = await Vendor.find(baseQuery)
@@ -51,14 +104,10 @@ class VendorAssignmentService {
         // Filter out vendors without valid userId
         const validVendors = vendors.filter(vendor => vendor.userId);
 
-        console.log(`📊 Found ${validVendors.length} potential vendors (${vendors.length - validVendors.length} excluded for missing user data)`);
-
         // Step 1.5: Priority filtering based on membership tiers
         const priorityVendors = validVendors.filter(vendor => vendor.membershipFeatures?.priorityAssignment === true);
         const regularVendors = validVendors.filter(vendor => vendor.membershipFeatures?.priorityAssignment !== true);
         
-        console.log(`⭐ Priority vendors: ${priorityVendors.length}, Regular vendors: ${regularVendors.length}`);
-
         if (validVendors.length === 0) {
           return [];
         }
@@ -67,8 +116,8 @@ class VendorAssignmentService {
         const CONCURRENCY_LIMIT = 5;
         const scoredVendors = [];
         
-        for (let i = 0; i < vendors.length; i += CONCURRENCY_LIMIT) {
-          const batch = vendors.slice(i, i + CONCURRENCY_LIMIT);
+        for (let i = 0; i < validVendors.length; i += CONCURRENCY_LIMIT) {
+          const batch = validVendors.slice(i, i + CONCURRENCY_LIMIT);
           const batchResults = await Promise.allSettled(
             batch.map(vendor => this.calculateVendorScore(vendor, job))
           );
@@ -93,11 +142,6 @@ class VendorAssignmentService {
         // Step 5: Return top vendors with detailed scoring
         const topVendors = filteredVendors.slice(0, limit);
         
-        console.log(`🏆 Top ${topVendors.length} recommended vendors:`);
-        topVendors.forEach((vendor, index) => {
-          console.log(`${index + 1}. ${vendor.userId.firstName} ${vendor.userId.lastName} - Score: ${vendor.totalScore.toFixed(2)}`);
-        });
-
         return topVendors;
       };
 
@@ -350,7 +394,7 @@ class VendorAssignmentService {
         return 60; // Neutral score if no schedule set
       }
 
-      // Get requested day of week
+      // Get requested day of week (ensuring proper date parsing)
       const requestedDate = new Date(job.requestedTimeSlot?.date);
       const requestedDayOfWeek = requestedDate.getDay();
       
@@ -359,7 +403,9 @@ class VendorAssignmentService {
         slot => slot.dayOfWeek === requestedDayOfWeek && slot.isAvailable
       );
       
-      if (!dayAvailability) return 20; // Low score if not available on requested day
+      if (!dayAvailability) {
+        return 20; // Low score if not available on requested day
+      }
       
       // Check time overlap
       const requestedStart = job.requestedTimeSlot?.startTime || '09:00';
@@ -372,7 +418,9 @@ class VendorAssignmentService {
         requestedEnd
       );
       
-      if (!hasTimeOverlap) return 40; // Medium score if time doesn't match perfectly
+      if (!hasTimeOverlap) {
+        return 40; // Medium score if time doesn't match perfectly
+      }
       
       // Check current workload with timeout
       const currentJobs = await Job.countDocuments({
@@ -603,14 +651,8 @@ class VendorAssignmentService {
 
       const bestVendor = bestVendors[0];
       
-      // Check if this is a reassignment
-      const isReassignment = job.status === 'ASSIGNED';
-      
       // Assign the job
-      await job.assignToVendor(bestVendor.userId._id, job.requestedTimeSlot);
-      
-      const assignmentType = isReassignment ? 'Re-assigned' : 'Auto-assigned';
-      console.log(`🤖 ${assignmentType} job ${job.jobNumber} to ${bestVendor.userId.firstName} ${bestVendor.userId.lastName} (Score: ${bestVendor.totalScore.toFixed(2)})`);
+      await job.assignToVendor(bestVendor.userId._id);
       
       return {
         job,

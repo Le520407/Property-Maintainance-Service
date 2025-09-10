@@ -341,7 +341,7 @@ const PricingManagement = () => {
         <h1 className="text-2xl font-bold text-gray-900">Pricing Management</h1>
         <button
           onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+          className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Pricing Plan
@@ -711,7 +711,7 @@ const PricingManagement = () => {
             <div className="flex gap-4 pt-4">
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {editingPlan ? 'Update' : 'Create'} Pricing Plan

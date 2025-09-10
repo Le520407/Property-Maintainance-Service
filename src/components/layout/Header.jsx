@@ -395,7 +395,36 @@ const Header = () => {
                       </>
                     )}
                     
-                    {user.role !== 'vendor' && (
+                    {user.role === 'customer' && (
+                      <>
+                        <Link
+                          to="/dashboard"
+                          state={{ activeTab: 'profile' }}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => {
+                            console.log('Profile link clicked for customer');
+                            setIsUserMenuOpen(false);
+                          }}
+                        >
+                          <User className="w-4 h-4 inline mr-2" />
+                          {t('profile')}
+                        </Link>
+                        <Link
+                          to="/dashboard"
+                          state={{ activeTab: 'referrals' }}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => {
+                            console.log('Referrals link clicked for customer');
+                            setIsUserMenuOpen(false);
+                          }}
+                        >
+                          <Gift className="w-4 h-4 inline mr-2" />
+                          Referrals
+                        </Link>
+                      </>
+                    )}
+                    
+                    {user.role !== 'vendor' && user.role !== 'customer' && (
                       <>
                         <Link
                           to="/dashboard?section=account&tab=profile"

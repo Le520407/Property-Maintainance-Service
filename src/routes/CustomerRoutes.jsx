@@ -4,7 +4,7 @@ import CustomerLayout from '../components/layout/CustomerLayout';
 import CustomerDashboard from '../pages/customer/CustomerDashboard';
 import MembershipPlans from '../components/customer/MembershipPlans';
 import MembershipDashboard from '../components/customer/MembershipDashboard';
-import MembershipSuccess from '../pages/MembershipSuccess';
+import MembershipSuccess from '../pages/MembershipSuccess.jsx';
 import JobCreate from '../pages/customer/JobCreate';
 import JobList from '../pages/customer/JobList';
 import JobDetail from '../pages/customer/JobDetail';
