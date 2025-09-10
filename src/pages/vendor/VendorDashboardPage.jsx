@@ -1,14 +1,19 @@
 import {
   Activity,
   AlertCircle,
+  AlertTriangle,
   Award,
   BarChart3,
+  Briefcase,
+  Calculator,
   Calendar,
   CheckCircle,
   Clock,
+  CreditCard,
   DollarSign,
   Edit2,
   FileText,
+  Info,
   MapPin,
   MessageSquare,
   Plus,
@@ -901,39 +906,6 @@ const VendorDashboardPage = () => {
 
   const OverviewTab = () => (
     <div className="space-y-6">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Jobs"
-          value={stats.jobs.completed || 0}
-          change="+12% this month"
-          changeType="positive"
-          icon={FileText}
-          color="blue"
-        />
-        <StatCard
-          title="Total Earnings"
-          value={`$${stats.earnings.total?.toLocaleString() || '0'}`}
-          change="+18% this month"
-          changeType="positive"
-          icon={DollarSign}
-          color="green"
-        />
-        <StatCard
-          title="Average Rating"
-          value={stats.ratings.averageRating?.toFixed(1) || '0.0'}
-          change="★ from ratings"
-          icon={Star}
-          color="yellow"
-        />
-        <StatCard
-          title="Active Jobs"
-          value={stats.jobs.in_progress || 0}
-          icon={Activity}
-          color="orange"
-        />
-      </div>
-
       {/* Verification Status */}
       {vendor.verificationStatus !== 'VERIFIED' && (
         <motion.div
@@ -1016,66 +988,26 @@ const VendorDashboardPage = () => {
         </div>
       </div>
 
-      {/* Performance Metrics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Performance Score</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Quality Score</span>
-              <span className="text-sm font-medium">{vendor.qualityScore}/5</span>
+      {/* Service Areas */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Service Areas</h3>
+        <div className="space-y-3">
+          {vendor.serviceCategories?.map((category) => (
+            <div key={category} className="flex items-center">
+              <div className="w-2 h-2 bg-orange-600 rounded-full mr-3"></div>
+              <span className="text-sm text-gray-700 capitalize">
+                {category.replace('_', ' ')}
+              </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-orange-600 h-2 rounded-full" 
-                style={{ width: `${(vendor.qualityScore / 5) * 100}%` }}
-              ></div>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">On-Time Performance</span>
-              <span className="text-sm font-medium">{vendor.onTimePercentage}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-green-600 h-2 rounded-full" 
-                style={{ width: `${vendor.onTimePercentage}%` }}
-              ></div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Customer Satisfaction</span>
-              <span className="text-sm font-medium">{vendor.customerSatisfactionScore}/5</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full" 
-                style={{ width: `${(vendor.customerSatisfactionScore / 5) * 100}%` }}
-              ></div>
-            </div>
-          </div>
+          ))}
         </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Service Areas</h3>
-          <div className="space-y-3">
-            {vendor.serviceCategories?.map((category) => (
-              <div key={category} className="flex items-center">
-                <div className="w-2 h-2 bg-orange-600 rounded-full mr-3"></div>
-                <span className="text-sm text-gray-700 capitalize">
-                  {category.replace('_', ' ')}
-                </span>
-              </div>
-            ))}
+        
+        <div className="mt-6">
+          <div className="flex items-center text-sm text-gray-600 mb-2">
+            <MapPin className="h-4 w-4 mr-1" />
+            Service Area
           </div>
-          
-          <div className="mt-6">
-            <div className="flex items-center text-sm text-gray-600 mb-2">
-              <MapPin className="h-4 w-4 mr-1" />
-              Service Area
-            </div>
-            <p className="text-sm font-medium text-gray-900">{vendor.serviceArea}</p>
-          </div>
+          <p className="text-sm font-medium text-gray-900">{vendor.serviceArea}</p>
         </div>
       </div>
     </div>
@@ -1086,15 +1018,123 @@ const VendorDashboardPage = () => {
     if (activeSection === 'dashboard') {
       if (activeTab === 'overview') return <OverviewTab />;
       if (activeTab === 'analytics') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Business Analytics</h3>
-          <p className="text-gray-600">Analytics dashboard coming soon...</p>
+        <div className="space-y-6">
+          {/* Stats Grid */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-6">Business Analytics</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <StatCard
+                title="Total Jobs"
+                value={stats.jobs.completed || 0}
+                change="+12% this month"
+                changeType="positive"
+                icon={FileText}
+                color="orange"
+              />
+              <StatCard
+                title="Total Earnings"
+                value={`$${stats.earnings.total?.toLocaleString() || '0'}`}
+                change="+18% this month"
+                changeType="positive"
+                icon={DollarSign}
+                color="orange"
+              />
+              <StatCard
+                title="Average Rating"
+                value={stats.ratings.averageRating?.toFixed(1) || '0.0'}
+                change="★ from ratings"
+                icon={Star}
+                color="orange"
+              />
+              <StatCard
+                title="Active Jobs"
+                value={stats.jobs.in_progress || 0}
+                icon={Activity}
+                color="orange"
+              />
+            </div>
+          </div>
+          
+          {/* Additional Analytics Content */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h4 className="text-lg font-medium text-gray-900 mb-4">Performance Trends</h4>
+            <p className="text-gray-600">Advanced analytics and trends coming soon...</p>
+          </div>
         </div>
       );
       if (activeTab === 'performance') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Performance Metrics</h3>
-          <p className="text-gray-600">Performance tracking coming soon...</p>
+        <div className="space-y-6">
+          {/* Performance Metrics */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Performance Score</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Quality Score</span>
+                  <span className="text-sm font-medium">{vendor.qualityScore}/5</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-orange-600 h-2 rounded-full" 
+                    style={{ width: `${(vendor.qualityScore / 5) * 100}%` }}
+                  ></div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">On-Time Performance</span>
+                  <span className="text-sm font-medium">{vendor.onTimePercentage}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-orange-600 h-2 rounded-full" 
+                    style={{ width: `${vendor.onTimePercentage}%` }}
+                  ></div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Customer Satisfaction</span>
+                  <span className="text-sm font-medium">{vendor.customerSatisfactionScore}/5</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-orange-600 h-2 rounded-full" 
+                    style={{ width: `${(vendor.customerSatisfactionScore / 5) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Performance Insights</h3>
+              <div className="space-y-4">
+                <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center">
+                    <CheckCircle className="h-5 w-5 text-orange-600 mr-2" />
+                    <span className="text-sm font-medium text-orange-800">Strong Performance</span>
+                  </div>
+                  <p className="text-xs text-orange-700 mt-1">
+                    Your overall performance is excellent. Keep up the good work!
+                  </p>
+                </div>
+                
+                <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="flex items-center">
+                    <TrendingUp className="h-5 w-5 text-orange-600 mr-2" />
+                    <span className="text-sm font-medium text-orange-800">Growth Opportunity</span>
+                  </div>
+                  <p className="text-xs text-orange-700 mt-1">
+                    Focus on improving response time to get more job assignments.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Performance Metrics */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h4 className="text-lg font-medium text-gray-900 mb-4">Detailed Performance Tracking</h4>
+            <p className="text-gray-600">Advanced performance analytics and historical trends coming soon...</p>
+          </div>
         </div>
       );
     }
@@ -1119,30 +1159,10 @@ const VendorDashboardPage = () => {
 
     // Earnings Section
     if (activeSection === 'earnings') {
-      if (activeTab === 'earnings-overview') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Earnings Overview</h3>
-          <p className="text-gray-600">Earnings dashboard coming soon...</p>
-        </div>
-      );
-      if (activeTab === 'transactions') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Transaction History</h3>
-          <p className="text-gray-600">Transaction history coming soon...</p>
-        </div>
-      );
-      if (activeTab === 'payouts') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Payouts</h3>
-          <p className="text-gray-600">Payout management coming soon...</p>
-        </div>
-      );
-      if (activeTab === 'tax-reports') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Tax Reports</h3>
-          <p className="text-gray-600">Tax reporting coming soon...</p>
-        </div>
-      );
+      if (activeTab === 'earnings-overview') return <EarningsOverview />;
+      if (activeTab === 'transactions') return <TransactionHistory />;
+      if (activeTab === 'payouts') return <PayoutManagement />;
+      if (activeTab === 'tax-reports') return <TaxReports />;
     }
 
     // Customer Relations Section
@@ -1951,6 +1971,626 @@ const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+// Earnings Overview Component
+const EarningsOverview = () => {
+  const [jobs, setJobs] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [timeFrame, setTimeFrame] = useState('all'); // all, month, week
+
+  useEffect(() => {
+    const loadEarningsData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch dashboard data (same as main overview)
+        const dashboardResponse = await api.vendor.getDashboard();
+        setStats(dashboardResponse.stats);
+        
+        // Fetch all jobs to calculate earnings
+        const jobsResponse = await api.vendor.getJobs();
+        const allJobs = jobsResponse.data || [];
+        
+        setJobs(allJobs);
+      } catch (error) {
+        console.error('Error loading earnings data:', error);
+        toast.error('Failed to load earnings data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEarningsData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-24 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header with Time Frame Filter */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-medium text-gray-900">Earnings Overview</h3>
+          <div className="flex items-center space-x-3">
+            {/* Debug Button */}
+            <button
+              onClick={() => {
+                console.log('=== MANUAL DEBUG TRIGGER ===');
+                console.log('Jobs state:', jobs);
+                console.log('Stats state:', stats);
+                console.log('Loading state:', loading);
+              }}
+              className="px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600"
+            >
+              Debug Data
+            </button>
+            {/* Refresh Button */}
+            <button
+              onClick={async () => {
+                console.log('=== MANUAL REFRESH TRIGGERED ===');
+                setLoading(true);
+                try {
+                  const dashboardResponse = await api.vendor.getDashboard();
+                  setStats(dashboardResponse.stats);
+                  
+                  const jobsResponse = await api.vendor.getJobs();
+                  const allJobs = jobsResponse.data || [];
+                  console.log('Refreshed data:', { stats: dashboardResponse.stats, jobs: allJobs });
+                  setJobs(allJobs);
+                  toast.success('Data refreshed successfully');
+                } catch (error) {
+                  console.error('Refresh error:', error);
+                  toast.error('Failed to refresh data');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600"
+            >
+              Refresh Data
+            </button>
+            <select
+              value={timeFrame}
+              onChange={(e) => setTimeFrame(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Time</option>
+              <option value="month">This Month</option>
+              <option value="week">This Week</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Earnings Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <DollarSign className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Total Earnings</p>
+                <p className="text-2xl font-bold text-orange-900">
+                  ${stats?.earnings?.total?.toLocaleString() || '0'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <Briefcase className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Completed Jobs</p>
+                <p className="text-2xl font-bold text-orange-900">{stats?.jobs?.completed || '0'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <TrendingUp className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Avg Job Value</p>
+                <p className="text-2xl font-bold text-orange-900">
+                  ${stats?.earnings?.averagePerJob?.toLocaleString() || '0'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <Clock className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Pending Payout</p>
+                <p className="text-2xl font-bold text-orange-900">
+                  ${stats?.earnings?.pending?.toLocaleString() || '0'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Completed Jobs */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h4 className="text-lg font-medium text-gray-900 mb-4">Recent Completed Jobs</h4>
+        <div className="space-y-4">
+          {jobs
+            .filter(job => (job.status === 'COMPLETED' || job.status === 'PAID') && job.totalAmount)
+            .slice(0, 5)
+            .map((job) => (
+              <div key={job._id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <h5 className="font-medium text-gray-900">Job #{job.jobNumber}</h5>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                      job.status === 'PAID' ? 'bg-orange-100 text-orange-800' : 'bg-orange-50 text-orange-600'
+                    }`}>
+                      {job.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">{job.description}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {job.customerId?.firstName} {job.customerId?.lastName} • {job.category}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-orange-600">
+                    ${job.totalAmount.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(job.completedAt || job.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          
+          {jobs.filter(job => (job.status === 'COMPLETED' || job.status === 'PAID') && job.totalAmount).length === 0 && (
+            <div className="text-center py-8">
+              <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">No completed jobs with earnings yet</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Transaction History Component
+const TransactionHistory = () => {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all'); // all, completed, paid
+
+  useEffect(() => {
+    const loadTransactions = async () => {
+      try {
+        setLoading(true);
+        const response = await api.vendor.getJobs();
+        const allJobs = response.data || [];
+        setJobs(allJobs.filter(job => job.totalAmount)); // Only jobs with set amounts
+      } catch (error) {
+        console.error('Error loading transactions:', error);
+        toast.error('Failed to load transaction history');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTransactions();
+  }, []);
+
+  const filteredJobs = jobs.filter(job => {
+    if (filter === 'completed') return job.status === 'COMPLETED';
+    if (filter === 'paid') return job.status === 'PAID';
+    return ['COMPLETED', 'PAID', 'QUOTE_ACCEPTED', 'IN_PROGRESS'].includes(job.status);
+  });
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-16 bg-gray-200 rounded"></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-medium text-gray-900">Transaction History</h3>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+        >
+          <option value="all">All Transactions</option>
+          <option value="completed">Completed Jobs</option>
+          <option value="paid">Paid Jobs</option>
+        </select>
+      </div>
+
+      <div className="space-y-4">
+        {filteredJobs.map((job) => {
+          const getStatusColor = (status) => {
+            switch (status) {
+              case 'PAID': return 'bg-orange-100 text-orange-800';
+              case 'COMPLETED': return 'bg-orange-50 text-orange-600';
+              case 'IN_PROGRESS': return 'bg-orange-50 text-orange-600';
+              case 'QUOTE_ACCEPTED': return 'bg-orange-50 text-orange-600';
+              default: return 'bg-gray-100 text-gray-800';
+            }
+          };
+
+          return (
+            <div key={job._id} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h4 className="font-medium text-gray-900">Job #{job.jobNumber}</h4>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(job.status)}`}>
+                      {job.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">{job.description}</p>
+                  <div className="flex items-center space-x-4 text-xs text-gray-500">
+                    <span>{job.customerId?.firstName} {job.customerId?.lastName}</span>
+                    <span>{job.category}</span>
+                    <span>{new Date(job.updatedAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-gray-900">
+                    ${job.totalAmount.toLocaleString()}
+                  </p>
+                  {job.status === 'COMPLETED' && (
+                    <p className="text-xs text-orange-600 font-medium">Pending Payout</p>
+                  )}
+                  {job.status === 'PAID' && (
+                    <p className="text-xs text-orange-600 font-medium">Paid Out</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {filteredJobs.length === 0 && (
+          <div className="text-center py-12">
+            <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No transactions found</h3>
+            <p className="text-gray-600">
+              {filter === 'completed' ? 'No completed jobs yet.' :
+               filter === 'paid' ? 'No paid transactions yet.' :
+               'No jobs with pricing set yet.'}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Payout Management Component
+const PayoutManagement = () => {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPayoutData = async () => {
+      try {
+        setLoading(true);
+        const response = await api.vendor.getJobs();
+        const allJobs = response.data || [];
+        setJobs(allJobs.filter(job => job.totalAmount));
+      } catch (error) {
+        console.error('Error loading payout data:', error);
+        toast.error('Failed to load payout information');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPayoutData();
+  }, []);
+
+  const pendingPayouts = jobs.filter(job => job.status === 'COMPLETED' && job.totalAmount);
+  const completedPayouts = jobs.filter(job => job.status === 'PAID' && job.totalAmount);
+  
+  const totalPending = pendingPayouts.reduce((sum, job) => sum + job.totalAmount, 0);
+  const totalPaid = completedPayouts.reduce((sum, job) => sum + job.totalAmount, 0);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[1, 2].map(i => (
+              <div key={i} className="h-32 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Payout Summary */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-6">Payout Summary</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <Clock className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Pending Payouts</p>
+                <p className="text-2xl font-bold text-orange-900">${totalPending.toLocaleString()}</p>
+                <p className="text-xs text-orange-700">{pendingPayouts.length} completed jobs</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <CheckCircle className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Total Paid Out</p>
+                <p className="text-2xl font-bold text-orange-900">${totalPaid.toLocaleString()}</p>
+                <p className="text-xs text-orange-700">{completedPayouts.length} paid jobs</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pending Payouts */}
+      {pendingPayouts.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h4 className="text-lg font-medium text-gray-900 mb-4">Pending Payouts</h4>
+          <div className="space-y-4">
+            {pendingPayouts.map((job) => (
+              <div key={job._id} className="border border-orange-200 rounded-lg p-4 bg-orange-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h5 className="font-medium text-gray-900">Job #{job.jobNumber}</h5>
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                        AWAITING PAYOUT
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-1">{job.description}</p>
+                    <p className="text-xs text-gray-500">
+                      Completed: {new Date(job.completedAt || job.updatedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-orange-700">
+                      ${job.totalAmount.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-orange-600">Processing...</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Payout Information */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h4 className="text-lg font-medium text-gray-900 mb-4">Payout Information</h4>
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <Info className="h-5 w-5 text-orange-600 mt-0.5 mr-3" />
+            <div>
+              <h5 className="font-medium text-orange-900 mb-2">How Payouts Work</h5>
+              <ul className="text-sm text-orange-800 space-y-1">
+                <li>• Payouts are processed weekly on Fridays</li>
+                <li>• Jobs must be marked as "COMPLETED" to be eligible for payout</li>
+                <li>• Funds typically arrive 3-5 business days after processing</li>
+                <li>• Platform fee of 10% is deducted from each payout</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Tax Reports Component
+const TaxReports = () => {
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    const loadTaxData = async () => {
+      try {
+        setLoading(true);
+        const response = await api.vendor.getJobs();
+        const allJobs = response.data || [];
+        setJobs(allJobs.filter(job => job.totalAmount && job.status === 'PAID'));
+      } catch (error) {
+        console.error('Error loading tax data:', error);
+        toast.error('Failed to load tax information');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTaxData();
+  }, []);
+
+  // Filter jobs by selected year
+  const yearlyJobs = jobs.filter(job => {
+    const jobYear = new Date(job.completedAt || job.updatedAt).getFullYear();
+    return jobYear === selectedYear;
+  });
+
+  const totalIncome = yearlyJobs.reduce((sum, job) => sum + job.totalAmount, 0);
+  const totalJobs = yearlyJobs.length;
+
+  // Group by month
+  const monthlyData = Array.from({length: 12}, (_, i) => {
+    const month = i + 1;
+    const monthJobs = yearlyJobs.filter(job => {
+      const jobMonth = new Date(job.completedAt || job.updatedAt).getMonth() + 1;
+      return jobMonth === month;
+    });
+    const monthIncome = monthJobs.reduce((sum, job) => sum + job.totalAmount, 0);
+    return {
+      month: new Date(selectedYear, i).toLocaleString('default', { month: 'short' }),
+      jobs: monthJobs.length,
+      income: monthIncome
+    };
+  });
+
+  const availableYears = [...new Set(jobs.map(job => 
+    new Date(job.completedAt || job.updatedAt).getFullYear()
+  ))].sort((a, b) => b - a);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-32 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Tax Summary */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-medium text-gray-900">Tax Reports</h3>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+          >
+            {availableYears.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <FileText className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Total Income ({selectedYear})</p>
+                <p className="text-2xl font-bold text-orange-900">${totalIncome.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <Briefcase className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Jobs Completed</p>
+                <p className="text-2xl font-bold text-orange-900">{totalJobs}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-6 rounded-lg border border-orange-200">
+            <div className="flex items-center">
+              <Calculator className="h-8 w-8 text-orange-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-orange-600">Avg Monthly Income</p>
+                <p className="text-2xl font-bold text-orange-900">
+                  ${(totalIncome / 12).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly Breakdown */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Month
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Jobs Completed
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Income
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {monthlyData.map((data, index) => (
+                <tr key={index}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {data.month} {selectedYear}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {data.jobs}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                    ${data.income.toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Tax Information */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h4 className="text-lg font-medium text-gray-900 mb-4">Tax Information</h4>
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5 mr-3" />
+            <div>
+              <h5 className="font-medium text-orange-900 mb-2">Important Tax Notes</h5>
+              <ul className="text-sm text-orange-800 space-y-1">
+                <li>• This report shows your total income from completed jobs</li>
+                <li>• You are responsible for reporting this income on your tax returns</li>
+                <li>• Consider consulting with a tax professional for guidance</li>
+                <li>• Keep records of business expenses for potential deductions</li>
+                <li>• 1099 forms will be provided for earnings over $600 annually</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
