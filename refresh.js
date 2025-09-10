@@ -1,77 +1,57 @@
-const express = require('express');
-const cookieParser = require('cookie-parser');
-const { signAccessToken, issueRefreshToken, rotateRefreshToken, revokeRefreshToken, findTokenOwner } = require('../utils/refresh');
-const User = require('../models/User');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const RefreshToken = require('../models/RefreshToken');
 
-const router = express.Router();
-const COOKIE_NAME = process.env.REFRESH_TOKEN_COOKIE_NAME || 'rt';
+const ACCESS_TTL = process.env.ACCESS_TOKEN_TTL || '15m';
+const REFRESH_TTL_DAYS = parseInt((process.env.REFRESH_TOKEN_TTL || '30d').replace('d','')) || 30;
 
-function setRefreshCookie(res, token) {
-  const isProd = process.env.NODE_ENV === 'production';
-  res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? 'strict' : 'lax',
-    path: '/api/auth',
-    maxAge: 1000 * 60 * 60 * 24 * 30
-  });
+function signAccessToken(payload) {
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: ACCESS_TTL });
 }
 
-// Optional: replace your existing login handler with this one to also issue refresh tokens
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
-    const ok = await user.comparePassword(password);
-    if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+function generateRefreshTokenValue() {
+  return crypto.randomBytes(48).toString('hex');
+}
 
-    const accessToken = signAccessToken({ userId: user.id, role: user.role });
-    const refreshToken = await issueRefreshToken(user.id, {
-      userAgent: req.get('user-agent'),
-      ip: req.ip
-    });
-    setRefreshCookie(res, refreshToken);
-    res.json({ accessToken, user });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Login failed' });
+async function issueRefreshToken(userId, meta = {}) {
+  const raw = generateRefreshTokenValue();
+  const tokenHash = await bcrypt.hash(raw, 12);
+  const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * 24*60*60*1000);
+  await RefreshToken.create({ user: userId, tokenHash, expiresAt, ...meta });
+  return raw;
+}
+
+async function rotateRefreshToken(userId, oldRawToken, meta = {}) {
+  await revokeRefreshToken(oldRawToken);
+  return issueRefreshToken(userId, meta);
+}
+
+async function revokeRefreshToken(raw) {
+  const tokens = await RefreshToken.find().lean();
+  for (const t of tokens) {
+    const ok = await bcrypt.compare(raw, t.tokenHash);
+    if (ok) {
+      await RefreshToken.updateOne({ _id: t._id }, { $set: { revokedAt: new Date() } });
+      return true;
+    }
   }
-});
+  return false;
+}
 
-router.post('/refresh', async (req, res) => {
-  try {
-    const token = req.cookies?.[COOKIE_NAME];
-    if (!token) return res.status(401).json({ message: 'No refresh token' });
-    const userId = await findTokenOwner(token);
-    if (!userId) return res.status(401).json({ message: 'Invalid refresh token' });
-
-    const user = await User.findById(userId);
-    const accessToken = signAccessToken({ userId: user.id, role: user.role });
-
-    // Rotation
-    const newRefresh = await rotateRefreshToken(user.id, token, {
-      userAgent: req.get('user-agent'),
-      ip: req.ip
-    });
-    setRefreshCookie(res, newRefresh);
-    res.json({ accessToken });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Refresh failed' });
+async function findTokenOwner(raw) {
+  const tokens = await RefreshToken.find({ revokedAt: { $exists: false } }).lean();
+  for (const t of tokens) {
+    const ok = await bcrypt.compare(raw, t.tokenHash);
+    if (ok && t.expiresAt > new Date()) return t.user;
   }
-});
+  return null;
+}
 
-router.post('/logout', async (req, res) => {
-  try {
-    const token = req.cookies?.[COOKIE_NAME];
-    if (token) await revokeRefreshToken(token);
-    res.clearCookie(COOKIE_NAME, { path: '/api/auth' });
-    res.json({ message: 'Logged out' });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ message: 'Logout failed' });
-  }
-});
-
-module.exports = router;
+module.exports = {
+  signAccessToken,
+  issueRefreshToken,
+  rotateRefreshToken,
+  revokeRefreshToken,
+  findTokenOwner
+};
