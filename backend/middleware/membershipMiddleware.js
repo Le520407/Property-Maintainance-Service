@@ -10,7 +10,8 @@ const checkServiceEligibility = async (req, res, next) => {
       return res.status(403).json({
         success: false,
         message: eligibility.reason,
-        membership: eligibility.membership
+        membership: eligibility.membership,
+        accessStatus: eligibility.membership?.getAccessStatus?.()
       });
     }
 
