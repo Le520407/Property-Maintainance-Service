@@ -425,7 +425,7 @@ const Header = () => {
                     {user.role !== 'vendor' && user.role !== 'customer' && (
                       <>
                         <Link
-                          to="/dashboard?section=account&tab=profile"
+                          to="/profile"
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => {
                             console.log('Profile link clicked for role:', user.role);

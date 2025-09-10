@@ -101,7 +101,8 @@ export const AuthProvider = ({ children }) => {
         password: userData.password,
         role: 'customer',
         address: userData.address,
-        country: 'Malaysia'
+        country: 'Malaysia',
+        referralCode: userData.referralCode
       });
       
       // 保存token
