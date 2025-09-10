@@ -10,78 +10,317 @@ import {
   Star,
   Plus,
   FileText,
-  Settings
+  Settings,
+  X,
+  Eye,
+  Package,
+  ArrowRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import MembershipCard from '../../components/customer/MembershipCard';
+import { toast } from 'react-hot-toast';
+
+// Order Details Modal Component
+const OrderDetailsModal = ({ order, onClose, onOrderUpdate }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleCancelOrder = async () => {
+    try {
+      setLoading(true);
+      await api.jobs.cancelJob(order._id, 'Cancelled by customer');
+      toast.success('Order cancelled successfully');
+      onOrderUpdate(); // Refresh parent data
+      onClose();
+    } catch (error) {
+      console.error('Failed to cancel order:', error);
+      toast.error('Failed to cancel order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'COMPLETED': return 'bg-green-100 text-green-800 border-green-200';
+      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'ASSIGNED': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'CANCELLED': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto"
+      >
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Order Details</h2>
+            <p className="text-sm text-gray-600">Job #{order.jobNumber || order._id}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Status and Key Info */}
+          <div className="flex justify-between items-start">
+            <div>
+              <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(order.status)}`}>
+                {order.status.replace('_', ' ')}
+              </span>
+              <h3 className="text-lg font-semibold mt-2">{order.title}</h3>
+              <p className="text-gray-600">{order.description}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-gray-900">${order.totalAmount?.toFixed(2) || '0.00'}</p>
+              <p className="text-sm text-gray-600">Total Amount</p>
+            </div>
+          </div>
+
+          {/* Service Details */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-semibold mb-3">Service Information</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600">Category</p>
+                <p className="font-medium capitalize">{order.category || 'General'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Vendor</p>
+                <p className="font-medium">{order.vendor?.name || 'Not assigned'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Priority</p>
+                <p className="font-medium">{order.priority || 'Medium'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Emergency Service</p>
+                <p className="font-medium">{order.isEmergency ? 'Yes' : 'No'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Work Progress */}
+          {order.workProgress && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold mb-3">Work Progress</h4>
+              {order.workProgress.percentage > 0 && (
+                <div className="mb-3">
+                  <div className="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>Progress</span>
+                    <span>{order.workProgress.percentage}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${
+                        order.status === 'COMPLETED' ? 'bg-green-600' : 'bg-blue-600'
+                      }`}
+                      style={{ width: `${order.workProgress.percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+              {order.workProgress.workNotes && (
+                <div>
+                  <p className="text-sm text-gray-600">Latest Update</p>
+                  <p className="text-sm">{order.workProgress.workNotes}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Completion Details */}
+          {order.completionDetails && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h4 className="font-semibold mb-3">Work Completed</h4>
+              <p className="text-sm">{order.completionDetails}</p>
+            </div>
+          )}
+
+          {/* Order Timeline */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-semibold mb-3">Order Timeline</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Created:</span>
+                <span>{formatDate(order.createdAt)}</span>
+              </div>
+              {order.updatedAt !== order.createdAt && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Last Updated:</span>
+                  <span>{formatDate(order.updatedAt)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Membership Discount */}
+          {order.membershipDiscount > 0 && (
+            <div className="bg-green-50 rounded-lg p-4">
+              <h4 className="font-semibold mb-3 text-green-800">Membership Benefits</h4>
+              <div className="flex justify-between">
+                <span className="text-green-700">Membership Discount:</span>
+                <span className="font-medium text-green-800">-${order.membershipDiscount.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-between">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            Close
+          </button>
+          
+          <div className="space-x-3">
+            {['PENDING', 'ASSIGNED'].includes(order.status) && (
+              <button
+                onClick={handleCancelOrder}
+                disabled={loading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {loading ? 'Cancelling...' : 'Cancel Order'}
+              </button>
+            )}
+            
+            {order.status === 'COMPLETED' && (
+              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Leave Review
+              </button>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 const CustomerDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
-    recentJobs: [],
+    recentOrders: [],
     stats: {
-      totalJobs: 0,
-      activeJobs: 0,
-      completedJobs: 0,
+      totalOrders: 0,
+      pendingOrders: 0,
+      completedOrders: 0,
       totalSpent: 0
     }
   });
   const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleViewOrder = (job) => {
+    setSelectedOrder(job);
+    setShowOrderDetails(true);
+  };
+
+  const handleOrderUpdate = () => {
+    fetchDashboardData(); // Refresh data
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    // Check if order is already cancelled to prevent duplicate actions
+    const orderToCancel = dashboardData.recentOrders.find(order => order._id === orderId);
+    if (orderToCancel?.status === 'CANCELLED') {
+      toast('Order is already cancelled');
+      return;
+    }
+    
+    // Update order status to cancelled
+    setDashboardData(prevData => {
+      const updatedOrders = prevData.recentOrders.map(order => 
+        order._id === orderId 
+          ? { ...order, status: 'CANCELLED' }
+          : order
+      );
+      
+      // Recalculate all stats from the updated orders
+      const newStats = {
+        totalOrders: updatedOrders.length,
+        pendingOrders: updatedOrders.filter(order => ['PENDING', 'ASSIGNED', 'IN_PROGRESS'].includes(order.status)).length,
+        completedOrders: updatedOrders.filter(order => order.status === 'COMPLETED').length,
+        // Only count spent money for completed orders (cancelled orders get refunded)
+        totalSpent: updatedOrders
+          .filter(order => order.status === 'COMPLETED')
+          .reduce((sum, order) => sum + (order.totalAmount || 0), 0)
+      };
+      
+      return {
+        ...prevData,
+        recentOrders: updatedOrders,
+        stats: newStats
+      };
+    });
+    
+    toast.success('Order cancelled successfully!', { duration: 2000 });
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
   const fetchDashboardData = async () => {
     try {
-      // Fetch dashboard data - replace with your actual API endpoints
+      // Fetch real dashboard data from API
       const [jobsResponse, statsResponse] = await Promise.all([
         api.get('/jobs/my-jobs?limit=5'),
         api.get('/jobs/my-stats')
       ]);
 
       setDashboardData({
-        recentJobs: jobsResponse.data.jobs || [],
-        stats: statsResponse.data.stats || dashboardData.stats
+        recentOrders: jobsResponse.data.jobs || [],
+        stats: statsResponse.data.stats || {
+          totalOrders: 0,
+          pendingOrders: 0,
+          completedOrders: 0,
+          totalSpent: 0
+        }
       });
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
-      // Demo data for development
+      // Set empty data if API fails - no demo data
       setDashboardData({
-        recentJobs: [
-          {
-            _id: '1',
-            title: 'Fix Leaking Faucet',
-            status: 'in_progress',
-            createdAt: '2024-01-15T10:30:00Z',
-            vendor: { name: 'John Plumber' },
-            totalAmount: 85,
-            membershipDiscount: 8.5,
-            workProgress: {
-              percentage: 75,
-              workNotes: 'Materials ordered and work started. Replacing main faucet assembly and checking for additional leaks.'
-            }
-          },
-          {
-            _id: '2',
-            title: 'Electrical Outlet Repair',
-            status: 'completed',
-            createdAt: '2024-01-10T14:20:00Z',
-            vendor: { name: 'Mike Electric' },
-            totalAmount: 120,
-            membershipDiscount: 12,
-            workProgress: {
-              percentage: 100
-            },
-            completionDetails: 'Successfully replaced faulty outlet and tested all connections. Kitchen electrical system now fully operational with safety inspection passed.'
-          }
-        ],
+        recentOrders: [],
         stats: {
-          totalJobs: 8,
-          activeJobs: 2,
-          completedJobs: 6,
-          totalSpent: 650
+          totalOrders: 0,
+          pendingOrders: 0,
+          completedOrders: 0,
+          totalSpent: 0
         }
       });
     } finally {
@@ -166,8 +405,8 @@ const CustomerDashboard = () => {
                   <Calendar className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Jobs</p>
-                  <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.totalJobs}</p>
+                  <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                  <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.totalOrders}</p>
                 </div>
               </div>
             </motion.div>
@@ -183,8 +422,8 @@ const CustomerDashboard = () => {
                   <Clock className="h-6 w-6 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active Jobs</p>
-                  <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.activeJobs}</p>
+                  <p className="text-sm font-medium text-gray-600">Pending Orders</p>
+                  <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.pendingOrders}</p>
                 </div>
               </div>
             </motion.div>
@@ -201,7 +440,7 @@ const CustomerDashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.completedJobs}</p>
+                  <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.completedOrders}</p>
                 </div>
               </div>
             </motion.div>
@@ -248,10 +487,9 @@ const CustomerDashboard = () => {
                 dashboardData.recentJobs.map((job) => {
                   const StatusIcon = getStatusIcon(job.status);
                   return (
-                    <Link
+                    <div
                       key={job._id}
-                      to={`/jobs/${job._id}`}
-                      className="block p-6 hover:bg-gray-50 transition-colors"
+                      className="block p-6 hover:bg-gray-50 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
@@ -318,9 +556,18 @@ const CustomerDashboard = () => {
                               </p>
                             </div>
                           </div>
+                          
+                          {/* View Details Button */}
+                          <button
+                            onClick={() => handleViewOrder(job)}
+                            className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs hover:bg-blue-700 transition-colors font-medium flex items-center"
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            View
+                          </button>
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   );
                 })
               ) : (
@@ -444,6 +691,15 @@ const CustomerDashboard = () => {
           </motion.div>
         </div>
       </div>
+      
+      {/* Order Details Modal */}
+      {showOrderDetails && selectedOrder && (
+        <OrderDetailsModal 
+          order={selectedOrder} 
+          onClose={() => setShowOrderDetails(false)}
+          onOrderUpdate={handleOrderUpdate}
+        />
+      )}
     </div>
   );
 };
