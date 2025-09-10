@@ -1,68 +1,120 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { Route, Routes } from 'react-router-dom';
 
-// Layout Components
-import Header from './components/layout/Header.jsx';
-import Footer from './components/layout/Footer.jsx';
-
-// Page Components
-import HomePage from './pages/HomePage.jsx';
-import ServicesPage from './pages/ServicesPage.jsx';
-import ProductsPage from './pages/ProductsPage.jsx';
 import AboutPage from './pages/AboutPage.jsx';
-import ContactPage from './pages/ContactPage.jsx';
-import LoginPage from './pages/auth/LoginPage.jsx';
-import CustomerRegisterPage from './pages/auth/CustomerRegisterPage.jsx';
-import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
+import AgentAgreementPage from './pages/legal/AgentAgreementPage.jsx';
 import AgentRegisterPage from './pages/auth/AgentRegisterPage.jsx';
-import RegisterSelectionPage from './pages/auth/RegisterSelectionPage.jsx';
-import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
-import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
-import BookingPage from './pages/BookingPage.jsx';
-import ProductDetailPage from './pages/ProductDetailPage.jsx';
-import ServiceDetailPage from './pages/ServiceDetailPage.jsx';
-import CartPage from './pages/CartPage.jsx';
-import CheckoutPage from './pages/CheckoutPage.jsx';
-import OrdersPage from './pages/OrdersPage.jsx';
-import OrderSuccessPage from './pages/OrderSuccessPage.jsx';
-import ReferralPage from './pages/ReferralPage.jsx';
-import VendorDashboardPage from './pages/vendor/VendorDashboardPage.jsx';
-import SubscriptionPage from './pages/SubscriptionPage.jsx';
-import BlogPage from './pages/BlogPage.jsx';
-import BlogDetailPage from './pages/BlogDetailPage.jsx';
-import FAQPage from './pages/FAQPage.jsx';
-import PricingPage from './pages/PricingPage.jsx';
+import { AnimatePresence } from 'framer-motion';
 import AnnouncementManagement from './pages/admin/AnnouncementManagement.jsx';
 import AnnouncementsPage from './pages/AnnouncementsPage.jsx';
-import FAQManagement from './pages/admin/FAQManagement.jsx';
-import UserManagement from './pages/admin/UserManagement.jsx';
-import OrderManagement from './pages/admin/OrderManagement.jsx';
-import HomepageManagement from './pages/admin/HomepageManagement.jsx';
-import OrderSubmissionPage from './pages/OrderSubmissionPage.jsx';
-import UnifiedMessagesPage from './pages/UnifiedMessagesPage.jsx';
-import PaymentPage from './pages/PaymentPage.jsx';
-import NotFoundPage from './pages/NotFoundPage.jsx';
-import JobDetailsPage from './pages/jobs/JobDetailsPage.jsx';
 import ApiTest from './components/ApiTest.jsx';
-import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
-
-// Customer Components
 import BillingHistoryPage from './pages/customer/BillingHistoryPage.jsx';
+import BlogDetailPage from './pages/BlogDetailPage.jsx';
+import BlogPage from './pages/BlogPage.jsx';
+import BookingPage from './pages/BookingPage.jsx';
+import CartPage from './pages/CartPage.jsx';
+import { CartProvider } from './contexts/CartContext';
+import CheckoutPage from './pages/CheckoutPage.jsx';
+import ContactPage from './pages/ContactPage.jsx';
 import CustomerDashboard from './pages/customer/CustomerDashboard.jsx';
-
-// Membership Components
-import MembershipPlans from './components/customer/MembershipPlans.jsx';
+import CustomerRegisterPage from './pages/auth/CustomerRegisterPage.jsx';
+import FAQManagement from './pages/admin/FAQManagement.jsx';
+import FAQPage from './pages/FAQPage.jsx';
+import Footer from './components/layout/Footer.jsx';
+import Header from './components/layout/Header.jsx';
+import HomePage from './pages/HomePage.jsx';
+import HomepageManagement from './pages/admin/HomepageManagement.jsx';
+import JobDetailsPage from './pages/jobs/JobDetailsPage.jsx';
+import { LanguageProvider } from './contexts/LanguageContext.js';
+import LoginPage from './pages/auth/LoginPage.jsx';
 import MembershipDashboard from './components/customer/MembershipDashboard.jsx';
-import MembershipSuccess from './pages/MembershipSuccess.jsx';
+import MembershipPlans from './components/customer/MembershipPlans.jsx';
+import MembershipSuccessSimple from './pages/MembershipSuccessSimple.jsx';
+import { MessagesProvider } from './contexts/MessagesContext';
+import NotFoundPage from './pages/NotFoundPage.jsx';
+import OrderManagement from './pages/admin/OrderManagement.jsx';
+import OrderSubmissionPage from './pages/OrderSubmissionPage.jsx';
+import OrderSuccessPage from './pages/OrderSuccessPage.jsx';
+import OrdersPage from './pages/OrdersPage.jsx';
+import PaymentPage from './pages/PaymentPage.jsx';
+import PricingPage from './pages/PricingPage.jsx';
+import PrivacyPolicyPage from './pages/legal/PrivacyPolicyPage.jsx';
+import ProductDetailPage from './pages/ProductDetailPage.jsx';
+import ProductsPage from './pages/ProductsPage.jsx';
+import ProfilePage from './pages/ProfilePage.jsx';
+import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
+import React from 'react';
+import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
+import ReferralPage from './pages/ReferralPage.jsx';
+import RegisterSelectionPage from './pages/auth/RegisterSelectionPage.jsx';
+import ServiceDetailPage from './pages/ServiceDetailPage.jsx';
+import ServicesPage from './pages/ServicesPage.jsx';
+import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
+import SubscriptionManagementPage from './pages/SubscriptionManagementPage.jsx';
+import SubscriptionPage from './pages/SubscriptionPage.jsx';
+import TermsPage from './pages/legal/TermsPage.jsx';
+import UnifiedMessagesPage from './pages/UnifiedMessagesPage.jsx';
+import UserManagement from './pages/admin/UserManagement.jsx';
+import VendorAgreementPage from './pages/legal/VendorAgreementPage.jsx';
+import VendorDashboardPage from './pages/vendor/VendorDashboardPage.jsx';
 import VendorMembership from './components/vendor/VendorMembership.jsx';
 import VendorMembershipSuccessPage from './pages/VendorMembershipSuccessPage.jsx';
+import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
+
+// Auth Pages
+
+
+
+// Legal Pages
+
+
+
+
+
+
+
+
+
+
+// Customer Components
+
+
+
+
+// Membership Components
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Context
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { CartProvider } from './contexts/CartContext';
-import { LanguageProvider } from './contexts/LanguageContext';
-import { MessagesProvider } from './contexts/MessagesContext';
+
+
+
+
 
 function App() {
   return (
@@ -147,6 +199,13 @@ function App() {
                       <Route path="/pricing" element={<PricingPage />} />
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/contact" element={<ContactPage />} />
+                      
+                      {/* Legal Pages */}
+                      <Route path="/terms" element={<TermsPage />} />
+                      <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                      <Route path="/vendor-agreement" element={<VendorAgreementPage />} />
+                      <Route path="/agent-agreement" element={<AgentAgreementPage />} />
+                      
                       <Route path="/login" element={<LoginPage />} />
                       <Route path="/register-selection" element={<RegisterSelectionPage />} />
                       <Route path="/customer-register" element={<CustomerRegisterPage />} />
@@ -187,6 +246,11 @@ function App() {
                           <OrderSuccessPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/profile" element={
+                        <ProtectedRoute>
+                          <ProfilePage />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/referral" element={<ReferralPage />} />
                       <Route path="/referral-dashboard" element={
                         <ProtectedRoute>
@@ -210,7 +274,7 @@ function App() {
                           <MembershipDashboard />
                         </ProtectedRoute>
                       } />
-                      <Route path="/membership/success" element={<MembershipSuccess />} />
+                      <Route path="/membership/success" element={<MembershipSuccessSimple />} />
                       
                       {/* Vendor Membership Routes */}
                       <Route path="/vendor/membership" element={

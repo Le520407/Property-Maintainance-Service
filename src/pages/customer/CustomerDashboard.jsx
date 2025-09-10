@@ -42,15 +42,15 @@ const CustomerDashboard = () => {
       toast('Order is already cancelled');
       return;
     }
-    
+
     // Update order status to cancelled
     setDashboardData(prevData => {
-      const updatedOrders = prevData.recentOrders.map(order => 
-        order._id === orderId 
+      const updatedOrders = prevData.recentOrders.map(order =>
+        order._id === orderId
           ? { ...order, status: 'CANCELLED' }
           : order
       );
-      
+
       // Recalculate all stats from the updated orders
       const newStats = {
         totalOrders: updatedOrders.length,
@@ -61,14 +61,14 @@ const CustomerDashboard = () => {
           .filter(order => order.status === 'COMPLETED')
           .reduce((sum, order) => sum + (order.totalAmount || 0), 0)
       };
-      
+
       return {
         ...prevData,
         recentOrders: updatedOrders,
         stats: newStats
       };
     });
-    
+
     toast.success('Order cancelled successfully!', { duration: 2000 });
   };
 

@@ -473,6 +473,15 @@ jobSchema.methods.assignToVendor = function(vendorId) {
   this.vendorId = vendorId;
   this.status = 'ASSIGNED';
   
+  // Copy the requested time slot to assigned time slot to preserve customer's preference
+  if (this.requestedTimeSlot && this.requestedTimeSlot.date) {
+    this.assignedTimeSlot = {
+      date: this.requestedTimeSlot.date,
+      startTime: this.requestedTimeSlot.startTime || '09:00',
+      endTime: this.requestedTimeSlot.endTime || '17:00'
+    };
+  }
+  
   this.statusHistory.push({
     status: 'ASSIGNED',
     timestamp: new Date(),
@@ -489,14 +498,10 @@ jobSchema.methods.assignToVendor = function(vendorId) {
 };
 
 jobSchema.methods.vendorResponse = function(vendorId, response, reason) {
-  console.log('vendorResponse method called - vendorId:', vendorId, 'response:', response);
-  
   const attempt = this.assignmentAttempts.find(
     attempt => attempt.vendorId.toString() === vendorId.toString() && 
                attempt.response === 'PENDING'
   );
-  
-  console.log('Assignment attempt found:', !!attempt);
   
   if (attempt) {
     attempt.response = response;
@@ -518,9 +523,6 @@ jobSchema.methods.vendorResponse = function(vendorId, response, reason) {
       notes: response === 'ACCEPTED' ? 'Job accepted by vendor' : `Job rejected: ${reason || 'No reason provided'}`
     });
     
-    console.log('Job status updated to:', this.status);
-  } else {
-    console.log('No matching assignment attempt found');
   }
   
   return this.save();

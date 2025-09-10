@@ -9,8 +9,6 @@ const referralService = require('../services/referralService');
 // Generate or get user's referral code
 router.post('/generate-code', auth, async (req, res) => {
   try {
-    console.log('Generate referral code - req.user:', req.user);
-    console.log('req.user._id:', req.user._id);
     let referral = await Referral.findOne({ referrer: req.user._id });
     
     if (!referral) {

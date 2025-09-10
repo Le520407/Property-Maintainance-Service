@@ -5,7 +5,6 @@ import {
   CheckCircle,
   Clock,
   CreditCard,
-  Crown,
   Home,
   RefreshCw,
   Shield,
@@ -14,7 +13,7 @@ import {
   XCircle,
   Zap
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 
 import TempPaymentMethodModal from './TempPaymentMethodModal';
 import { api } from '../../services/api';
@@ -38,7 +37,7 @@ const MembershipPlans = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchMembershipData = async () => {
+  const fetchMembershipData = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -63,11 +62,19 @@ const MembershipPlans = () => {
       setCurrentMembership(membershipResponse.membership);
     } catch (error) {
       console.error('Error fetching membership data:', error);
-      toast.error('Failed to load membership plans');
+      if (error.message?.includes('401') || error.message?.includes('Access token required')) {
+        toast.error('Please log in to view membership plans');
+      } else {
+        toast.error('Failed to load membership plans');
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchMembershipData();
+  }, [user, fetchMembershipData]);
 
   // Manual refresh function
   const handleRefresh = async () => {
@@ -93,6 +100,17 @@ const MembershipPlans = () => {
   };
 
   const handleSubscribe = async (tier) => {
+    // Check authentication before proceeding
+    if (!user) {
+      toast.error('Please log in to subscribe to a membership plan');
+      return;
+    }
+
+    if (user.role !== 'customer') {
+      toast.error('Only customers can subscribe to membership plans');
+      return;
+    }
+
     // Check if user is already subscribed to this tier
     if (currentMembership?.tier._id === tier._id) {
       toast('You are already subscribed to this plan');
@@ -283,6 +301,29 @@ const MembershipPlans = () => {
   const formatPrice = (price) => {
     return billingCycle === 'YEARLY' ? price * 10 : price; // 2 months free for yearly
   };
+
+  // Show login prompt if user is not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="max-w-md mx-auto text-center p-8 bg-white rounded-2xl shadow-xl">
+          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Shield className="h-8 w-8 text-orange-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h2>
+          <p className="text-gray-600 mb-6">
+            Please log in to view and subscribe to membership plans.
+          </p>
+          <button
+            onClick={() => window.location.href = '/login'}
+            className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-orange-700 transition-colors"
+          >
+            Log In
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

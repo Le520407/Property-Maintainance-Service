@@ -1,30 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import {
+  ArrowDown,
+  ArrowUp,
+  BarChart3,
+  Calendar,
+  Copy,
   Edit3,
-  Plus,
-  Trash2,
   Eye,
   EyeOff,
-  Save,
-  X,
-  Upload,
   Image as ImageIcon,
-  Type,
   Layout,
   Monitor,
-  Smartphone,
   Palette,
-  Settings,
+  Plus,
   RotateCcw,
-  Copy,
-  ArrowUp,
-  ArrowDown,
-  Calendar,
+  Save,
+  Settings,
+  Smartphone,
+  Trash2,
+  Type,
+  Upload,
   User,
-  BarChart3
+  X
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+
 import { api } from '../../services/api';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 const HomepageManagement = () => {
@@ -397,11 +398,11 @@ const HomepageManagement = () => {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white"
+            className="bg-gradient-to-br from-orange-400 to-orange-500 rounded-xl p-6 text-white"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm">Active Banners</p>
+                <p className="text-orange-100 text-sm">Active Banners</p>
                 <h3 className="text-3xl font-bold">{banners.filter(b => b.isActive).length}</h3>
               </div>
               <div className="bg-white bg-opacity-20 p-3 rounded-lg">
@@ -414,11 +415,11 @@ const HomepageManagement = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white"
+            className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm">Featured Services</p>
+                <p className="text-orange-100 text-sm">Featured Services</p>
                 <h3 className="text-3xl font-bold">{services.filter(s => s.isActive).length}</h3>
               </div>
               <div className="bg-white bg-opacity-20 p-3 rounded-lg">
@@ -431,11 +432,11 @@ const HomepageManagement = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white"
+            className="bg-gradient-to-br from-orange-600 to-red-600 rounded-xl p-6 text-white"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm">Statistics</p>
+                <p className="text-orange-100 text-sm">Statistics</p>
                 <h3 className="text-3xl font-bold">{stats.filter(s => s.isActive).length}</h3>
               </div>
               <div className="bg-white bg-opacity-20 p-3 rounded-lg">
@@ -475,21 +476,21 @@ const HomepageManagement = () => {
             </button>
             <button
               onClick={() => setActiveTab('services')}
-              className="bg-gradient-to-r from-blue-400 to-blue-600 text-white p-4 rounded-xl hover:from-blue-500 hover:to-blue-700 transition-all duration-200 transform hover:scale-105"
+              className="bg-gradient-to-r from-orange-400 to-orange-600 text-white p-4 rounded-xl hover:from-orange-500 hover:to-orange-700 transition-all duration-200 transform hover:scale-105"
             >
               <Settings className="w-6 h-6 mx-auto mb-2" />
               <span className="text-sm font-medium">Manage Services</span>
             </button>
             <button
               onClick={() => setActiveTab('stats')}
-              className="bg-gradient-to-r from-purple-400 to-purple-600 text-white p-4 rounded-xl hover:from-purple-500 hover:to-purple-700 transition-all duration-200 transform hover:scale-105"
+              className="bg-gradient-to-r from-orange-400 to-orange-600 text-white p-4 rounded-xl hover:from-orange-500 hover:to-orange-700 transition-all duration-200 transform hover:scale-105"
             >
               <BarChart3 className="w-6 h-6 mx-auto mb-2" />
               <span className="text-sm font-medium">Update Stats</span>
             </button>
             <button
               onClick={() => window.open('/', '_blank')}
-              className="bg-gradient-to-r from-green-400 to-green-600 text-white p-4 rounded-xl hover:from-green-500 hover:to-green-700 transition-all duration-200 transform hover:scale-105"
+              className="bg-gradient-to-r from-orange-400 to-orange-600 text-white p-4 rounded-xl hover:from-orange-500 hover:to-orange-700 transition-all duration-200 transform hover:scale-105"
             >
               <Eye className="w-6 h-6 mx-auto mb-2" />
               <span className="text-sm font-medium">Preview Site</span>

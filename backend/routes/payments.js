@@ -313,7 +313,8 @@ router.post('/webhook/:gateway', async (req, res) => {
         await PaymentService.handlePayPalWebhook(webhookData);
         break;
       default:
-        console.log(`Unhandled webhook from ${gateway}`);
+        // Unhandled webhook
+        break;
     }
 
     res.status(200).json({ received: true });

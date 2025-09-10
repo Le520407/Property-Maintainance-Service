@@ -331,6 +331,8 @@ router.patch('/:id/accept-quote', auth, async (req, res) => {
     await job.save();
     await job.populate(['customerId', 'vendorId']);
 
+    console.log(`✅ Quote accepted for job ${job.jobNumber}`);
+
     res.json({
       message: 'Quote accepted successfully',
       job: job
@@ -339,57 +341,6 @@ router.patch('/:id/accept-quote', auth, async (req, res) => {
   } catch (error) {
     console.error('Error accepting quote:', error);
     res.status(500).json({ message: 'Failed to accept quote' });
-  }
-});
-
-// Respond to quote (Customer only - Accept or Reject)
-router.patch('/:id/quote-response', auth, async (req, res) => {
-  try {
-    const { response } = req.body; // 'QUOTE_ACCEPTED' or 'QUOTE_REJECTED'
-    
-    if (req.user.role !== 'customer') {
-      return res.status(403).json({ message: 'Only customers can respond to quotes' });
-    }
-
-    const job = await Job.findById(req.params.id);
-    if (!job) {
-      return res.status(404).json({ message: 'Job not found' });
-    }
-
-    if (job.customerId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'You can only respond to quotes for your own jobs' });
-    }
-
-    if (job.status !== 'QUOTE_SENT') {
-      return res.status(400).json({ message: 'No quote available to respond to' });
-    }
-
-    if (!['QUOTE_ACCEPTED', 'QUOTE_REJECTED'].includes(response)) {
-      return res.status(400).json({ message: 'Invalid response. Must be QUOTE_ACCEPTED or QUOTE_REJECTED' });
-    }
-
-    // Update job status
-    job.status = response;
-    job.statusHistory.push({
-      status: response,
-      timestamp: new Date(),
-      updatedBy: req.user._id,
-      notes: response === 'QUOTE_ACCEPTED' ? 'Quote accepted by customer' : 'Quote rejected by customer'
-    });
-
-    await job.save();
-    await job.populate(['customerId', 'vendorId']);
-
-    console.log(`${response === 'QUOTE_ACCEPTED' ? '✅' : '❌'} Quote ${response.toLowerCase().replace('quote_', '')} for job ${job.jobNumber}`);
-
-    res.json({
-      message: `Quote ${response.toLowerCase().replace('quote_', '')} successfully`,
-      job: job
-    });
-
-  } catch (error) {
-    console.error('Error responding to quote:', error);
-    res.status(500).json({ message: 'Failed to respond to quote' });
   }
 });
 
@@ -435,6 +386,8 @@ router.patch('/:id/cancel', auth, async (req, res) => {
     await job.save();
     await job.populate(['customerId', 'vendorId']);
 
+    console.log(`❌ Order ${job.jobNumber} cancelled by customer ${req.user.email}`);
+
     res.json({
       message: 'Order cancelled successfully',
       job: job
@@ -467,6 +420,8 @@ router.patch('/:id/status', auth, async (req, res) => {
 
     await job.updateStatus(status, req.user._id, notes);
     await job.populate(['customerId', 'vendorId']);
+
+    console.log(`📊 Job ${job.jobNumber} status updated to ${status}`);
 
     res.json({
       message: 'Job status updated successfully',
@@ -567,6 +522,8 @@ router.delete('/:id', auth, requireRole('admin'), async (req, res) => {
 
     // Delete the job
     await Job.findByIdAndDelete(req.params.id);
+
+    console.log(`🗑️ Job ${jobInfo.jobNumber} deleted by admin ${req.user.email}`);
 
     res.json({
       message: 'Job deleted successfully',
@@ -730,6 +687,8 @@ router.post('/support', auth, async (req, res) => {
     
     // Populate customer details
     await supportJob.populate('customerId', 'firstName lastName email phone');
+
+    console.log(`🆘 Support request created: ${supportJob.jobNumber} by ${req.user.email}`);
 
     res.status(201).json({
       message: 'Support request created successfully',

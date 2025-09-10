@@ -32,7 +32,13 @@ class ReferralService {
       const maxAttempts = 10;
 
       while (!isUnique && attempts < maxAttempts) {
-        referralCode = this.generateUniqueCode(user.firstName, user.lastName);
+        // Generate different types of codes based on user type
+        if (user.referralUserType === 'property_agent' || user.role === 'referral') {
+          referralCode = this.generateAgentCode(user.firstName, user.lastName);
+        } else {
+          referralCode = this.generateCustomerCode(user.firstName, user.lastName);
+        }
+        
         const existing = await Referral.findOne({ referralCode });
         if (!existing) {
           isUnique = true;
@@ -729,10 +735,36 @@ class ReferralService {
   }
 
   // Helper methods
-  generateUniqueCode(firstName, lastName) {
-    const prefix = (firstName.substring(0, 2) + lastName.substring(0, 2)).toUpperCase();
+  generateUniqueCode(firstName, lastName, userType = 'customer') {
+    const namePrefix = (firstName.substring(0, 2) + lastName.substring(0, 2)).toUpperCase();
     const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `${prefix}${randomSuffix}`;
+    
+    // Different prefixes based on user type
+    let typePrefix = '';
+    if (userType === 'property_agent' || userType === 'referral') {
+      typePrefix = 'PA'; // Property Agent
+    } else {
+      typePrefix = 'CU'; // Customer
+    }
+    
+    return `${typePrefix}${namePrefix}${randomSuffix}`;
+  }
+
+  // Generate agent-specific referral code (for property agents)
+  generateAgentCode(firstName, lastName) {
+    const namePrefix = (firstName.substring(0, 2) + lastName.substring(0, 2)).toUpperCase();
+    const timestamp = Date.now().toString().slice(-4);
+    const randomSuffix = Math.random().toString(36).substring(2, 4).toUpperCase();
+    
+    return `AGENT${namePrefix}${timestamp}${randomSuffix}`;
+  }
+
+  // Generate customer-specific invite code (for customers)
+  generateCustomerCode(firstName, lastName) {
+    const namePrefix = (firstName.substring(0, 2) + lastName.substring(0, 2)).toUpperCase();
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    return `INVITE${namePrefix}${randomSuffix}`;
   }
 
   determineSource(referer) {
