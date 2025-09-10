@@ -10,10 +10,6 @@ router.post('/create', authenticateToken, async (req, res) => {
     const { items, shippingAddress, paymentMethod = 'hitpay' } = req.body;
     const userId = req.user._id;
 
-    console.log('Order creation request - User ID:', userId);
-    console.log('Order creation request - Items received:', JSON.stringify(items, null, 2));
-    console.log('Order creation request - Shipping address:', JSON.stringify(shippingAddress, null, 2));
-
     // Validate required fields
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
@@ -54,11 +50,6 @@ router.post('/create', authenticateToken, async (req, res) => {
       country: shippingAddress.country,
       notes: shippingAddress.notes
     };
-
-    console.log('Creating order with data:');
-    console.log('- customer:', userId);
-    console.log('- processedItems:', JSON.stringify(processedItems, null, 2));
-    console.log('- mappedShippingAddress:', JSON.stringify(mappedShippingAddress, null, 2));
 
     // Create order in database
     const order = new Order({

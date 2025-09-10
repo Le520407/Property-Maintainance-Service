@@ -7,7 +7,6 @@ const { CustomerMembership } = require('../models/CustomerMembership');
 if (process.env.HITPAY_SANDBOX === 'false' && process.env.HITPAY_API_KEY?.startsWith('test_')) {
   hitpayService.isDemo = false;
   hitpayService.isSandbox = true;
-  console.log('🔧 Forced HitPay service out of demo mode for real API');
 }
 
 // Initialize Stripe only if we have a real key
@@ -67,11 +66,6 @@ class MembershipController {
   // Subscribe to a membership plan using HitPay
   async subscribe(req, res) {
     try {
-      console.log('HitPay membership subscription request:', {
-        userId: req.user?._id,
-        body: req.body
-      });
-
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         console.error('Validation errors:', errors.array());

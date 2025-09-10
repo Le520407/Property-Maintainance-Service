@@ -331,6 +331,8 @@ router.patch('/:id/accept-quote', auth, async (req, res) => {
     await job.save();
     await job.populate(['customerId', 'vendorId']);
 
+    console.log(`✅ Quote accepted for job ${job.jobNumber}`);
+
     res.json({
       message: 'Quote accepted successfully',
       job: job
@@ -384,6 +386,8 @@ router.patch('/:id/cancel', auth, async (req, res) => {
     await job.save();
     await job.populate(['customerId', 'vendorId']);
 
+    console.log(`❌ Order ${job.jobNumber} cancelled by customer ${req.user.email}`);
+
     res.json({
       message: 'Order cancelled successfully',
       job: job
@@ -416,6 +420,8 @@ router.patch('/:id/status', auth, async (req, res) => {
 
     await job.updateStatus(status, req.user._id, notes);
     await job.populate(['customerId', 'vendorId']);
+
+    console.log(`📊 Job ${job.jobNumber} status updated to ${status}`);
 
     res.json({
       message: 'Job status updated successfully',
@@ -516,6 +522,8 @@ router.delete('/:id', auth, requireRole('admin'), async (req, res) => {
 
     // Delete the job
     await Job.findByIdAndDelete(req.params.id);
+
+    console.log(`🗑️ Job ${jobInfo.jobNumber} deleted by admin ${req.user.email}`);
 
     res.json({
       message: 'Job deleted successfully',
@@ -679,6 +687,8 @@ router.post('/support', auth, async (req, res) => {
     
     // Populate customer details
     await supportJob.populate('customerId', 'firstName lastName email phone');
+
+    console.log(`🆘 Support request created: ${supportJob.jobNumber} by ${req.user.email}`);
 
     res.status(201).json({
       message: 'Support request created successfully',

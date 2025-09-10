@@ -1,30 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import {
+  ArrowDown,
+  ArrowUp,
+  BarChart3,
+  Calendar,
+  Copy,
   Edit3,
-  Plus,
-  Trash2,
   Eye,
   EyeOff,
-  Save,
-  X,
-  Upload,
   Image as ImageIcon,
-  Type,
   Layout,
   Monitor,
-  Smartphone,
   Palette,
-  Settings,
+  Plus,
   RotateCcw,
-  Copy,
-  ArrowUp,
-  ArrowDown,
-  Calendar,
+  Save,
+  Settings,
+  Smartphone,
+  Trash2,
+  Type,
+  Upload,
   User,
-  BarChart3
+  X
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+
 import { api } from '../../services/api';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 const HomepageManagement = () => {
@@ -475,21 +476,21 @@ const HomepageManagement = () => {
             </button>
             <button
               onClick={() => setActiveTab('services')}
-              className="bg-gradient-to-r from-blue-400 to-blue-600 text-white p-4 rounded-xl hover:from-blue-500 hover:to-blue-700 transition-all duration-200 transform hover:scale-105"
+              className="bg-gradient-to-r from-orange-400 to-orange-600 text-white p-4 rounded-xl hover:from-orange-500 hover:to-orange-700 transition-all duration-200 transform hover:scale-105"
             >
               <Settings className="w-6 h-6 mx-auto mb-2" />
               <span className="text-sm font-medium">Manage Services</span>
             </button>
             <button
               onClick={() => setActiveTab('stats')}
-              className="bg-gradient-to-r from-purple-400 to-purple-600 text-white p-4 rounded-xl hover:from-purple-500 hover:to-purple-700 transition-all duration-200 transform hover:scale-105"
+              className="bg-gradient-to-r from-orange-400 to-orange-600 text-white p-4 rounded-xl hover:from-orange-500 hover:to-orange-700 transition-all duration-200 transform hover:scale-105"
             >
               <BarChart3 className="w-6 h-6 mx-auto mb-2" />
               <span className="text-sm font-medium">Update Stats</span>
             </button>
             <button
               onClick={() => window.open('/', '_blank')}
-              className="bg-gradient-to-r from-green-400 to-green-600 text-white p-4 rounded-xl hover:from-green-500 hover:to-green-700 transition-all duration-200 transform hover:scale-105"
+              className="bg-gradient-to-r from-orange-400 to-orange-600 text-white p-4 rounded-xl hover:from-orange-500 hover:to-orange-700 transition-all duration-200 transform hover:scale-105"
             >
               <Eye className="w-6 h-6 mx-auto mb-2" />
               <span className="text-sm font-medium">Preview Site</span>

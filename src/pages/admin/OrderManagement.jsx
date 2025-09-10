@@ -251,13 +251,53 @@ const OrderManagement = () => {
   };
 
   const getVendorsForJob = (job, vendorList = vendors) => {
+    if (!job) return vendorList;
+
+    // Helper function to get acceptable categories for a job
+    const getAcceptableCategoriesForJob = (jobCategory) => {
+      const categoryMap = {
+        'furniture-assembly': ['assembly', 'general', 'maintenance'],
+        'home-repairs': ['maintenance', 'general'],
+        'painting-services': ['painting', 'maintenance', 'general'],
+        'electrical-services': ['electrical', 'general'],
+        'plumbing-services': ['plumbing', 'general'],
+        'carpentry-services': ['maintenance', 'general'],
+        'flooring-services': ['flooring', 'maintenance', 'general'],
+        'appliance-installation': ['installation', 'general'],
+        'moving-services': ['moving', 'general'],
+        'cleaning-services': ['cleaning', 'general'],
+        'safety-security': ['security', 'general'],
+        
+        // Single word categories
+        'assembly': ['assembly', 'general', 'maintenance'],
+        'maintenance': ['maintenance', 'general'],
+        'painting': ['painting', 'maintenance', 'general'],
+        'electrical': ['electrical', 'general'],
+        'plumbing': ['plumbing', 'general'],
+        'flooring': ['flooring', 'maintenance', 'general'],
+        'installation': ['installation', 'general'],
+        'moving': ['moving', 'general'],
+        'cleaning': ['cleaning', 'general'],
+        'security': ['security', 'general'],
+        'gardening': ['gardening', 'general'],
+        'hvac': ['hvac', 'general'],
+        'renovation': ['renovation', 'maintenance', 'general']
+      };
+      
+      return categoryMap[jobCategory] || [jobCategory, 'general'];
+    };
+
+    const acceptableCategories = getAcceptableCategoriesForJob(job.category);
+
     // Filter vendors by category and location
     return vendorList.filter(vendor => {
-      // Check if vendor handles this service category
-      const hasCategory = vendor.serviceCategories?.includes(job.category);
+      // Check if vendor handles any of the acceptable service categories
+      const hasCategory = vendor.serviceCategories?.some(category => 
+        acceptableCategories.includes(category)
+      );
       
-      // Check if vendor serves this location (simplified)
-      const servesLocation = true; // You can implement location-based filtering
+      // Check if vendor serves this location (simplified for now)
+      const servesLocation = true; // You can implement location-based filtering later
       
       // Check if vendor is active and verified
       const isActiveAndVerified = vendor.isActive && vendor.verificationStatus === 'VERIFIED';
@@ -626,17 +666,23 @@ const OrderManagement = () => {
           try {
             const response = await api.get(`/jobs/${selectedJob._id}/recommended-vendors?limit=10`);
             if (isMounted) {
-              setModalVendors(response.recommendedVendors || []);
-              
               if (response.recommendedVendors?.length > 0) {
-                toast.success(`Found ${response.recommendedVendors.length} recommended vendors!`);
+                setModalVendors(response.recommendedVendors);
+                toast.success(`Found ${response.recommendedVendors.length} AI-recommended vendors!`);
               } else {
-                // Fallback to all vendors
-                const allVendorsResponse = await api.get('/admin/vendors');
+                // Fallback to all verified vendors when no specific recommendations
+                console.log('No recommended vendors found, falling back to all vendors');
+                const allVendorsResponse = await api.get('/admin/vendors?verificationStatus=VERIFIED&limit=50');
                 if (isMounted) {
-                  setModalVendors(allVendorsResponse.vendors || []);
+                  const fallbackVendors = allVendorsResponse.vendors || [];
+                  setModalVendors(fallbackVendors);
+                  
+                  if (fallbackVendors.length > 0) {
+                    toast.info(`No specialized vendors found. Showing ${fallbackVendors.length} general vendors for manual selection.`);
+                  } else {
+                    toast.error('No vendors available in the system');
+                  }
                 }
-                toast.error('No suitable vendors found for this job');
               }
             }
           } catch (error) {

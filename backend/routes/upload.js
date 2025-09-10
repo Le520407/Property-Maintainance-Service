@@ -111,7 +111,6 @@ router.post('/blog-image', auth, upload.single('image'), (req, res) => {
 
 // 订单附件上传路由 (支持多个文件)
 router.post('/order-attachments', auth, orderAttachmentUpload.array('files', 10), (req, res) => {
-  console.log('📁 Order attachments upload endpoint hit');
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: 'No files uploaded' });

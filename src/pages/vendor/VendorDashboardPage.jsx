@@ -24,6 +24,7 @@ import {
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import VendorCalendar from '../../components/vendor/VendorCalendar';
 import VendorPricingManagement from '../../components/vendor/VendorPricingManagement';
 import { api } from '../../services/api';
 import { motion } from 'framer-motion';
@@ -33,10 +34,8 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
   const [activeSection, setActiveSection] = useState(initialSection || 'profile');
   const [servicePackages, setServicePackages] = useState(vendor.servicePackages || []);
   const [priceLists, setPriceLists] = useState(vendor.priceLists || []);
-  const [availabilitySchedule, setAvailabilitySchedule] = useState(vendor.availabilitySchedule || []);
   const [editingPackage, setEditingPackage] = useState(null);
   const [editingPrice, setEditingPrice] = useState(null);
-  const [editingSchedule, setEditingSchedule] = useState(null);
   const [loading, setLoading] = useState(false);
   
   // Vendor profile editing states
@@ -49,7 +48,6 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
   });
 
   const serviceCategories = ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services'];
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   const saveProfile = async (updatedData) => {
     try {
@@ -130,38 +128,6 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
     const updatedPriceLists = priceLists.filter(p => (p.id || p._id) !== priceId);
     setPriceLists(updatedPriceLists);
     await saveProfile({ priceLists: updatedPriceLists });
-  };
-
-  const handleAddAvailabilitySlot = () => {
-    const newSlot = {
-      id: Date.now(),
-      dayOfWeek: 1,
-      startTime: '09:00',
-      endTime: '17:00',
-      isAvailable: true
-    };
-    setEditingSchedule(newSlot);
-  };
-
-  const handleSaveAvailabilitySlot = async () => {
-    if (editingSchedule.startTime >= editingSchedule.endTime) {
-      toast.error('End time must be after start time');
-      return;
-    }
-
-    const updatedSchedule = editingSchedule.id && availabilitySchedule.find(s => s.id === editingSchedule.id)
-      ? availabilitySchedule.map(s => s.id === editingSchedule.id ? editingSchedule : s)
-      : [...availabilitySchedule, { ...editingSchedule, id: editingSchedule._id || Date.now() }];
-
-    setAvailabilitySchedule(updatedSchedule);
-    await saveProfile({ availabilitySchedule: updatedSchedule });
-    setEditingSchedule(null);
-  };
-
-  const handleDeleteAvailabilitySlot = async (slotId) => {
-    const updatedSchedule = availabilitySchedule.filter(s => (s.id || s._id) !== slotId);
-    setAvailabilitySchedule(updatedSchedule);
-    await saveProfile({ availabilitySchedule: updatedSchedule });
   };
 
   // Handle profile form submission
@@ -708,154 +674,9 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
         </div>
       )}
 
-      {/* Availability Schedule Section */}
+      {/* Enhanced Availability Calendar Section */}
       {activeSection === 'schedule' && (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-medium text-gray-900">Availability Schedule</h3>
-            <button
-              onClick={handleAddAvailabilitySlot}
-              className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Time Slot
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {availabilitySchedule.map((slot) => (
-              <div key={slot.id || slot._id} className="border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{days[slot.dayOfWeek]}</h4>
-                    <div className="flex items-center space-x-4 mt-1">
-                      <span className="text-sm text-gray-600">{slot.startTime} - {slot.endTime}</span>
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        slot.isAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {slot.isAvailable ? 'Available' : 'Unavailable'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setEditingSchedule(slot)}
-                      className="p-2 text-gray-400 hover:text-orange-600"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteAvailabilitySlot(slot.id || slot._id)}
-                      className="p-2 text-gray-400 hover:text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {availabilitySchedule.length === 0 && (
-              <div className="text-center py-8">
-                <Calendar className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                <p className="text-gray-500">No availability schedule set</p>
-              </div>
-            )}
-          </div>
-
-          {/* Edit Availability Slot Modal */}
-          {editingSchedule && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    {editingSchedule._id ? 'Edit Time Slot' : 'Add Time Slot'}
-                  </h3>
-                  <button
-                    onClick={() => setEditingSchedule(null)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Day of Week *
-                    </label>
-                    <select
-                      value={editingSchedule.dayOfWeek}
-                      onChange={(e) => setEditingSchedule({ ...editingSchedule, dayOfWeek: parseInt(e.target.value) })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                    >
-                      {days.map((day, index) => (
-                        <option key={index} value={index}>
-                          {day}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Start Time *
-                      </label>
-                      <input
-                        type="time"
-                        value={editingSchedule.startTime}
-                        onChange={(e) => setEditingSchedule({ ...editingSchedule, startTime: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        End Time *
-                      </label>
-                      <input
-                        type="time"
-                        value={editingSchedule.endTime}
-                        onChange={(e) => setEditingSchedule({ ...editingSchedule, endTime: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={editingSchedule.isAvailable}
-                      onChange={(e) => setEditingSchedule({ ...editingSchedule, isAvailable: e.target.checked })}
-                      className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
-                    />
-                    <label className="ml-2 block text-sm text-gray-700">
-                      Available for bookings
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end space-x-3 mt-6">
-                  <button
-                    onClick={() => setEditingSchedule(null)}
-                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveAvailabilitySlot}
-                    disabled={loading}
-                    className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
-                  >
-                    <Save className="h-4 w-4 mr-2" />
-                    {loading ? 'Saving...' : 'Save Slot'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <VendorCalendar vendor={vendor} onUpdate={onUpdate} />
       )}
     </div>
   );

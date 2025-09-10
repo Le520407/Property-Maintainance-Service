@@ -20,7 +20,6 @@ import { cachedApi } from '../../utils/globalCache';
 import { useAuth } from '../../contexts/AuthContext';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { useAuth } from '../../contexts/AuthContext';
 
 const MembershipPlans = () => {
   const { user } = useAuth();
@@ -37,7 +36,7 @@ const MembershipPlans = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchMembershipData = async () => {
+  const fetchMembershipData = useCallback(async () => {
     if (!user) return;
     
     try {

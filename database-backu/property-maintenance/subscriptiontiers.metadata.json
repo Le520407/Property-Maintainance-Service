@@ -1,1 +1,0 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"propertyType":{"$numberInt":"1"}},"name":"propertyType_1","background":true,"unique":true}],"uuid":"1f28df377275463f9a7d629de6071ec9","collectionName":"subscriptiontiers","type":"collection"}

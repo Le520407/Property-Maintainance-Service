@@ -261,7 +261,7 @@ router.get('/jobs', authenticateToken, requireRole(['vendor']), async (req, res)
   try {
     const { status, page = 1, limit = 10 } = req.query;
     
-    console.log('Vendor jobs request - vendorId:', req.user._id, 'status:', status); // Debug log
+    // Debug log removed
     
     const filter = { vendorId: req.user._id };
     if (status) {
@@ -281,7 +281,7 @@ router.get('/jobs', authenticateToken, requireRole(['vendor']), async (req, res)
 
     const total = await Job.countDocuments(filter);
     
-    console.log('Found', jobs.length, 'jobs for vendor', req.user._id); // Debug log
+    // Debug log removed
 
     res.json({
       jobs,
@@ -331,19 +331,19 @@ router.patch('/jobs/:jobId/respond', authenticateToken, requireRole(['vendor']),
     const { jobId } = req.params;
     const { response, reason } = req.body; // response: 'ACCEPTED' or 'REJECTED'
 
-    console.log('Vendor job response - JobId:', jobId, 'VendorId:', req.user._id, 'Response:', response, 'Reason:', reason);
+    // Debug log removed
 
     const job = await Job.findOne({ _id: jobId, vendorId: req.user._id });
     
     if (!job) {
-      console.log('Job not found for vendor response');
+    // Debug log removed
       return res.status(404).json({ message: 'Job not found' });
     }
 
-    console.log('Job found - Status:', job.status, 'Assignment attempts:', job.assignmentAttempts.length);
+    // Debug log removed
 
     if (job.status !== 'ASSIGNED') {
-      console.log('Job is not in ASSIGNED status, current status:', job.status);
+    // Debug log removed
       return res.status(400).json({ message: 'Job is not in assigned status' });
     }
 
@@ -354,11 +354,11 @@ router.patch('/jobs/:jobId/respond', authenticateToken, requireRole(['vendor']),
     );
 
     if (!pendingAttempt) {
-      console.log('No pending assignment attempt found for vendor');
+    // Debug log removed
       return res.status(400).json({ message: 'No pending assignment found for this vendor' });
     }
 
-    console.log('Found pending attempt, processing response...');
+    // Debug log removed
     await job.vendorResponse(req.user._id, response, reason);
 
     res.json({ message: `Job ${response.toLowerCase()} successfully`, job });
