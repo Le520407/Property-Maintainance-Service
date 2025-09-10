@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   MessageSquare,
   ArrowLeft,
   Send,
   Search,
-  Plus,
   MoreVertical,
   Phone,
   Video,
@@ -16,13 +14,9 @@ import {
   CheckCheck,
   Clock,
   User,
-  Star,
-  Settings,
-  DollarSign,
-  X
+  Star
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useMessages } from '../contexts/MessagesContext';
 import { api } from '../services/api';
 import toast from 'react-hot-toast';
 import { clearMessagesVisitedFlag } from '../components/layout/Header';
@@ -41,17 +35,6 @@ const UnifiedMessagesPage = () => {
     return localStorage.getItem('unified-messages-selected-tab') || 'contact-support';
   });
   const [unreadCounts, setUnreadCounts] = useState({});
-  const [showQuoteForm, setShowQuoteForm] = useState(false);
-  const [quoteForm, setQuoteForm] = useState({
-    amount: '',
-    description: '',
-    breakdown: [{ item: '', quantity: 1, unitPrice: 0 }],
-    validUntil: '',
-    terms: '',
-    estimatedDuration: '',
-    includes: [''],
-    excludes: ['']
-  });
   
   const messagesContainerRef = useRef(null);
 
@@ -69,10 +52,6 @@ const UnifiedMessagesPage = () => {
       ...prev,
       [conversationId]: 0
     }));
-  };
-
-  const getTotalUnreadCount = () => {
-    return Object.values(unreadCounts).reduce((total, count) => total + count, 0);
   };
 
   // Scroll to bottom function - only scroll the messages container
@@ -473,83 +452,6 @@ const UnifiedMessagesPage = () => {
     }
   };
 
-  // Quote management functions
-  const isVendor = user?.role === 'vendor' || user?.role === 'technician';
-  
-  const addBreakdownItem = () => {
-    setQuoteForm(prev => ({
-      ...prev,
-      breakdown: [...prev.breakdown, { item: '', quantity: 1, unitPrice: 0 }]
-    }));
-  };
-
-  const updateBreakdownItem = (index, field, value) => {
-    setQuoteForm(prev => ({
-      ...prev,
-      breakdown: prev.breakdown.map((item, i) => 
-        i === index ? { ...item, [field]: value } : item
-      )
-    }));
-  };
-
-  const removeBreakdownItem = (index) => {
-    setQuoteForm(prev => ({
-      ...prev,
-      breakdown: prev.breakdown.filter((_, i) => i !== index)
-    }));
-  };
-
-  const handleSendQuote = async () => {
-    if (!selectedConversation) return;
-    
-    const totalAmount = quoteForm.breakdown.reduce((sum, item) => 
-      sum + (item.quantity * item.unitPrice), 0
-    );
-    
-    const validUntil = quoteForm.validUntil 
-      ? new Date(quoteForm.validUntil)
-      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
-    
-    const quoteData = {
-      ...quoteForm,
-      amount: totalAmount,
-      validUntil,
-      includes: quoteForm.includes.filter(item => item.trim()),
-      excludes: quoteForm.excludes.filter(item => item.trim())
-    };
-    
-    // Send quote as a special message
-    const quoteMessage = {
-      id: `quote_${Date.now()}`,
-      senderId: user?.id,
-      senderName: user?.firstName ? `${user.firstName} ${user.lastName}` : 'You',
-      message: `💰 Quote: $${totalAmount.toFixed(2)} - ${quoteForm.description}`,
-      timestamp: new Date(),
-      isOwn: true,
-      status: 'sent',
-      messageType: 'QUOTE',
-      quoteData
-    };
-    
-    setMessages(prev => [...prev, quoteMessage]);
-    setShowQuoteForm(false);
-    
-    // Reset form
-    setQuoteForm({
-      amount: '',
-      description: '',
-      breakdown: [{ item: '', quantity: 1, unitPrice: 0 }],
-      validUntil: '',
-      terms: '',
-      estimatedDuration: '',
-      includes: [''],
-      excludes: ['']
-    });
-    
-    // Scroll to bottom
-    setTimeout(scrollToBottom, 100);
-    toast.success('Quote sent!');
-  };
 
   if (loading) {
     return (
@@ -784,67 +686,15 @@ const UnifiedMessagesPage = () => {
                           {/* Message Bubble */}
                           <div className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                              message.messageType === 'QUOTE'
-                                ? message.isOwn 
-                                  ? 'bg-green-500 text-white'
-                                  : 'bg-green-100 text-green-900 border-2 border-green-300'
-                                : message.isOwn 
-                                  ? 'bg-blue-500 text-white' 
-                                  : 'bg-gray-200 text-gray-900'
+                              message.isOwn 
+                                ? 'bg-blue-500 text-white' 
+                                : 'bg-gray-200 text-gray-900'
                             }`}>
                               <p className="text-sm">{message.message}</p>
                               
-                              {/* Quote Details */}
-                              {message.messageType === 'QUOTE' && message.quoteData && (
-                                <div className="mt-3 p-3 bg-white bg-opacity-20 rounded">
-                                  <div className="font-semibold text-lg">
-                                    ${message.quoteData.amount?.toFixed(2) || '0.00'}
-                                  </div>
-                                  
-                                  {message.quoteData.breakdown && message.quoteData.breakdown.length > 0 && (
-                                    <div className="mt-2">
-                                      <div className="text-xs font-medium mb-1">Breakdown:</div>
-                                      {message.quoteData.breakdown.map((item, index) => (
-                                        <div key={index} className="text-xs">
-                                          {item.item}: {item.quantity} × ${item.unitPrice} = ${(item.quantity * item.unitPrice).toFixed(2)}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                  
-                                  {message.quoteData.estimatedDuration && (
-                                    <div className="text-xs mt-1">
-                                      Duration: {message.quoteData.estimatedDuration} hours
-                                    </div>
-                                  )}
-                                  
-                                  {message.quoteData.validUntil && (
-                                    <div className="text-xs mt-1">
-                                      Valid until: {new Date(message.quoteData.validUntil).toLocaleDateString()}
-                                    </div>
-                                  )}
-                                  
-                                  {/* Quote Actions for Customer */}
-                                  {!message.isOwn && user?.role === 'customer' && (
-                                    <div className="flex space-x-2 mt-3">
-                                      <button className="flex items-center px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700">
-                                        <Check className="w-3 h-3 mr-1" />
-                                        Accept
-                                      </button>
-                                      <button className="flex items-center px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700">
-                                        <X className="w-3 h-3 mr-1" />
-                                        Reject
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              
                               {/* Timestamp and Status */}
                               <div className={`flex items-center justify-between mt-2 ${
-                                message.messageType === 'QUOTE'
-                                  ? message.isOwn ? 'text-green-100' : 'text-green-700'
-                                  : message.isOwn ? 'text-blue-100' : 'text-gray-500'
+                                message.isOwn ? 'text-blue-100' : 'text-gray-500'
                               }`}>
                                 <span className="text-xs">{formatTimestamp(message.timestamp)}</span>
                                 {message.isOwn && (
@@ -865,21 +715,6 @@ const UnifiedMessagesPage = () => {
 
                   {/* Message Input */}
                   <div className="border-t border-gray-200">
-                    {/* Action Buttons - Show for vendors */}
-                    {isVendor && !selectedConversation?.isSupport && (
-                      <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => setShowQuoteForm(!showQuoteForm)}
-                            className="flex items-center px-3 py-2 bg-green-100 text-green-800 rounded-lg text-sm hover:bg-green-200 transition-colors"
-                          >
-                            <DollarSign className="w-4 h-4 mr-1" />
-                            Send Quote
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
                     <div className="p-4">
                       <div className="flex items-center space-x-2">
                         <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
@@ -926,139 +761,6 @@ const UnifiedMessagesPage = () => {
           </div>
         </div>
 
-        {/* Quote Form Modal */}
-        {showQuoteForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold">Send Quote</h3>
-                  <button
-                    onClick={() => setShowQuoteForm(false)}
-                    className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={quoteForm.description}
-                      onChange={(e) => setQuoteForm(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Describe the work to be done..."
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cost Breakdown
-                    </label>
-                    {quoteForm.breakdown.map((item, index) => (
-                      <div key={index} className="flex space-x-2 mb-2">
-                        <input
-                          type="text"
-                          value={item.item}
-                          onChange={(e) => updateBreakdownItem(index, 'item', e.target.value)}
-                          placeholder="Item description"
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                        />
-                        <input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => updateBreakdownItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                          placeholder="Qty"
-                          className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                        />
-                        <input
-                          type="number"
-                          value={item.unitPrice}
-                          onChange={(e) => updateBreakdownItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                          placeholder="Price"
-                          className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                        />
-                        {quoteForm.breakdown.length > 1 && (
-                          <button
-                            onClick={() => removeBreakdownItem(index)}
-                            className="text-red-600 hover:text-red-800 p-2"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      onClick={addBreakdownItem}
-                      className="text-orange-600 hover:text-orange-800 text-sm font-medium"
-                    >
-                      + Add Item
-                    </button>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Estimated Duration (hours)
-                      </label>
-                      <input
-                        type="number"
-                        value={quoteForm.estimatedDuration}
-                        onChange={(e) => setQuoteForm(prev => ({ ...prev, estimatedDuration: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Valid Until
-                      </label>
-                      <input
-                        type="date"
-                        value={quoteForm.validUntil}
-                        onChange={(e) => setQuoteForm(prev => ({ ...prev, validUntil: e.target.value }))}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Terms & Conditions
-                    </label>
-                    <textarea
-                      value={quoteForm.terms}
-                      onChange={(e) => setQuoteForm(prev => ({ ...prev, terms: e.target.value }))}
-                      placeholder="Payment terms, warranty, etc..."
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                    />
-                  </div>
-                  
-                  <div className="flex justify-end space-x-3 pt-4">
-                    <button
-                      onClick={() => setShowQuoteForm(false)}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleSendQuote}
-                      disabled={!quoteForm.description || quoteForm.breakdown.length === 0}
-                      className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50"
-                    >
-                      Send Quote
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>
     </div>
