@@ -182,7 +182,40 @@ const payoutSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Commission rate configuration based on tier
+// New referral reward configuration
+const REFERRAL_REWARDS = {
+  property_agent: {
+    tier1: {
+      type: 'money',
+      amount: 5, // $5 for direct referrals
+      description: 'Direct referral commission'
+    },
+    tier2: {
+      type: 'money', 
+      amount: 2, // $2 for indirect referrals
+      description: 'Indirect referral commission'
+    }
+  },
+  customer: {
+    tier1: {
+      type: 'points',
+      amount: 100, // 100 points for direct referrals
+      description: 'Referral bonus points'
+    },
+    tier2: {
+      type: 'points',
+      amount: 50, // 50 points for indirect referrals  
+      description: 'Indirect referral bonus points'
+    }
+  },
+  welcome_bonus: {
+    type: 'points',
+    amount: 20, // 20 points for new users
+    description: 'Welcome bonus points'
+  }
+};
+
+// Legacy commission rates (kept for backward compatibility)
 const COMMISSION_RATES = {
   1: {
     name: 'Bronze',
@@ -230,7 +263,7 @@ referralSchema.methods.calculateTier = function() {
   }
 };
 
-// Calculate commission amount
+// Calculate commission amount (legacy method)
 referralSchema.methods.calculateCommission = function(orderAmount, tier = null) {
   const currentTier = tier || this.calculateTier();
   const rateConfig = COMMISSION_RATES[currentTier];
@@ -248,6 +281,40 @@ referralSchema.methods.calculateCommission = function(orderAmount, tier = null) 
     tier: currentTier,
     tierName: rateConfig.name
   };
+};
+
+// New method: Calculate referral reward based on user type and tier
+referralSchema.methods.calculateReferralReward = function(referrerUserType, referralTier = 1) {
+  const rewardConfig = REFERRAL_REWARDS[referrerUserType];
+  
+  if (!rewardConfig) {
+    throw new Error(`Invalid referrer user type: ${referrerUserType}`);
+  }
+  
+  const tierKey = `tier${referralTier}`;
+  const tierConfig = rewardConfig[tierKey];
+  
+  if (!tierConfig) {
+    throw new Error(`Invalid referral tier: ${referralTier}`);
+  }
+  
+  return {
+    type: tierConfig.type,
+    amount: tierConfig.amount,
+    description: tierConfig.description,
+    tier: referralTier,
+    referrerType: referrerUserType
+  };
+};
+
+// New static method: Get reward configuration
+referralSchema.statics.getRewardConfig = function(userType, tier = 1) {
+  return REFERRAL_REWARDS[userType]?.[`tier${tier}`] || null;
+};
+
+// New static method: Get welcome bonus
+referralSchema.statics.getWelcomeBonus = function() {
+  return REFERRAL_REWARDS.welcome_bonus;
 };
 
 // Update referral tier
@@ -280,5 +347,6 @@ module.exports = {
   Referral,
   Commission,
   Payout,
-  COMMISSION_RATES
+  COMMISSION_RATES,
+  REFERRAL_REWARDS
 };

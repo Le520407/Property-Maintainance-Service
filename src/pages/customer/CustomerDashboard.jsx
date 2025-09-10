@@ -35,7 +35,7 @@ const CustomerDashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -46,15 +46,15 @@ const CustomerDashboard = () => {
       toast('Order is already cancelled');
       return;
     }
-    
+
     // Update order status to cancelled
     setDashboardData(prevData => {
-      const updatedOrders = prevData.recentOrders.map(order => 
-        order._id === orderId 
+      const updatedOrders = prevData.recentOrders.map(order =>
+        order._id === orderId
           ? { ...order, status: 'CANCELLED' }
           : order
       );
-      
+
       // Recalculate all stats from the updated orders
       const newStats = {
         totalOrders: updatedOrders.length,
@@ -65,14 +65,14 @@ const CustomerDashboard = () => {
           .filter(order => order.status === 'COMPLETED')
           .reduce((sum, order) => sum + (order.totalAmount || 0), 0)
       };
-      
+
       return {
         ...prevData,
         recentOrders: updatedOrders,
         stats: newStats
       };
     });
-    
+
     toast.success('Order cancelled successfully!', { duration: 2000 });
   };
 
@@ -88,10 +88,10 @@ const CustomerDashboard = () => {
     try {
       // Fetch real dashboard data from API using correct endpoints
       const jobsResponse = await api.jobs.getUserJobs({ limit: 5 });
-      
+
       // Extract orders from response
       const orders = jobsResponse.jobs || jobsResponse.data?.jobs || [];
-      
+
       // Calculate stats from the orders data
       const stats = {
         totalOrders: orders.length,
@@ -108,12 +108,12 @@ const CustomerDashboard = () => {
       });
     } catch (error) {
       console.error('Failed to fetch dashboard data from /jobs/user:', error);
-      
+
       // Try fallback API endpoint
       try {
         const fallbackResponse = await api.customer.getJobs();
         const orders = fallbackResponse.jobs || fallbackResponse.data?.jobs || [];
-        
+
         // Calculate stats from the orders data
         const stats = {
           totalOrders: orders.length,
@@ -327,7 +327,7 @@ const CustomerDashboard = () => {
                         <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
                           {order.status.replace('_', ' ')}
                         </span>
-                        
+
                         <div className="flex space-x-2">
                           <Link
                             to={`/jobs/${order._id}`}
@@ -392,7 +392,7 @@ const CustomerDashboard = () => {
                 <span className="font-medium">Book New Service</span>
                 <Calendar className="h-5 w-5" />
               </Link>
-              
+
               <Link
                 to="/jobs"
                 className="w-full flex items-center justify-between p-3 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
@@ -400,7 +400,7 @@ const CustomerDashboard = () => {
                 <span className="font-medium">View All Jobs</span>
                 <Clock className="h-5 w-5" />
               </Link>
-              
+
               <Link
                 to="/membership/plans"
                 className="w-full flex items-center justify-between p-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors"
@@ -408,7 +408,7 @@ const CustomerDashboard = () => {
                 <span className="font-medium">Membership Plans</span>
                 <Star className="h-5 w-5" />
               </Link>
-              
+
               <Link
                 to="/subscription/manage"
                 className="w-full flex items-center justify-between p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
@@ -416,7 +416,7 @@ const CustomerDashboard = () => {
                 <span className="font-medium">Manage Subscription</span>
                 <Settings className="h-5 w-5" />
               </Link>
-              
+
               <Link
                 to="/subscription/billing-history"
                 className="w-full flex items-center justify-between p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
@@ -424,6 +424,7 @@ const CustomerDashboard = () => {
                 <span className="font-medium">Billing History</span>
                 <FileText className="h-5 w-5" />
               </Link>
+
             </div>
           </motion.div>
 

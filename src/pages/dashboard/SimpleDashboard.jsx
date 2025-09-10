@@ -983,8 +983,8 @@ const ReferralsTab = () => {
     referralCode: '',
     stats: {
       totalReferrals: 0,
-      totalEarnings: 0,
-      pendingEarnings: 0,
+      totalPoints: 0,
+      pendingPoints: 0,
       tier: 'Bronze'
     },
     referralLink: '',
@@ -1076,8 +1076,8 @@ const ReferralsTab = () => {
           referralCode: data.referral.code,
           stats: {
             totalReferrals: data.referral.totalReferrals,
-            totalEarnings: data.referral.totalCommissionEarned,
-            pendingEarnings: data.referral.pendingCommission,
+            totalPoints: data.referral.totalPointsEarned || 0,
+            pendingPoints: data.referral.pendingPoints || 0,
             tier: data.referral.tierName
           }
         }));
@@ -1151,7 +1151,7 @@ const ReferralsTab = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold mb-2">Referral Program</h1>
-                <p className="text-yellow-100 text-lg">Earn rewards by referring friends</p>
+                <p className="text-yellow-100 text-lg">Earn points by referring friends</p>
               </div>
             </div>
             
@@ -1162,8 +1162,8 @@ const ReferralsTab = () => {
                 <div className="text-xs text-yellow-100">Referrals</div>
               </div>
               <div className="text-center bg-white bg-opacity-10 rounded-lg px-4 py-2">
-                <div className="text-xl font-bold">${referralData.statistics?.totalEarned || 0}</div>
-                <div className="text-xs text-yellow-100">Earned</div>
+                <div className="text-xl font-bold">{referralData.statistics?.totalPoints || 0} pts</div>
+                <div className="text-xs text-yellow-100">Points Earned</div>
               </div>
             </div>
           </div>
@@ -1355,7 +1355,7 @@ const ReferralsTab = () => {
                 </div>
                 <div className="flex items-start">
                   <span className="inline-block w-6 h-6 bg-orange-100 text-orange-600 rounded-full text-center text-xs font-medium mr-3 mt-0.5">3</span>
-                  <span>You earn {referralData.currentTier?.rate || 5}% commission on their orders</span>
+                  <span>You earn {referralData.currentTier?.points || 20} points when they complete their first order</span>
                 </div>
               </div>
             </div>
@@ -1365,7 +1365,7 @@ const ReferralsTab = () => {
         <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
           <Gift className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Get Started with Referrals</h3>
-          <p className="text-gray-600 mb-6">Generate your unique referral code and start earning commissions</p>
+          <p className="text-gray-600 mb-6">Generate your unique referral code and start earning points</p>
           <button
             onClick={generateReferralCode}
             className="inline-flex items-center px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
