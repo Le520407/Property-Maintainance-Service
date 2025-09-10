@@ -57,7 +57,9 @@
       "Read(/C:\\Users\\Le520\\Documents\\Property-Maintainance-Service\\src\\services/**)",
       "Read(/C:\\Users\\Le520\\Documents\\Property-Maintainance-Service\\src\\services/**)",
       "Bash(npm ls:*)",
-      "Bash(npm start)"
+      "Bash(npm start)",
+      "Bash(move CustomerDashboard-clean.jsx CustomerDashboard.jsx)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": [],

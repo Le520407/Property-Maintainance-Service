@@ -4,25 +4,30 @@ import {
   Calendar,
   Clock,
   CheckCircle,
-  AlertTriangle,
   TrendingUp,
   Users,
   Star,
   Plus,
   FileText,
-  Settings
+  Settings,
+  X,
+  Eye,
+  Package,
+  ArrowRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import MembershipCard from '../../components/customer/MembershipCard';
+import { toast } from 'react-hot-toast';
+
 
 const CustomerDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
-    recentJobs: [],
+    recentOrders: [],
     stats: {
-      totalJobs: 0,
-      activeJobs: 0,
-      completedJobs: 0,
+      totalOrders: 0,
+      pendingOrders: 0,
+      completedOrders: 0,
       totalSpent: 0
     }
   });
@@ -33,57 +38,109 @@ const CustomerDashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
+  const handleCancelOrder = async (orderId) => {
+    // Check if order is already cancelled to prevent duplicate actions
+    const orderToCancel = dashboardData.recentOrders.find(order => order._id === orderId);
+    if (orderToCancel?.status === 'CANCELLED') {
+      toast('Order is already cancelled');
+      return;
+    }
+    
+    // Update order status to cancelled
+    setDashboardData(prevData => {
+      const updatedOrders = prevData.recentOrders.map(order => 
+        order._id === orderId 
+          ? { ...order, status: 'CANCELLED' }
+          : order
+      );
+      
+      // Recalculate all stats from the updated orders
+      const newStats = {
+        totalOrders: updatedOrders.length,
+        pendingOrders: updatedOrders.filter(order => ['PENDING', 'ASSIGNED', 'IN_PROGRESS'].includes(order.status)).length,
+        completedOrders: updatedOrders.filter(order => order.status === 'COMPLETED').length,
+        // Only count spent money for completed orders (cancelled orders get refunded)
+        totalSpent: updatedOrders
+          .filter(order => order.status === 'COMPLETED')
+          .reduce((sum, order) => sum + (order.totalAmount || 0), 0)
+      };
+      
+      return {
+        ...prevData,
+        recentOrders: updatedOrders,
+        stats: newStats
+      };
+    });
+    
+    toast.success('Order cancelled successfully!', { duration: 2000 });
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
   const fetchDashboardData = async () => {
     try {
-      // Fetch dashboard data - replace with your actual API endpoints
-      const [jobsResponse, statsResponse] = await Promise.all([
-        api.get('/jobs/my-jobs?limit=5'),
-        api.get('/jobs/my-stats')
-      ]);
+      // Fetch real dashboard data from API using correct endpoints
+      const jobsResponse = await api.jobs.getUserJobs({ limit: 5 });
+      
+      // Extract orders from response
+      const orders = jobsResponse.jobs || jobsResponse.data?.jobs || [];
+      
+      // Calculate stats from the orders data
+      const stats = {
+        totalOrders: orders.length,
+        pendingOrders: orders.filter(order => ['PENDING', 'ASSIGNED', 'IN_PROGRESS'].includes(order.status)).length,
+        completedOrders: orders.filter(order => order.status === 'COMPLETED').length,
+        totalSpent: orders
+          .filter(order => order.status === 'COMPLETED')
+          .reduce((sum, order) => sum + (order.totalAmount || 0), 0)
+      };
 
       setDashboardData({
-        recentJobs: jobsResponse.data.jobs || [],
-        stats: statsResponse.data.stats || dashboardData.stats
+        recentOrders: orders,
+        stats: stats
       });
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
-      // Demo data for development
-      setDashboardData({
-        recentJobs: [
-          {
-            _id: '1',
-            title: 'Fix Leaking Faucet',
-            status: 'in_progress',
-            createdAt: '2024-01-15T10:30:00Z',
-            vendor: { name: 'John Plumber' },
-            totalAmount: 85,
-            membershipDiscount: 8.5,
-            workProgress: {
-              percentage: 75,
-              workNotes: 'Materials ordered and work started. Replacing main faucet assembly and checking for additional leaks.'
-            }
-          },
-          {
-            _id: '2',
-            title: 'Electrical Outlet Repair',
-            status: 'completed',
-            createdAt: '2024-01-10T14:20:00Z',
-            vendor: { name: 'Mike Electric' },
-            totalAmount: 120,
-            membershipDiscount: 12,
-            workProgress: {
-              percentage: 100
-            },
-            completionDetails: 'Successfully replaced faulty outlet and tested all connections. Kitchen electrical system now fully operational with safety inspection passed.'
+      console.error('Failed to fetch dashboard data from /jobs/user:', error);
+      
+      // Try fallback API endpoint
+      try {
+        const fallbackResponse = await api.customer.getJobs();
+        const orders = fallbackResponse.jobs || fallbackResponse.data?.jobs || [];
+        
+        // Calculate stats from the orders data
+        const stats = {
+          totalOrders: orders.length,
+          pendingOrders: orders.filter(order => ['PENDING', 'ASSIGNED', 'IN_PROGRESS'].includes(order.status)).length,
+          completedOrders: orders.filter(order => order.status === 'COMPLETED').length,
+          totalSpent: orders
+            .filter(order => order.status === 'COMPLETED')
+            .reduce((sum, order) => sum + (order.totalAmount || 0), 0)
+        };
+
+        setDashboardData({
+          recentOrders: orders,
+          stats: stats
+        });
+      } catch (fallbackError) {
+        console.error('Fallback API also failed:', fallbackError);
+        // Set empty data if both APIs fail
+        setDashboardData({
+          recentOrders: [],
+          stats: {
+            totalOrders: 0,
+            pendingOrders: 0,
+            completedOrders: 0,
+            totalSpent: 0
           }
-        ],
-        stats: {
-          totalJobs: 8,
-          activeJobs: 2,
-          completedJobs: 6,
-          totalSpent: 650
-        }
-      });
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -104,15 +161,6 @@ const CustomerDashboard = () => {
     return colors[status.toLowerCase()] || 'bg-gray-100 text-gray-800';
   };
 
-  const getStatusIcon = (status) => {
-    const icons = {
-      pending: Clock,
-      in_progress: AlertTriangle,
-      completed: CheckCircle,
-      cancelled: AlertTriangle
-    };
-    return icons[status] || Clock;
-  };
 
   if (loading) {
     return (
@@ -166,8 +214,8 @@ const CustomerDashboard = () => {
                   <Calendar className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Jobs</p>
-                  <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.totalJobs}</p>
+                  <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                  <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.totalOrders}</p>
                 </div>
               </div>
             </motion.div>
@@ -183,8 +231,8 @@ const CustomerDashboard = () => {
                   <Clock className="h-6 w-6 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active Jobs</p>
-                  <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.activeJobs}</p>
+                  <p className="text-sm font-medium text-gray-600">Pending Orders</p>
+                  <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.pendingOrders}</p>
                 </div>
               </div>
             </motion.div>
@@ -201,7 +249,7 @@ const CustomerDashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Completed</p>
-                  <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.completedJobs}</p>
+                  <p className="text-2xl font-bold text-gray-900">{dashboardData.stats.completedOrders}</p>
                 </div>
               </div>
             </motion.div>
@@ -224,122 +272,103 @@ const CustomerDashboard = () => {
             </motion.div>
           </div>
 
-          {/* Recent Jobs */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-white rounded-lg shadow-sm"
-          >
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900">Recent Jobs</h3>
+          {/* Modern Recent Orders Section */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-gray-50 to-orange-50 p-8 border-b border-gray-200">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-1 font-roboto">Recent Orders</h2>
+                  <p className="text-gray-600">Track your latest service requests and their progress</p>
+                </div>
                 <Link
                   to="/jobs"
-                  className="text-orange-600 hover:text-orange-700 font-medium text-sm"
+                  className="bg-orange-600 text-white px-6 py-3 rounded-xl hover:bg-orange-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:scale-105 inline-flex items-center"
                 >
-                  View all
+                  View All Orders
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </div>
             </div>
-            
-            <div className="divide-y divide-gray-200">
-              {dashboardData.recentJobs.length > 0 ? (
-                dashboardData.recentJobs.map((job) => {
-                  const StatusIcon = getStatusIcon(job.status);
-                  return (
-                    <Link
-                      key={job._id}
-                      to={`/jobs/${job._id}`}
-                      className="block p-6 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 mr-4">
-                            <StatusIcon className="h-6 w-6 text-gray-400" />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-900">{job.title}</h4>
-                            <p className="text-sm text-gray-600">
-                              {job.vendor?.name} • {new Date(job.createdAt).toLocaleDateString()}
-                            </p>
-                            {job.membershipDiscount > 0 && (
-                              <p className="text-xs text-green-600 mt-1">
-                                Membership discount: -${job.membershipDiscount}
-                              </p>
-                            )}
-                            
-                            {/* Latest Progress Update */}
-                            {job.workProgress?.workNotes && (
-                              <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
-                                <p className="text-blue-800 font-medium">Latest Update:</p>
-                                <p className="text-blue-700">{job.workProgress.workNotes}</p>
-                              </div>
-                            )}
-                            
-                            {/* Completion Details */}
-                            {job.status === 'COMPLETED' && job.completionDetails && (
-                              <div className="mt-2 p-2 bg-green-50 rounded text-xs">
-                                <p className="text-green-800 font-medium">Work Completed:</p>
-                                <p className="text-green-700">{job.completionDetails}</p>
-                              </div>
-                            )}
-                          </div>
+
+            <div className="p-8">{dashboardData.recentOrders.length > 0 ? (
+              <div className="space-y-4">
+                {dashboardData.recentOrders.slice(0, 5).map((order, index) => (
+                  <motion.div
+                    key={order._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-gradient-to-r from-gray-50 to-white p-6 rounded-xl hover:from-orange-50 hover:to-gray-50 transition-all duration-300 border border-gray-200 hover:border-orange-200 hover:shadow-md group"
+                  >
+                    {/* Fixed Layout - No Overlap */}
+                    <div className="space-y-4">
+                      {/* Order Info Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Job Number</p>
+                          <p className="font-mono text-sm font-medium text-gray-900">{order.jobNumber}</p>
                         </div>
-                        <div className="flex items-center space-x-4">
-                          <div className="flex flex-col items-end space-y-2">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-                              {job.status.replace('_', ' ').toUpperCase()}
-                            </span>
-                            
-                            {/* Progress Bar for IN_PROGRESS jobs */}
-                            {(job.status === 'IN_PROGRESS' || job.status === 'COMPLETED') && job.workProgress?.percentage > 0 && (
-                              <div className="w-24">
-                                <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-                                  <span>Progress</span>
-                                  <span>{job.workProgress.percentage}%</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                  <div 
-                                    className={`h-1.5 rounded-full ${
-                                      job.status === 'COMPLETED' ? 'bg-green-600' : 'bg-blue-600'
-                                    }`}
-                                    style={{ width: `${job.workProgress.percentage}%` }}
-                                  ></div>
-                                </div>
-                              </div>
-                            )}
-                            
-                            <div className="text-right">
-                              <p className={`text-sm font-medium ${
-                                job.totalAmount ? 'text-green-600' : 'text-gray-500'
-                              }`}>
-                                {job.totalAmount ? `$${job.totalAmount.toLocaleString()}` : 'Quote pending'}
-                              </p>
-                            </div>
-                          </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Service</p>
+                          <p className="font-semibold text-gray-900">{order.title}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Date</p>
+                          <p className="text-gray-700">{formatDate(order.createdAt)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Amount</p>
+                          <p className="text-xl font-bold text-gray-900">${order.totalAmount?.toFixed(2) || '0.00'}</p>
                         </div>
                       </div>
-                    </Link>
-                  );
-                })
-              ) : (
-                <div className="p-8 text-center">
-                  <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-sm font-medium text-gray-900 mb-2">No jobs yet</h3>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Book your first service to get started
-                  </p>
-                  <Link
-                    to="/jobs/create"
-                    className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition-colors"
-                  >
-                    Book Service Now
-                  </Link>
+
+                      {/* Status & Actions Row */}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                          {order.status.replace('_', ' ')}
+                        </span>
+                        
+                        <div className="flex space-x-2">
+                          <Link
+                            to={`/jobs/${order._id}`}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors font-medium inline-flex items-center"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View Details
+                          </Link>
+                          {['PENDING', 'ASSIGNED'].includes(order.status) && (
+                            <button
+                              onClick={() => handleCancelOrder(order._id)}
+                              className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors font-medium inline-flex items-center"
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <div className="bg-gradient-to-br from-orange-100 to-orange-200 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+                  <Package className="w-12 h-12 text-orange-600" />
                 </div>
-              )}
+                <h3 className="text-2xl font-semibold text-gray-900 mb-3">No orders yet</h3>
+                <p className="text-gray-600 mb-8 text-lg max-w-md mx-auto">Ready to get started? Request your first service and let us handle the rest!</p>
+                <Link
+                  to="/order-request"
+                  className="bg-gradient-to-r from-orange-600 to-orange-700 text-white px-8 py-4 rounded-xl hover:from-orange-700 hover:to-orange-800 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 inline-flex items-center"
+                >
+                  <Package className="w-5 h-5 mr-2" />
+                  Request Your First Service
+                </Link>
+              </div>
+            )}
             </div>
-          </motion.div>
+          </div>
         </div>
 
         {/* Sidebar */}
@@ -399,7 +428,7 @@ const CustomerDashboard = () => {
           </motion.div>
 
           {/* Recent Updates */}
-          {dashboardData.recentJobs.some(job => job.workProgress?.workNotes || job.completionDetails) && (
+          {dashboardData.recentOrders.some(order => order.workProgress?.workNotes || order.completionDetails) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -408,17 +437,17 @@ const CustomerDashboard = () => {
             >
               <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Updates</h3>
               <div className="space-y-3">
-                {dashboardData.recentJobs
-                  .filter(job => job.workProgress?.workNotes || job.completionDetails)
+                {dashboardData.recentOrders
+                  .filter(order => order.workProgress?.workNotes || order.completionDetails)
                   .slice(0, 2)
-                  .map((job) => (
-                    <div key={job._id} className="border-l-4 border-blue-500 pl-4">
-                      <p className="text-sm font-medium text-gray-900">{job.title}</p>
+                  .map((order) => (
+                    <div key={order._id} className="border-l-4 border-blue-500 pl-4">
+                      <p className="text-sm font-medium text-gray-900">{order.title}</p>
                       <p className="text-xs text-gray-600">
-                        {job.completionDetails || job.workProgress?.workNotes}
+                        {order.completionDetails || order.workProgress?.workNotes}
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
-                        {new Date(job.createdAt).toLocaleDateString()}
+                        {new Date(order.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   ))}
