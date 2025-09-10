@@ -41,6 +41,7 @@ import PricingPage from './pages/PricingPage.jsx';
 import PrivacyPolicyPage from './pages/legal/PrivacyPolicyPage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import ProductsPage from './pages/ProductsPage.jsx';
+import ProfilePage from './pages/ProfilePage.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 import React from 'react';
 import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
@@ -243,6 +244,11 @@ function App() {
                       <Route path="/orders/:orderId/success" element={
                         <ProtectedRoute>
                           <OrderSuccessPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/profile" element={
+                        <ProtectedRoute>
+                          <ProfilePage />
                         </ProtectedRoute>
                       } />
                       <Route path="/referral" element={<ReferralPage />} />
