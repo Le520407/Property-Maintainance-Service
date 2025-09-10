@@ -50,7 +50,6 @@ import RegisterSelectionPage from './pages/auth/RegisterSelectionPage.jsx';
 import ServiceDetailPage from './pages/ServiceDetailPage.jsx';
 import ServicesPage from './pages/ServicesPage.jsx';
 import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
-import SubscriptionManagementPage from './pages/SubscriptionManagementPage.jsx';
 import SubscriptionPage from './pages/SubscriptionPage.jsx';
 import TermsPage from './pages/legal/TermsPage.jsx';
 import UnifiedMessagesPage from './pages/UnifiedMessagesPage.jsx';

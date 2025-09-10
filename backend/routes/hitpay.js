@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const qs = require('querystring');
 const hitpayService = require('../services/hitpayService');
 const { CustomerSubscription, SubscriptionTier } = require('../models/CustomerSubscription');
 const CustomerMembership = require('../models/CustomerMembership');
@@ -7,6 +8,7 @@ const { VendorMembership } = require('../models/VendorMembership');
 const Vendor = require('../models/Vendor');
 const User = require('../models/User');
 const Payment = require('../models/Payment');
+const Job = require('../models/Job');
 const { auth } = require('../middleware/auth');
 
 /**
@@ -122,6 +124,117 @@ router.post('/payment-request', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to create payment request',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * Create job payment request
+ * POST /api/hitpay/job-payment
+ */
+router.post('/job-payment', auth, async (req, res) => {
+  try {
+    const { jobId, amount, currency = 'SGD', description } = req.body;
+    
+    // Validate required fields
+    if (!jobId || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'Job ID and amount are required'
+      });
+    }
+
+    // Get job details to validate ownership and amount
+    const Job = require('../models/Job');
+    const job = await Job.findById(jobId);
+    
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    // Check if user owns this job
+    if (job.customerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized: You can only pay for your own jobs'
+      });
+    }
+
+    // Prepare payment data using the exact HitPay API format
+    const paymentData = {
+      email: req.user.email,
+      name: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.fullName || 'Customer',
+      phone: req.user.phone || '',
+      amount: parseFloat(amount),
+      currency: currency,
+      payment_methods: ['card'],
+      purpose: description || `Payment for Job #${job.jobNumber || jobId}`,
+      reference_number: `job_${jobId}_${Date.now()}`,
+      redirect_url: `${process.env.FRONTEND_URL}/jobs/${jobId}?payment=success`,
+      webhook: `${process.env.WEBHOOK_URL}/api/hitpay/webhook/job`,
+      allow_repeated_payments: 'false',
+      add_admin_fee: 'false',
+      send_email: 'false',
+      send_sms: 'true',
+      generate_qr: false
+    };
+
+    console.log('🚀 Creating HitPay job payment request for job:', jobId);
+    
+    // Create payment request using HitPay service
+    const hitpayResponse = await hitpayService.createPayment(paymentData);
+    
+    console.log('✅ HitPay payment request created successfully');
+    console.log('📊 Payment URL:', hitpayResponse.url);
+    
+    // Store payment record
+    const payment = new Payment({
+      paymentId: hitpayResponse.id || hitpayResponse.payment_request_id,
+      jobId: jobId,
+      customerId: req.user._id,
+      vendorId: job.vendorId || job.vendor,
+      totalAmount: parseFloat(amount),
+      status: 'PENDING',
+      paymentMethod: 'HITPAY',
+      paymentGateway: 'HITPAY',
+      description: paymentData.purpose,
+      gateway: {
+        name: 'HITPAY',
+        transactionId: hitpayResponse.id || hitpayResponse.payment_request_id,
+        currency: currency
+      }
+    });
+    
+    try {
+      await payment.save();
+      console.log('✅ Payment record saved to database');
+    } catch (dbError) {
+      console.error('❌ Error saving payment to database:', dbError);
+      // Continue anyway - don't let database errors block the payment flow
+    }
+
+    console.log('🚀 Sending response to frontend with payment_url:', hitpayResponse.url);
+
+    // Return payment_request_id and URL
+    res.json({
+      success: true,
+      message: 'Job payment request created successfully',
+      payment_request_id: hitpayResponse.id || hitpayResponse.payment_request_id,
+      payment_url: hitpayResponse.url,
+      jobId: jobId,
+      amount: amount,
+      currency: currency
+    });
+
+  } catch (error) {
+    console.error('Error creating job payment request:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create job payment request',
       error: error.message
     });
   }
@@ -955,6 +1068,202 @@ router.post('/refund', async (req, res) => {
       message: 'Internal server error',
       error: error.message
     });
+  }
+});
+
+// Job payment webhook handler
+router.post('/webhook/job', express.raw({ type: ['application/json', 'application/x-www-form-urlencoded'] }), async (req, res) => {
+  try {
+    console.log('Job payment webhook received:', req.body.toString());
+    
+    // Parse the webhook data
+    const webhookData = qs.parse(req.body.toString());
+    console.log('Parsed job webhook data:', webhookData);
+
+    // Verify the webhook signature
+    const signature = req.headers['x-signature'];
+    if (!hitpayService.verifyWebhookSignature(req.body.toString(), signature)) {
+      console.error('Invalid job webhook signature');
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+
+    const { payment_id, status, reference_number } = webhookData;
+    
+    // Find the payment record using paymentId field
+    const payment = await Payment.findOne({ paymentId: payment_id });
+    if (!payment) {
+      console.error('Job payment not found:', payment_id);
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    console.log('Job payment found:', payment._id);
+
+    // Update payment status
+    payment.status = status === 'completed' ? 'COMPLETED' : status.toUpperCase();
+    payment.gateway.gatewayStatus = status;
+    if (reference_number) {
+      payment.gateway.referenceNumber = reference_number;
+    }
+    await payment.save();
+
+    if (status === 'completed') {
+      // Update job status to paid
+      await Job.findByIdAndUpdate(payment.jobId, {
+        payment_status: 'paid',
+        status: 'confirmed'
+      });
+      
+      console.log('Job payment completed, job status updated to confirmed');
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Job webhook error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+/**
+ * Update payment status manually
+ */
+router.post('/update-payment-status', auth, async (req, res) => {
+  try {
+    const { reference, status } = req.body;
+    
+    console.log('Update payment status request:', { reference, status, userId: req.user._id });
+    
+    if (!reference || !status) {
+      return res.status(400).json({ error: 'Reference and status are required' });
+    }
+
+    // Find the payment by reference
+    let payment = await Payment.findOne({ reference });
+    console.log('Found payment by reference:', payment ? { id: payment._id, currentStatus: payment.status, jobId: payment.jobId } : 'Not found');
+    
+    // If no payment found by exact reference, try to find by partial match (for cases where HitPay returns different reference format)
+    if (!payment && reference) {
+      payment = await Payment.findOne({ 
+        $or: [
+          { reference: { $regex: reference, $options: 'i' } },
+          { gatewayPaymentId: reference }
+        ]
+      });
+      console.log('Found payment by partial match:', payment ? { id: payment._id, currentStatus: payment.status, jobId: payment.jobId } : 'Not found');
+    }
+    
+    if (!payment) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    // Convert status to uppercase to match enum
+    const paymentStatus = status.toUpperCase();
+    
+    // Update payment status
+    payment.status = paymentStatus;
+    await payment.save();
+    console.log('Payment status updated to:', paymentStatus);
+
+    // Update job status if payment is completed
+    if (paymentStatus === 'COMPLETED' && payment.jobId) {
+      const job = await Job.findById(payment.jobId);
+      console.log('Found job:', job ? { id: job._id, currentStatus: job.status } : 'Not found');
+      
+      if (job) {
+        job.status = 'PAID';
+        // Also update the job's embedded payment status
+        if (!job.payment) {
+          job.payment = {};
+        }
+        job.payment.status = 'PAID';
+        job.payment.paidAt = new Date();
+        job.payment.transactionId = payment.reference;
+        job.payment.paidAmount = payment.amount;
+        
+        await job.save();
+        console.log('Job status updated to PAID and payment info updated');
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Payment status updated successfully',
+      payment: {
+        id: payment._id,
+        status: payment.status,
+        reference: payment.reference
+      }
+    });
+
+  } catch (error) {
+    console.error('Update payment status error:', error);
+    res.status(500).json({ error: 'Failed to update payment status' });
+  }
+});
+
+/**
+ * Update payment status by job ID (fallback when reference is unknown)
+ */
+router.post('/update-job-payment-status', auth, async (req, res) => {
+  try {
+    const { jobId, status } = req.body;
+    
+    console.log('Update job payment status request:', { jobId, status, userId: req.user._id });
+    
+    if (!jobId || !status) {
+      return res.status(400).json({ error: 'Job ID and status are required' });
+    }
+
+    // Find the latest payment for this job
+    const payment = await Payment.findOne({ jobId }).sort({ createdAt: -1 });
+    console.log('Found latest payment for job:', payment ? { id: payment._id, currentStatus: payment.status, reference: payment.reference } : 'Not found');
+    
+    if (!payment) {
+      return res.status(404).json({ error: 'No payment found for this job' });
+    }
+
+    // Convert status to uppercase to match enum
+    const paymentStatus = status.toUpperCase();
+    
+    // Update payment status
+    payment.status = paymentStatus;
+    await payment.save();
+    console.log('Payment status updated to:', paymentStatus);
+
+    // Update job status if payment is completed
+    if (paymentStatus === 'COMPLETED') {
+      const job = await Job.findById(jobId);
+      console.log('Found job:', job ? { id: job._id, currentStatus: job.status } : 'Not found');
+      
+      if (job) {
+        job.status = 'PAID';
+        // Also update the job's embedded payment status
+        if (!job.payment) {
+          job.payment = {};
+        }
+        job.payment.status = 'PAID';
+        job.payment.paidAt = new Date();
+        job.payment.transactionId = payment.reference;
+        job.payment.paidAmount = payment.amount;
+        
+        await job.save();
+        console.log('Job status updated to PAID and payment info updated');
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Payment status updated successfully',
+      payment: {
+        id: payment._id,
+        status: payment.status,
+        reference: payment.reference,
+        jobId: payment.jobId
+      }
+    });
+
+  } catch (error) {
+    console.error('Update job payment status error:', error);
+    res.status(500).json({ error: 'Failed to update payment status' });
   }
 });
 
