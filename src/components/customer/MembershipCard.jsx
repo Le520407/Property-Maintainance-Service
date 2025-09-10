@@ -9,7 +9,9 @@ import {
   Building, 
   Building2, 
   Briefcase,
-  TrendingUp
+  TrendingUp,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cachedApi } from '../../utils/globalCache';
@@ -23,14 +25,41 @@ const MembershipCard = () => {
 
   useEffect(() => {
     fetchMembership();
+    
+    // Set up interval to refresh membership data every 30 seconds
+    // This ensures status changes are reflected quickly
+    const interval = setInterval(() => {
+      if (user) {
+        console.log('🔄 Auto-refreshing membership status...');
+        cachedApi.invalidateMembershipCache(user.id);
+        fetchMembership();
+      }
+    }, 30000); // 30 seconds
+    
+    // Add window focus listener to refresh when user returns to page
+    const handleFocus = () => {
+      if (user) {
+        console.log('🔍 Window focused - refreshing membership status...');
+        cachedApi.invalidateMembershipCache(user.id);
+        fetchMembership();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   const fetchMembership = async () => {
     if (!user) return;
     
     try {
-      const response = await cachedApi.getMembership(user.id);
+      // Use the correct membership endpoint and force refresh to get latest status
+      const response = await cachedApi.request('/membership/my-membership', {}, `my-membership_${user.id}`);
       setMembership(response.membership);
     } catch (error) {
       console.error('Failed to fetch membership:', error);
@@ -38,6 +67,23 @@ const MembershipCard = () => {
       setLoading(false);
     }
   };
+
+  // Add a method to refresh membership data (can be called from parent components)
+  const refreshMembership = async () => {
+    setLoading(true);
+    try {
+      // Force refresh by invalidating cache
+      cachedApi.invalidateMembershipCache(user.id);
+      await fetchMembership();
+    } catch (error) {
+      console.error('Failed to refresh membership:', error);
+    }
+  };
+
+  // Expose refresh function to parent components
+  React.useImperativeHandle(React.forwardRef(() => null), () => ({
+    refreshMembership
+  }));
 
   const getTierIcon = (tierName) => {
     const icons = {
@@ -59,15 +105,35 @@ const MembershipCard = () => {
     return gradients[tierName] || 'from-gray-500 to-gray-600';
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status, hasActiveAccess) => {
     const colors = {
       'ACTIVE': 'bg-green-100 text-green-800',
       'PENDING': 'bg-yellow-100 text-yellow-800',
       'SUSPENDED': 'bg-red-100 text-red-800',
-      'CANCELLED': 'bg-gray-100 text-gray-800',
+      'CANCELLED': hasActiveAccess ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800',
       'EXPIRED': 'bg-red-100 text-red-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getStatusIcon = (status, hasActiveAccess) => {
+    if (status === 'ACTIVE') return <CheckCircle className="w-4 h-4" />;
+    if (status === 'CANCELLED' && hasActiveAccess) return <Clock className="w-4 h-4" />;
+    if (status === 'CANCELLED' && !hasActiveAccess) return <X className="w-4 h-4" />;
+    if (status === 'EXPIRED') return <X className="w-4 h-4" />;
+    if (status === 'PENDING') return <Clock className="w-4 h-4" />;
+    return <Clock className="w-4 h-4" />;
+  };
+
+  const getStatusText = (status, hasActiveAccess, endDate) => {
+    if (status === 'ACTIVE') return 'Active';
+    if (status === 'CANCELLED' && hasActiveAccess) {
+      return `Cancelled (until ${new Date(endDate).toLocaleDateString()})`;
+    }
+    if (status === 'CANCELLED' && !hasActiveAccess) return 'Cancelled & Expired';
+    if (status === 'EXPIRED') return 'Expired';
+    if (status === 'PENDING') return 'Pending Activation';
+    return status;
   };
 
   const formatDate = (dateString) => {
@@ -133,8 +199,9 @@ const MembershipCard = () => {
               <p className="text-white text-opacity-90">{membership.tier.description}</p>
             </div>
           </div>
-          <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(membership.status)} bg-white bg-opacity-20 text-white`}>
-            {membership.status}
+          <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(membership.status, membership.hasActiveAccess)} bg-white bg-opacity-20 text-white flex items-center`}>
+            {getStatusIcon(membership.status, membership.hasActiveAccess)}
+            <span className="ml-1">{getStatusText(membership.status, membership.hasActiveAccess, membership.endDate)}</span>
           </div>
         </div>
       </div>

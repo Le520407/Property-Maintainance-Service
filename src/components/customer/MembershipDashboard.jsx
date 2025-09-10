@@ -107,8 +107,19 @@ const MembershipDashboard = () => {
           : 'Auto-renewal stopped - access continues until end of period';
         toast.success(message);
         setShowCancelModal(false);
+        
+        // Clear cache and refresh data
+        import('../../utils/globalCache').then(module => {
+          const { cachedApi } = module;
+          const token = localStorage.getItem('token');
+          if (token) {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            cachedApi.invalidateMembershipCache(payload.id);
+          }
+        });
+        
         fetchMembershipData(); // Refresh data
-        console.log('✅ Membership cancelled successfully');
+        console.log('✅ Membership cancelled successfully, cache invalidated');
       } else if (response?.success === false) {
         console.error('❌ API returned unsuccessful response:', response);
         toast.error(response.message || 'Failed to cancel membership');
@@ -213,12 +224,207 @@ const MembershipDashboard = () => {
     );
   }
 
+  // Create fallback analytics data from membership if analytics is null
+  const effectiveAnalytics = analytics || {
+    tier: membership.tier?.displayName || 'Unknown Plan',
+    billingCycle: membership.billingCycle || 'MONTHLY',
+    nextBillingDate: membership.nextBillingDate || membership.endDate,
+    usage: {
+      serviceRequests: {
+        used: membership.currentUsage?.serviceRequestsUsed || 0,
+        limit: membership.tier?.features?.serviceRequestsPerMonth || 'Unlimited',
+        remaining: membership.tier?.features?.serviceRequestsPerMonth 
+          ? Math.max(0, membership.tier.features.serviceRequestsPerMonth - (membership.currentUsage?.serviceRequestsUsed || 0))
+          : 'Unlimited'
+      },
+      materialDiscount: {
+        totalSaved: 0,
+        percentage: membership.tier?.features?.materialDiscountPercent || 0
+      },
+      inspections: {
+        available: membership.tier?.features?.annualInspections || 0
+      }
+    },
+    benefits: {
+      responseTime: membership.tier?.features?.responseTimeHours ? `${membership.tier.features.responseTimeHours} hours` : 'Standard',
+      prioritySupport: membership.tier?.features?.prioritySupport || false,
+      emergencyService: membership.tier?.features?.emergencyService || false,
+      dedicatedManager: membership.tier?.features?.dedicatedManager || false
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Page Title with Status */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+              Membership Dashboard
+              <span className={`ml-4 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                membership.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                membership.status === 'CANCELLED' && membership.hasActiveAccess ? 'bg-orange-100 text-orange-800' :
+                membership.status === 'CANCELLED' && !membership.hasActiveAccess ? 'bg-red-100 text-red-800' :
+                membership.status === 'EXPIRED' ? 'bg-gray-100 text-gray-800' :
+                membership.status === 'PENDING' ? 'bg-blue-100 text-blue-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {membership.status === 'ACTIVE' && <CheckCircle className="h-4 w-4 mr-1" />}
+                {membership.status === 'CANCELLED' && membership.hasActiveAccess && <AlertTriangle className="h-4 w-4 mr-1" />}
+                {((membership.status === 'CANCELLED' && !membership.hasActiveAccess) || membership.status === 'EXPIRED') && <X className="h-4 w-4 mr-1" />}
+                {membership.status === 'PENDING' && <Clock className="h-4 w-4 mr-1" />}
+                {membership.status}
+              </span>
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Manage your subscription and view usage statistics
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Membership Status Alert - Prominent Display */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6"
+      >
+        {/* ACTIVE Status */}
+        {membership.status === 'ACTIVE' && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <CheckCircle className="h-6 w-6 text-green-600 mr-3" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-green-900">Membership Active</h3>
+                <p className="text-green-700 text-sm">
+                  Your {effectiveAnalytics.tier} plan is active and ready to use. Next billing: {new Date(effectiveAnalytics.nextBillingDate).toLocaleDateString()}
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  ACTIVE
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CANCELLED Status with Access */}
+        {membership.status === 'CANCELLED' && membership.hasActiveAccess && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <AlertTriangle className="h-6 w-6 text-orange-600 mr-3" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-orange-900">Membership Cancelled</h3>
+                <p className="text-orange-700 text-sm">
+                  Your subscription has been cancelled but you still have access until {new Date(membership.endDate).toLocaleDateString()}
+                </p>
+                <p className="text-green-600 text-xs mt-1">
+                  ✓ No more charges will be taken • You can reactivate anytime before expiration
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
+                  <AlertTriangle className="h-4 w-4 mr-1" />
+                  CANCELLED
+                </span>
+                <p className="text-xs text-orange-600 mt-1">
+                  Access until {new Date(membership.endDate).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CANCELLED Status without Access (Expired) */}
+        {membership.status === 'CANCELLED' && !membership.hasActiveAccess && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <X className="h-6 w-6 text-red-600 mr-3" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-red-900">Membership Expired</h3>
+                <p className="text-red-700 text-sm">
+                  Your membership was cancelled and expired on {new Date(membership.endDate).toLocaleDateString()}
+                </p>
+                <p className="text-gray-600 text-xs mt-1">
+                  Subscribe to a new plan to restore access to membership benefits
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                  <X className="h-4 w-4 mr-1" />
+                  EXPIRED
+                </span>
+                <p className="text-xs text-red-600 mt-1">
+                  Expired {new Date(membership.endDate).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EXPIRED Status */}
+        {membership.status === 'EXPIRED' && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <X className="h-6 w-6 text-gray-600 mr-3" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900">Membership Expired</h3>
+                <p className="text-gray-700 text-sm">
+                  Your membership expired on {new Date(membership.endDate || membership.expiredAt).toLocaleDateString()}
+                </p>
+                <p className="text-gray-600 text-xs mt-1">
+                  Subscribe to a new plan to restore access to membership benefits
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                  <X className="h-4 w-4 mr-1" />
+                  EXPIRED
+                </span>
+                <p className="text-xs text-gray-600 mt-1">
+                  Expired {new Date(membership.endDate || membership.expiredAt).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PENDING Status */}
+        {membership.status === 'PENDING' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <Clock className="h-6 w-6 text-blue-600 mr-3" />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-blue-900">Membership Pending</h3>
+                <p className="text-blue-700 text-sm">
+                  Your membership is being activated. This usually takes a few minutes.
+                </p>
+                <p className="text-gray-600 text-xs mt-1">
+                  Contact support if this status persists for more than 30 minutes
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                  <Clock className="h-4 w-4 mr-1" />
+                  PENDING
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </motion.div>
+
       {/* Membership Overview */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
         className="bg-white rounded-lg shadow-sm p-6 mb-8"
       >
         <div className="flex items-center justify-between mb-6">
@@ -227,48 +433,63 @@ const MembershipDashboard = () => {
               <Shield className="h-8 w-8 text-orange-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">{analytics.tier}</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{effectiveAnalytics.tier}</h2>
               <p className="text-gray-600">
-                {analytics.billingCycle} billing • Next payment: {new Date(analytics.nextBillingDate).toLocaleDateString()}
+                {effectiveAnalytics.billingCycle} billing • Next payment: {new Date(effectiveAnalytics.nextBillingDate).toLocaleDateString()}
               </p>
             </div>
           </div>
           <div className="text-right">
             <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-              membership.cancelledAt && !membership.autoRenew
-                ? 'bg-orange-100 text-orange-800' // Cancelled but still active
+              membership.status === 'CANCELLED' && membership.hasActiveAccess
+                ? 'bg-orange-100 text-orange-800' // Cancelled but still has access
+                : membership.status === 'CANCELLED' && !membership.hasActiveAccess
+                ? 'bg-red-100 text-red-800' // Cancelled and expired
+                : membership.status === 'EXPIRED'
+                ? 'bg-gray-100 text-gray-800' // Expired
                 : membership.status === 'ACTIVE' 
-                ? 'bg-green-100 text-green-800'
-                : membership.status === 'CANCELLED'
-                ? 'bg-red-100 text-red-800'
+                ? 'bg-green-100 text-green-800' // Active
                 : membership.status === 'PENDING'
-                ? 'bg-blue-100 text-blue-800'
-                : 'bg-gray-100 text-gray-800'
+                ? 'bg-blue-100 text-blue-800' // Pending
+                : 'bg-gray-100 text-gray-800' // Default
             }`}>
-              {membership.cancelledAt && !membership.autoRenew ? (
+              {membership.status === 'CANCELLED' && membership.hasActiveAccess ? (
                 <AlertTriangle className="h-4 w-4 mr-1" />
+              ) : membership.status === 'CANCELLED' && !membership.hasActiveAccess ? (
+                <X className="h-4 w-4 mr-1" />
+              ) : membership.status === 'EXPIRED' ? (
+                <X className="h-4 w-4 mr-1" />
               ) : membership.status === 'ACTIVE' ? (
                 <CheckCircle className="h-4 w-4 mr-1" />
-              ) : membership.status === 'CANCELLED' ? (
-                <X className="h-4 w-4 mr-1" />
               ) : (
                 <Clock className="h-4 w-4 mr-1" />
               )}
-              {membership.cancelledAt && !membership.autoRenew 
-                ? 'Cancelled (Active until expiry)'
-                : membership.status === 'ACTIVE' 
-                ? 'Active'
-                : membership.status
-              }
+              {membership.accessStatus?.statusMessage || membership.status}
             </div>
-            {membership.cancelledAt && !membership.autoRenew && (
-              <p className="text-sm text-orange-600 mt-1">
-                Access until {new Date(membership.willExpireAt || membership.endDate).toLocaleDateString()}
+            
+            {/* Show cancellation info for cancelled memberships with access */}
+            {membership.status === 'CANCELLED' && membership.hasActiveAccess && (
+              <>
+                <p className="text-sm text-orange-600 mt-1">
+                  Access until {new Date(membership.endDate).toLocaleDateString()}
+                </p>
+                <p className="text-xs text-green-600 mt-1">
+                  ✓ No more charges will be taken
+                </p>
+              </>
+            )}
+            
+            {/* Show expiration info for cancelled memberships without access */}
+            {membership.status === 'CANCELLED' && !membership.hasActiveAccess && (
+              <p className="text-sm text-red-600 mt-1">
+                Expired on {new Date(membership.endDate).toLocaleDateString()}
               </p>
             )}
-            {membership.cancelledAt && !membership.autoRenew && (
-              <p className="text-xs text-green-600 mt-1">
-                ✓ No more charges will be taken
+            
+            {/* Show expiration info for expired memberships */}
+            {membership.status === 'EXPIRED' && (
+              <p className="text-sm text-gray-600 mt-1">
+                Expired on {new Date(membership.endDate || membership.expiredAt).toLocaleDateString()}
               </p>
             )}
           </div>
@@ -287,9 +508,9 @@ const MembershipDashboard = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Service Requests</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {analytics.usage.serviceRequests.used}
+                {effectiveAnalytics.usage.serviceRequests.used}
                 <span className="text-base font-normal text-gray-500">
-                  /{analytics.usage.serviceRequests.limit}
+                  /{effectiveAnalytics.usage.serviceRequests.limit}
                 </span>
               </p>
             </div>
@@ -298,15 +519,15 @@ const MembershipDashboard = () => {
           <div className="mt-4">
             <div className="flex justify-between text-sm text-gray-600 mb-1">
               <span>Usage this month</span>
-              <span>{analytics.usage.serviceRequests.remaining} remaining</span>
+              <span>{effectiveAnalytics.usage.serviceRequests.remaining} remaining</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-blue-600 h-2 rounded-full" 
                 style={{ 
-                  width: `${analytics.usage.serviceRequests.limit === 'Unlimited' 
+                  width: `${effectiveAnalytics.usage.serviceRequests.limit === 'Unlimited' 
                     ? 50 
-                    : (analytics.usage.serviceRequests.used / parseInt(analytics.usage.serviceRequests.limit)) * 100}%` 
+                    : (effectiveAnalytics.usage.serviceRequests.used / parseInt(effectiveAnalytics.usage.serviceRequests.limit)) * 100}%` 
                 }}
               ></div>
             </div>
@@ -323,13 +544,13 @@ const MembershipDashboard = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Savings This Month</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                ${analytics.usage.materialDiscount.totalSaved.toFixed(2)}
+                ${effectiveAnalytics.usage.materialDiscount.totalSaved.toFixed(2)}
               </p>
             </div>
             <TrendingUp className="h-8 w-8 text-green-500" />
           </div>
           <p className="text-sm text-gray-600 mt-2">
-            {analytics.usage.materialDiscount.percentage}% discount on materials
+            {effectiveAnalytics.usage.materialDiscount.percentage}% discount on materials
           </p>
         </motion.div>
 
@@ -343,7 +564,7 @@ const MembershipDashboard = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Response Time</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {analytics.benefits.responseTime}
+                {effectiveAnalytics.benefits.responseTime}
               </p>
             </div>
             <Clock className="h-8 w-8 text-orange-500" />
@@ -364,19 +585,19 @@ const MembershipDashboard = () => {
           <div className="space-y-3">
             <div className="flex items-center text-sm">
               <div className={`w-4 h-4 rounded-full mr-3 ${
-                analytics.benefits.prioritySupport ? 'bg-green-500' : 'bg-gray-300'
+                effectiveAnalytics.benefits.prioritySupport ? 'bg-green-500' : 'bg-gray-300'
               }`}></div>
               <span>Priority Support</span>
             </div>
             <div className="flex items-center text-sm">
               <div className={`w-4 h-4 rounded-full mr-3 ${
-                analytics.benefits.emergencyService ? 'bg-green-500' : 'bg-gray-300'
+                effectiveAnalytics.benefits.emergencyService ? 'bg-green-500' : 'bg-gray-300'
               }`}></div>
               <span>Emergency Service</span>
             </div>
             <div className="flex items-center text-sm">
               <div className={`w-4 h-4 rounded-full mr-3 ${
-                analytics.benefits.dedicatedManager ? 'bg-green-500' : 'bg-gray-300'
+                effectiveAnalytics.benefits.dedicatedManager ? 'bg-green-500' : 'bg-gray-300'
               }`}></div>
               <span>Dedicated Account Manager</span>
             </div>
@@ -384,15 +605,15 @@ const MembershipDashboard = () => {
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
               <span>Material Discount</span>
-              <span className="font-medium">{analytics.usage.materialDiscount.percentage}%</span>
+              <span className="font-medium">{effectiveAnalytics.usage.materialDiscount.percentage}%</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span>Annual Inspections</span>
-              <span className="font-medium">{analytics.usage.inspections.available}</span>
+              <span className="font-medium">{effectiveAnalytics.usage.inspections.available}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span>Response Time</span>
-              <span className="font-medium">{analytics.benefits.responseTime}</span>
+              <span className="font-medium">{effectiveAnalytics.benefits.responseTime}</span>
             </div>
           </div>
         </div>
@@ -497,7 +718,7 @@ const MembershipDashboard = () => {
                 <div>
                   <div className="mb-4">
                     <p className="text-gray-600 mb-4">
-                      Choose how you'd like to handle your membership:
+                      Choose how you'd like to handle your membership cancellation:
                     </p>
                     
                     <div className="space-y-3">
@@ -506,9 +727,11 @@ const MembershipDashboard = () => {
                         disabled={cancelLoading}
                         className="w-full text-left p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                       >
-                        <div className="font-medium text-gray-900">Stop Auto-Renewal</div>
+                        <div className="font-medium text-gray-900">Cancel at Period End</div>
                         <div className="text-sm text-gray-600">
-                          Keep access until {membership.nextBillingDate && new Date(membership.nextBillingDate).toLocaleDateString()} • No more charges
+                          • Status changes to "CANCELLED" but you keep access until {membership.nextBillingDate && new Date(membership.nextBillingDate).toLocaleDateString()}<br/>
+                          • No more charges will be taken<br/>
+                          • After {membership.nextBillingDate && new Date(membership.nextBillingDate).toLocaleDateString()}, status changes to "EXPIRED" with no access
                         </div>
                       </button>
                       
@@ -517,9 +740,10 @@ const MembershipDashboard = () => {
                         disabled={cancelLoading}
                         className="w-full text-left p-3 border border-red-300 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
                       >
-                        <div className="font-medium text-red-900">End Access Immediately</div>
+                        <div className="font-medium text-red-900">Cancel Immediately</div>
                         <div className="text-sm text-red-600">
-                          Lose access right away (no refund)
+                          • Status changes to "EXPIRED" and lose access right away<br/>
+                          • No refund for remaining period
                         </div>
                       </button>
                     </div>

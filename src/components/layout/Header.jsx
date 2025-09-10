@@ -398,8 +398,7 @@ const Header = () => {
                     {user.role === 'customer' && (
                       <>
                         <Link
-                          to="/dashboard"
-                          state={{ activeTab: 'profile' }}
+                          to="/profile"
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => {
                             console.log('Profile link clicked for customer');
@@ -410,8 +409,7 @@ const Header = () => {
                           {t('profile')}
                         </Link>
                         <Link
-                          to="/dashboard"
-                          state={{ activeTab: 'referrals' }}
+                          to="/referral"
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => {
                             console.log('Referrals link clicked for customer');
@@ -437,16 +435,14 @@ const Header = () => {
                           <User className="w-4 h-4 inline mr-2" />
                           {t('profile')}
                         </Link>
-                        {user.role !== 'referral' && (
-                          <Link
-                            to="/dashboard?section=referrals&tab=overview"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            onClick={() => setIsUserMenuOpen(false)}
-                          >
-                            <Gift className="w-4 h-4 inline mr-2" />
-                            Referrals
-                          </Link>
-                        )}
+                        <Link
+                          to={user.role === 'referral' ? '/referral-dashboard' : '/referral'}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          <Gift className="w-4 h-4 inline mr-2" />
+                          {user.role === 'referral' ? 'Referral Dashboard' : 'Referrals'}
+                        </Link>
                       </>
                     )}
                     <button

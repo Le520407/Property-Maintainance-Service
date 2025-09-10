@@ -136,6 +136,42 @@ orderSchema.pre('save', function(next) {
   next();
 });
 
+// Referral rewards trigger - when order is completed
+orderSchema.post('save', async function(doc, next) {
+  try {
+    // Check if this is the first time the order is being marked as completed
+    if (this.isModified('status') && this.status === 'delivered' && this.paymentStatus === 'paid') {
+      console.log(`Order ${this.orderNumber} completed, checking for referral rewards...`);
+      
+      // Import referral service (inside function to avoid circular dependencies)
+      const referralRewardService = require('../services/referralRewardService');
+      
+      // Process referral rewards for this completed order
+      await referralRewardService.processReferralRewards(
+        this.customer,
+        this._id,
+        this.total,
+        'order'
+      );
+    }
+  } catch (error) {
+    console.error('Error processing referral rewards for order:', error);
+    // Don't fail the order save if referral processing fails
+  }
+  next();
+});
+
+// Method to manually trigger referral processing (for testing/admin use)
+orderSchema.methods.triggerReferralRewards = async function() {
+  const referralRewardService = require('../services/referralRewardService');
+  return await referralRewardService.processReferralRewards(
+    this.customer,
+    this._id,
+    this.total,
+    'order'
+  );
+};
+
 // Indexes for better query performance
 orderSchema.index({ customer: 1, createdAt: -1 });
 orderSchema.index({ orderNumber: 1 });

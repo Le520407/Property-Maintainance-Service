@@ -150,7 +150,9 @@ export const cachedApi = {
   // Invalidate related caches when membership changes
   invalidateMembershipCache(userId) {
     globalCache.invalidate(`membership_${userId}`);
+    globalCache.invalidate(`my-membership_${userId}`);
     globalCache.invalidate('membership_tiers');
+    console.log('🗑️ Invalidated membership cache for user:', userId);
   },
 
   // Invalidate conversation cache when messages change

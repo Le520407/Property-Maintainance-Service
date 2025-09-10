@@ -249,6 +249,42 @@ customerSubscriptionSchema.methods.updateNextBillingDate = function() {
   this.nextBillingDate = nextBilling;
 };
 
+// Referral rewards trigger - when subscription becomes active
+customerSubscriptionSchema.post('save', async function(doc, next) {
+  try {
+    // Check if this is the first time the subscription is being activated
+    if (this.isModified('status') && this.status === 'ACTIVE' && this.isActive) {
+      console.log(`Subscription for customer ${this.customer} activated, checking for referral rewards...`);
+      
+      // Import referral service (inside function to avoid circular dependencies)
+      const referralRewardService = require('../services/referralRewardService');
+      
+      // Process referral rewards for this activated subscription
+      await referralRewardService.processReferralRewards(
+        this.customer,
+        this._id,
+        this.currentPrice,
+        'subscription'
+      );
+    }
+  } catch (error) {
+    console.error('Error processing referral rewards for subscription:', error);
+    // Don't fail the subscription save if referral processing fails
+  }
+  next();
+});
+
+// Method to manually trigger referral processing (for testing/admin use)
+customerSubscriptionSchema.methods.triggerReferralRewards = async function() {
+  const referralRewardService = require('../services/referralRewardService');
+  return await referralRewardService.processReferralRewards(
+    this.customer,
+    this._id,
+    this.currentPrice,
+    'subscription'
+  );
+};
+
 const SubscriptionTier = mongoose.model('SubscriptionTier', subscriptionTierSchema);
 const CustomerSubscription = mongoose.model('CustomerSubscription', customerSubscriptionSchema);
 
