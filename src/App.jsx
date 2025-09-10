@@ -50,7 +50,6 @@ import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 // Customer Components
 import BillingHistoryPage from './pages/customer/BillingHistoryPage.jsx';
 import CustomerDashboard from './pages/customer/CustomerDashboard.jsx';
-import SubscriptionManagementPage from './pages/SubscriptionManagementPage.jsx';
 
 // Membership Components
 import MembershipPlans from './components/customer/MembershipPlans.jsx';
@@ -231,13 +230,6 @@ function App() {
                       <Route path="/customer/dashboard" element={
                         <ProtectedRoute requiredRole="customer">
                           <CustomerDashboard />
-                        </ProtectedRoute>
-                      } />
-                      
-                      {/* Customer Subscription Management Routes */}
-                      <Route path="/subscription/manage" element={
-                        <ProtectedRoute requiredRole="customer">
-                          <SubscriptionManagementPage />
                         </ProtectedRoute>
                       } />
                       

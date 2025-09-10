@@ -227,7 +227,7 @@ const CustomerDashboard = () => {
             </Link>
 
             <Link
-              to="/customer/jobs"
+              to="/orders"
               className="flex flex-col items-center p-4 rounded-xl border-2 border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-md group"
               style={{ backgroundColor: '#EC5C0D', color: 'white' }}
             >
@@ -236,7 +236,7 @@ const CustomerDashboard = () => {
             </Link>
 
             <Link
-              to="/referrals"
+              to="/referral"
               className="flex flex-col items-center p-4 rounded-xl border-2 border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-md group"
               style={{ backgroundColor: '#EC5C0D', color: 'white' }}
             >
@@ -245,7 +245,7 @@ const CustomerDashboard = () => {
             </Link>
 
             <Link
-              to="/membership"
+              to="/membership/dashboard"
               className="flex flex-col items-center p-4 rounded-xl border-2 border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-md group"
               style={{ backgroundColor: '#EC5C0D', color: 'white' }}
             >
@@ -254,7 +254,7 @@ const CustomerDashboard = () => {
             </Link>
 
             <Link
-              to="/billing"
+              to="/subscription/billing-history"
               className="flex flex-col items-center p-4 rounded-xl border-2 border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-md group"
               style={{ backgroundColor: '#EC5C0D', color: 'white' }}
             >
@@ -324,7 +324,7 @@ const CustomerDashboard = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {dashboardData.recentOrders.slice(0, 5).map((order, index) => (
+              {dashboardData.recentOrders.slice(0, 3).map((order, index) => (
                 <motion.div
                   key={order._id}
                   initial={{ opacity: 0, y: 20 }}

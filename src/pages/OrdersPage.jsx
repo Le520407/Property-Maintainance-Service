@@ -1,108 +1,91 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Package, Calendar, CreditCard, Eye, Search, Filter } from 'lucide-react';
-import axios from 'axios';
+import { Package, Calendar, CreditCard, Eye, Search, Filter, Clock, CheckCircle, X, User } from 'lucide-react';
+import { api } from '../services/api';
 import toast from 'react-hot-toast';
 
 const OrdersPage = () => {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    pages: 0
-  });
 
   useEffect(() => {
-    fetchOrders();
-  }, [pagination.page, statusFilter]);
+    fetchJobs();
+  }, [statusFilter]);
 
-  const fetchOrders = async () => {
+  const fetchJobs = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        page: pagination.page.toString(),
-        limit: pagination.limit.toString()
-      });
-
-      if (statusFilter) {
-        params.append('status', statusFilter);
+      
+      // Try primary endpoint first, then fallback
+      let response;
+      try {
+        response = await api.get('/jobs/my-orders');
+      } catch (error) {
+        console.log('Primary endpoint failed, trying fallback...');
+        response = await api.get('/customer/jobs');
       }
 
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/orders/my-orders?${params}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-
-      if (response.data.success) {
-        setOrders(response.data.orders);
-        setPagination(prev => ({
-          ...prev,
-          total: response.data.pagination.total,
-          pages: response.data.pagination.pages
-        }));
-      }
+      setJobs(response.jobs || response.data?.jobs || []);
     } catch (error) {
-      console.error('Error fetching orders:', error);
-      toast.error('Failed to load orders');
+      console.error('Failed to fetch jobs:', error);
+      toast.error('Failed to load jobs');
+      setJobs([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'paid':
-        return 'text-green-600 bg-green-100';
-      case 'pending':
-        return 'text-yellow-600 bg-yellow-100';
-      case 'failed':
-        return 'text-red-600 bg-red-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
-    }
-  };
+  const getJobStatusBadge = (status) => {
+    const statusConfig = {
+      'PENDING': { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', icon: Clock },
+      'ASSIGNED': { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: User },
+      'IN_PROGRESS': { color: 'bg-blue-100 text-blue-800 border-blue-200', icon: Clock },
+      'COMPLETED': { color: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle },
+      'CANCELLED': { color: 'bg-red-100 text-red-800 border-red-200', icon: X },
+      'QUOTE_SENT': { color: 'bg-purple-100 text-purple-800 border-purple-200', icon: Package },
+      'QUOTE_ACCEPTED': { color: 'bg-green-100 text-green-800 border-green-200', icon: CheckCircle },
+      'QUOTE_REJECTED': { color: 'bg-red-100 text-red-800 border-red-200', icon: X }
+    };
 
-  const getOrderStatusColor = (status) => {
-    switch (status) {
-      case 'confirmed':
-        return 'text-green-600 bg-green-100';
-      case 'processing':
-        return 'text-blue-600 bg-blue-100';
-      case 'shipped':
-        return 'text-purple-600 bg-purple-100';
-      case 'delivered':
-        return 'text-green-600 bg-green-100';
-      case 'cancelled':
-        return 'text-red-600 bg-red-100';
-      default:
-        return 'text-gray-600 bg-gray-100';
-    }
-  };
+    const config = statusConfig[status] || statusConfig['PENDING'];
+    const IconComponent = config.icon;
 
-  const filteredOrders = orders.filter(order =>
-    order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.items.some(item => 
-      item.serviceName.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
-
-  const handlePageChange = (newPage) => {
-    setPagination(prev => ({ ...prev, page: newPage }));
-  };
-
-  if (loading && orders.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${config.color}`}>
+        <IconComponent className="w-3 h-3 mr-1" />
+        {status.replace('_', ' ')}
+      </div>
+    );
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const filteredJobs = jobs.filter(job => {
+    const matchesSearch = !searchTerm || 
+      (job.jobNumber && job.jobNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (job.title && job.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (job.service?.name && job.service.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesStatus = !statusFilter || job.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 pt-28">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto">
             <div className="animate-pulse">
@@ -124,7 +107,7 @@ const OrdersPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 pt-28">
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
@@ -133,8 +116,8 @@ const OrdersPage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Orders</h1>
-            <p className="text-gray-600">Track and manage your orders</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">My Jobs</h1>
+            <p className="text-gray-600">Track and manage all your service jobs</p>
           </motion.div>
 
           {/* Filters */}
@@ -151,173 +134,180 @@ const OrdersPage = () => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="text"
-                    placeholder="Search by order number or service name..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    placeholder="Search by job number, title, or service..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
               </div>
-
+              
               {/* Status Filter */}
               <div className="sm:w-48">
                 <div className="relative">
                   <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <select
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none"
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none"
                   >
-                    <option value="">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="processing">Processing</option>
-                    <option value="shipped">Shipped</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="cancelled">Cancelled</option>
+                    <option value="">All Status</option>
+                    <option value="PENDING">Pending</option>
+                    <option value="ASSIGNED">Assigned</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                    <option value="QUOTE_SENT">Quote Sent</option>
+                    <option value="QUOTE_ACCEPTED">Quote Accepted</option>
+                    <option value="QUOTE_REJECTED">Quote Rejected</option>
                   </select>
                 </div>
               </div>
             </div>
           </motion.div>
 
-          {/* Orders List */}
-          {filteredOrders.length === 0 ? (
+          {/* Jobs List */}
+          {filteredJobs.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-lg shadow-md p-8 text-center"
+              className="bg-white rounded-lg shadow-md p-12 text-center"
             >
-              <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Orders Found</h3>
-              <p className="text-gray-600 mb-6">
-                {searchTerm || statusFilter ? 'No orders match your search criteria.' : 'You haven\'t placed any orders yet.'}
-              </p>
+              <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">No jobs found</h3>
+              <p className="text-gray-600 mb-6">You haven't booked any services yet.</p>
               <button
                 onClick={() => navigate('/services')}
-                className="bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors"
+                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 transition-colors"
               >
                 Browse Services
               </button>
             </motion.div>
           ) : (
             <div className="space-y-6">
-              {filteredOrders.map((order, index) => (
+              {filteredJobs.map((job, index) => (
                 <motion.div
-                  key={order._id}
+                  key={job._id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * index }}
                   className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
                 >
+                  {/* Job Header */}
                   <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-4">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                        Order #{order.orderNumber}
+                        Job #{job.jobNumber || 'N/A'}
                       </h3>
+                      <p className="text-lg font-medium text-gray-800 mb-2">
+                        {job.title || job.service?.name || 'Service Job'}
+                      </p>
                       <div className="flex items-center text-sm text-gray-600 space-x-4">
                         <span className="flex items-center">
                           <Calendar className="w-4 h-4 mr-1" />
-                          {new Date(order.createdAt).toLocaleDateString()}
+                          {formatDate(job.createdAt)}
                         </span>
                         <span className="flex items-center">
                           <CreditCard className="w-4 h-4 mr-1" />
-                          ${order.total.toFixed(2)}
+                          ${job.totalAmount?.toFixed(2) || '0.00'}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center space-x-3 mt-3 lg:mt-0">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getOrderStatusColor(order.status)}`}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                      </span>
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(order.paymentStatus)}`}>
-                        Payment: {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
-                      </span>
+                      {getJobStatusBadge(job.status)}
                     </div>
                   </div>
 
-                  {/* Order Items */}
-                  <div className="mb-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {order.items.slice(0, 3).map((item, itemIndex) => (
-                        <div key={itemIndex} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900 text-sm">{item.serviceName}</p>
-                            <p className="text-xs text-gray-600">Qty: {item.quantity} × ${item.price.toFixed(2)}</p>
-                          </div>
+                  {/* Job Details */}
+                  <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {job.category && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Category</p>
+                          <p className="font-medium text-gray-900 capitalize">{job.category}</p>
                         </div>
-                      ))}
-                      {order.items.length > 3 && (
-                        <div className="flex items-center justify-center p-3 bg-gray-50 rounded-lg">
-                          <span className="text-sm text-gray-600">
-                            +{order.items.length - 3} more items
-                          </span>
+                      )}
+                      {job.priority && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Priority</p>
+                          <p className="font-medium text-gray-900 capitalize">{job.priority}</p>
+                        </div>
+                      )}
+                      {job.vendor && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Assigned Vendor</p>
+                          <p className="font-medium text-gray-900">{job.vendor.firstName} {job.vendor.lastName}</p>
                         </div>
                       )}
                     </div>
+                    
+                    {job.description && (
+                      <div className="mt-4">
+                        <p className="text-xs text-gray-500 mb-1">Description</p>
+                        <p className="text-gray-700 text-sm">{job.description}</p>
+                      </div>
+                    )}
+
+                    {job.location && (
+                      <div className="mt-4">
+                        <p className="text-xs text-gray-500 mb-1">Location</p>
+                        <p className="text-gray-700 text-sm">
+                          {typeof job.location === 'string' 
+                            ? job.location 
+                            : `${job.location.address || ''} ${job.location.city || ''} ${job.location.state || ''} ${job.location.zipCode || ''}`.trim()
+                          }
+                        </p>
+                      </div>
+                    )}
+
+                    {job.items && job.items.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-xs text-gray-500 mb-2">Items/Services</p>
+                        <div className="space-y-2">
+                          {job.items.map((item, itemIndex) => (
+                            <div key={itemIndex} className="flex justify-between items-center text-sm">
+                              <span className="text-gray-700">{item.name || item.service || 'Service Item'}</span>
+                              <span className="font-medium text-gray-900">
+                                {item.quantity && `${item.quantity}x `}${item.price ? `$${item.price.toFixed(2)}` : ''}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex justify-between items-center pt-4 border-t">
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">Total: ${order.total.toFixed(2)}</span>
-                      <span className="mx-2">•</span>
-                      <span>{order.items.length} item(s)</span>
-                    </div>
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3 justify-end">
                     <button
-                      onClick={() => navigate(`/orders/${order._id}/success`)}
-                      className="flex items-center space-x-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
+                      onClick={() => navigate(`/jobs/${job._id}`)}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                     >
-                      <Eye className="w-4 h-4" />
-                      <span>View Details</span>
+                      <Eye className="w-4 h-4 mr-2" />
+                      View Details
                     </button>
+                    
+                    {job.status === 'QUOTE_SENT' && (
+                      <div className="flex space-x-2">
+                        <button className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
+                          Accept Quote
+                        </button>
+                        <button className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
+                          Reject Quote
+                        </button>
+                      </div>
+                    )}
+                    
+                    {['PENDING', 'ASSIGNED'].includes(job.status) && (
+                      <button className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
+                        Cancel Job
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               ))}
             </div>
-          )}
-
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="mt-8 flex justify-center"
-            >
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={pagination.page === 1}
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                
-                {[...Array(pagination.pages)].map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handlePageChange(index + 1)}
-                    className={`px-3 py-2 text-sm border rounded-lg ${
-                      pagination.page === index + 1
-                        ? 'bg-orange-600 text-white border-orange-600'
-                        : 'border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-                
-                <button
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={pagination.page === pagination.pages}
-                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            </motion.div>
           )}
         </div>
       </div>
