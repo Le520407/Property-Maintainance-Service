@@ -379,17 +379,24 @@ router.patch('/jobs/:jobId/respond', authenticateToken, requireRole(['vendor']),
     }
 
     // Check if there's a pending assignment attempt
-    const pendingAttempt = job.assignmentAttempts.find(
+    let pendingAttempt = job.assignmentAttempts.find(
       attempt => attempt.vendorId.toString() === req.user._id.toString() && 
                  attempt.response === 'PENDING'
     );
 
+    // If no pending attempt exists, create one (this handles legacy data or missing assignment attempts)
     if (!pendingAttempt) {
-      console.log('No pending assignment attempt found for vendor');
-      return res.status(400).json({ message: 'No pending assignment found for this vendor' });
+      console.log('No pending assignment attempt found, creating one...');
+      job.assignmentAttempts.push({
+        vendorId: req.user._id,
+        assignedAt: new Date(),
+        response: 'PENDING'
+      });
+      pendingAttempt = job.assignmentAttempts[job.assignmentAttempts.length - 1];
+      console.log('Created pending assignment attempt');
     }
 
-    console.log('Found pending attempt, processing response...');
+    console.log('Found/created pending attempt, processing response...');
     await job.vendorResponse(req.user._id, response, reason);
 
     res.json({ message: `Job ${response.toLowerCase()} successfully`, job });

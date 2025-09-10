@@ -32,7 +32,8 @@ export const CurrentPlanTab = () => {
   const fetchMembershipData = async () => {
     try {
       const response = await api.get('/vendor/membership/my-membership');
-      setMembership(response.data);
+      // The api.get returns the JSON directly, not wrapped in response.data
+      setMembership(response);
     } catch (error) {
       console.error('Error fetching membership:', error);
       // Demo data fallback
@@ -244,7 +245,8 @@ export const UpgradePlansTab = () => {
   const fetchTiers = async () => {
     try {
       const response = await api.get('/vendor/membership/tiers');
-      setTiers(response.data.tiers);
+      // The api.get returns the JSON directly, not wrapped in response.data
+      setTiers(response.tiers);
     } catch (error) {
       console.error('Error fetching tiers:', error);
       // Demo data fallback
@@ -288,7 +290,12 @@ export const UpgradePlansTab = () => {
   };
 
   const handleUpgrade = (tier) => {
-    setSelectedTierForUpgrade(tier);
+    // Mark this as an upgrade for the payment flow
+    const tierWithUpgradeFlag = {
+      ...tier,
+      isUpgrade: true
+    };
+    setSelectedTierForUpgrade(tierWithUpgradeFlag);
     setShowPaymentFlow(true);
   };
 
@@ -492,7 +499,8 @@ export const UsageStatsTab = () => {
   const fetchUsageStats = async () => {
     try {
       const response = await api.get('/vendor/membership/usage-stats');
-      setStats(response.data.stats);
+      // The api.get returns the JSON directly, not wrapped in response.data
+      setStats(response.stats);
     } catch (error) {
       console.error('Error fetching usage stats:', error);
       // Demo data fallback
@@ -656,7 +664,8 @@ export const BillingHistoryTab = () => {
   const fetchBillingHistory = async () => {
     try {
       const response = await api.get('/vendor/membership/history');
-      setHistory(response.data.history);
+      // The api.get returns the JSON directly, not wrapped in response.data
+      setHistory(response.history);
     } catch (error) {
       console.error('Error fetching billing history:', error);
       // Demo data fallback

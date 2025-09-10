@@ -5,6 +5,9 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api
 const request = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
   
+  console.log('🔍 API Debug - Endpoint:', endpoint);
+  console.log('🔍 API Debug - Token exists:', !!token);
+  console.log('🔍 API Debug - Options:', options);
   
   const config = {
     headers: {
@@ -14,6 +17,8 @@ const request = async (endpoint, options = {}) => {
     },
     ...options,
   };
+
+  console.log('🔍 API Debug - Final config:', config);
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);

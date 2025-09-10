@@ -342,16 +342,30 @@ router.put('/admin/:userId/status', authenticateToken, requireRole(['ADMIN']), a
 // Get user's current membership status
 router.get('/membership', authenticateToken, async (req, res) => {
   try {
+    // Prevent caching to ensure fresh data
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
     if (req.user.role !== 'customer') {
       return res.status(403).json({ 
         message: 'Only customers can access membership information' 
       });
     }
 
-    const membership = await CustomerMembership.findOne({
+    // First try to find an ACTIVE membership
+    let membership = await CustomerMembership.findOne({
       customer: req.user._id,
-      status: { $in: ['ACTIVE', 'PENDING', 'SUSPENDED'] }
+      status: 'ACTIVE'
     }).populate('tier').sort({ createdAt: -1 });
+
+    // If no ACTIVE membership, fall back to PENDING or SUSPENDED
+    if (!membership) {
+      membership = await CustomerMembership.findOne({
+        customer: req.user._id,
+        status: { $in: ['PENDING', 'SUSPENDED'] }
+      }).populate('tier').sort({ createdAt: -1 });
+    }
 
     if (!membership) {
       return res.json({

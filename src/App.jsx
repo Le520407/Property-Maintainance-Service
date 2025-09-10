@@ -47,11 +47,17 @@ import JobDetailsPage from './pages/jobs/JobDetailsPage.jsx';
 import ApiTest from './components/ApiTest.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 
+// Customer Components
+import BillingHistoryPage from './pages/customer/BillingHistoryPage.jsx';
+import CustomerDashboard from './pages/customer/CustomerDashboard.jsx';
+import SubscriptionManagementPage from './pages/SubscriptionManagementPage.jsx';
+
 // Membership Components
 import MembershipPlans from './components/customer/MembershipPlans.jsx';
 import MembershipDashboard from './components/customer/MembershipDashboard.jsx';
 import MembershipSuccess from './pages/MembershipSuccess.jsx';
 import VendorMembership from './components/vendor/VendorMembership.jsx';
+import VendorMembershipSuccessPage from './pages/VendorMembershipSuccessPage.jsx';
 
 // Context
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -205,11 +211,7 @@ function App() {
                           <MembershipDashboard />
                         </ProtectedRoute>
                       } />
-                      <Route path="/membership/success" element={
-                        <ProtectedRoute requiredRole="customer">
-                          <MembershipSuccess />
-                        </ProtectedRoute>
-                      } />
+                      <Route path="/membership/success" element={<MembershipSuccess />} />
                       
                       {/* Vendor Membership Routes */}
                       <Route path="/vendor/membership" element={
@@ -217,8 +219,40 @@ function App() {
                           <VendorMembership />
                         </ProtectedRoute>
                       } />
+                      <Route path="/vendor/membership/success" element={
+                        <ProtectedRoute requiredRole="vendor">
+                          <VendorMembershipSuccessPage />
+                        </ProtectedRoute>
+                      } />
                       
                       <Route path="/subscription" element={<SubscriptionPage />} />
+                      
+                      {/* Customer Dashboard Route */}
+                      <Route path="/customer/dashboard" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <CustomerDashboard />
+                        </ProtectedRoute>
+                      } />
+                      
+                      {/* Customer Subscription Management Routes */}
+                      <Route path="/subscription/manage" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <SubscriptionManagementPage />
+                        </ProtectedRoute>
+                      } />
+                      
+                      {/* Customer Billing Routes */}
+                      <Route path="/subscription/billing-history" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <BillingHistoryPage />
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/subscription/billing-history/:subscriptionId" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <BillingHistoryPage />
+                        </ProtectedRoute>
+                      } />
+                      
                       <Route path="/api-test" element={<ApiTest />} />
                       <Route path="*" element={<NotFoundPage />} />
                     </Routes>
@@ -263,7 +297,17 @@ const DashboardRedirect = () => {
     );
   }
 
-  // Default dashboard for customers, vendors, and other roles
+  // Redirect customers to their specialized dashboard
+  if (user.role === 'customer') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <CustomerDashboard />
+      </div>
+    );
+  }
+
+  // Default dashboard for vendors and other roles
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />

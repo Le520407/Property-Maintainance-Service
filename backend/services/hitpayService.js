@@ -11,7 +11,9 @@ class HitPayService {
     // Demo mode: Check for placeholder values or demo keys
     this.isDemo = !this.apiKey || 
                   this.apiKey === 'demo_api_key_for_development' ||
-                  this.apiKey.startsWith('demo_');
+                  this.apiKey === 'your_real_api_key_from_hitpay_dashboard' ||
+                  this.apiKey.startsWith('demo_') ||
+                  this.apiKey.startsWith('your_real_api_key');
     
     // Determine mode based on API key and configuration
     if (this.apiKey.startsWith('test_')) {
@@ -69,7 +71,7 @@ class HitPayService {
       const response = await fetch(`${this.baseUrl}/subscription-plan`, {
         method: 'POST',
         headers: {
-          'meowmeowmeow': this.apiKey,
+          'X-BUSINESS-API-KEY': this.apiKey,
           'X-Requested-With': 'XMLHttpRequest',
           'Content-Type': 'application/x-www-form-urlencoded'
         },
@@ -92,7 +94,14 @@ class HitPayService {
    * Create recurring billing for customer (Step 2)
    */
   async createRecurringBilling(billingData) {
-    // Demo mode for testing without real HitPay credentials
+    console.log('🔍 HitPay Service Mode Check:');
+    console.log('- API Key:', this.apiKey ? `${this.apiKey.substring(0, 8)}...` : 'NOT SET');
+    console.log('- Base URL:', this.baseUrl);
+    console.log('- Is Demo:', this.isDemo);
+    console.log('- Is Test Mode:', this.isTestMode);
+    console.log('- Is Sandbox:', this.isSandbox);
+
+    // Only use demo mode if no valid API key
     if (this.isDemo) {
       console.log('🎯 HitPay Demo Mode: Creating recurring billing', billingData);
       const billingId = `demo_billing_${Date.now()}`;
@@ -118,6 +127,8 @@ class HitPayService {
       return demoResponse;
     }
 
+    // 🚀 REAL HITPAY API CALL (Test or Live mode)
+    console.log('🚀 Making REAL HitPay API call for recurring billing...');
     try {
       const formData = new URLSearchParams();
       formData.append('plan_id', billingData.planId);
@@ -127,11 +138,20 @@ class HitPayService {
       formData.append('redirect_url', billingData.redirectUrl || `${process.env.FRONTEND_URL}/membership/success`);
       formData.append('reference', billingData.reference || `billing_${Date.now()}`);
       
+      // Add webhook URL for payment notifications
+      const webhookUrl = `${process.env.WEBHOOK_URL}/api/membership/hitpay-webhook`;
+      formData.append('webhook', webhookUrl);
+      console.log('🔔 Setting webhook URL for recurring billing:', webhookUrl);
+      
       if (billingData.paymentMethods && billingData.paymentMethods.length > 0) {
         billingData.paymentMethods.forEach(method => {
           formData.append('payment_methods[]', method);
         });
       }
+
+      console.log('📤 Sending request to HitPay API:');
+      console.log('- URL:', `${this.baseUrl}/recurring-billing`);
+      console.log('- Data:', Object.fromEntries(formData));
 
       const response = await fetch(`${this.baseUrl}/recurring-billing`, {
         method: 'POST',
@@ -143,14 +163,27 @@ class HitPayService {
         body: formData.toString()
       });
 
+      console.log('📥 HitPay API Response Status:', response.status);
+
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`HitPay API Error: ${error || response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ HitPay API Error Response:', errorText);
+        throw new Error(`HitPay API Error (${response.status}): ${errorText || response.statusText}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('✅ REAL BILLING ID RECEIVED FROM HITPAY:');
+      console.log('==========================================');
+      console.log('📊 Full API Response:', JSON.stringify(result, null, 2));
+      console.log('🆔 Billing ID:', result.id);
+      console.log('📋 Plan ID:', result.plan_id);
+      console.log('🔗 Payment URL:', result.url);
+      console.log('💳 Status:', result.status);
+      console.log('==========================================');
+
+      return result;
     } catch (error) {
-      console.error('Error creating HitPay recurring billing:', error);
+      console.error('❌ Error creating HitPay recurring billing:', error);
       throw error;
     }
   }
@@ -304,7 +337,7 @@ class HitPayService {
       };
     }
 
-    if (times_to_be_charged === undefined || times_to_be_charged === null) {
+    if (times_to_be_charged === undefined) {
       return {
         success: false,
         error: 'times_to_be_charged is required (1 for one-time, null for infinite)',
@@ -347,27 +380,26 @@ class HitPayService {
 
     // Real API call
     try {
-      // Prepare request body
-      const requestBody = {
-        cycle: cycle,
-        times_to_be_charged: times_to_be_charged
-      };
+      // Prepare form data (HitPay expects form data, not JSON)
+      const formData = new URLSearchParams();
+      formData.append('cycle', cycle);
+      if (times_to_be_charged !== null) {
+        formData.append('times_to_be_charged', times_to_be_charged.toString());
+      }
+      if (name) formData.append('name', name);
+      if (description) formData.append('description', description);
+      if (amount) formData.append('amount', amount.toString());
+      if (currency) formData.append('currency', currency);
 
-      // Add optional fields if provided
-      if (name) requestBody.name = name;
-      if (description) requestBody.description = description;
-      if (amount) requestBody.amount = amount;
-      if (currency) requestBody.currency = currency;
-
-      console.log('🚀 Creating HitPay subscription plan:', requestBody);
+      console.log('🚀 Creating HitPay subscription plan V2 with form data');
 
       const response = await fetch(`${this.baseUrl}/subscription-plan`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
           'X-BUSINESS-API-KEY': this.apiKey
         },
-        body: JSON.stringify(requestBody)
+        body: formData.toString()
       });
 
       const responseData = await response.json();
@@ -395,6 +427,346 @@ class HitPayService {
         error: `Network error: ${error.message}`,
         data: null
       };
+    }
+  }
+
+  /**
+   * Update an existing subscription plan using HitPay API V2
+   * @param {string} planId - The ID of the plan to update
+   * @param {Object} updateData - Plan update configuration
+   * @param {string} updateData.name - Plan name (optional)
+   * @param {string} updateData.description - Plan description (optional)
+   * @param {number} updateData.amount - Amount in cents (optional)
+   * @param {string} updateData.cycle - monthly, weekly, yearly (optional)
+   * @param {string} updateData.cycle_frequency - day, week, month (optional)
+   * @param {number} updateData.cycle_repeat - Number of cycles (optional)
+   * @param {string} updateData.currency - Currency code (optional, defaults to SGD)
+   * @param {string} updateData.reference - Reference string (optional)
+   * @param {string} updateData.redirect_url - Redirect URL after payment (optional)
+   * @param {string} updateData.start_date_method - sign_up_date or fixed_date (optional)
+   * @param {number} updateData.fixed_date - Fixed date for billing (optional)
+   * @param {number} updateData.times_to_be_charged - Number of times to charge (optional)
+   * @returns {Object} Success/failure response with HitPay data
+   */
+  async updateSubscriptionPlan(planId, updateData) {
+    if (!planId) {
+      return {
+        success: false,
+        error: 'Plan ID is required for update',
+        data: null
+      };
+    }
+
+    // Demo mode for testing without real HitPay credentials
+    if (this.isDemo) {
+      console.log('🎯 HitPay Demo Mode: Updating subscription plan', { planId, updateData });
+      
+      return {
+        success: true,
+        error: null,
+        data: {
+          id: planId,
+          ...updateData,
+          updated_at: new Date().toISOString(),
+          status: 'active',
+          demo: true
+        }
+      };
+    }
+
+    try {
+      console.log('🔄 Updating HitPay subscription plan:', planId);
+      console.log('📝 Update data:', updateData);
+
+      const response = await fetch(`${this.baseUrl}/subscription-plan/${planId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-BUSINESS-API-KEY': this.apiKey
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        console.error('❌ HitPay Update API Error:', response.status, responseData);
+        return {
+          success: false,
+          error: responseData.message || `API Error: ${response.status} ${response.statusText}`,
+          data: responseData
+        };
+      }
+
+      console.log('✅ HitPay subscription plan updated successfully:', responseData);
+      return {
+        success: true,
+        error: null,
+        data: responseData
+      };
+
+    } catch (error) {
+      console.error('💥 Network/Parse Error:', error);
+      return {
+        success: false,
+        error: `Network error: ${error.message}`,
+        data: null
+      };
+    }
+  }
+
+  /**
+   * Cancel (delete) an existing subscription plan using HitPay API V1
+   * Uses the DELETE /v1/subscription-plan/{plan_id} endpoint
+   * @param {string} planId - The ID of the plan to cancel
+   * @returns {Object} Success/failure response with HitPay data
+   */
+  async cancelSubscriptionPlan(planId) {
+    if (!planId) {
+      return {
+        success: false,
+        error: 'Plan ID is required for cancellation',
+        data: null
+      };
+    }
+
+    // Demo mode for testing without real HitPay credentials
+    if (this.isDemo) {
+      console.log('🎯 HitPay Demo Mode: Cancelling subscription plan', planId);
+      
+      return {
+        success: true,
+        error: null,
+        data: {
+          id: planId,
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString(),
+          demo: true,
+          message: 'Subscription plan cancelled successfully'
+        }
+      };
+    }
+
+    try {
+      console.log('🗑️ Cancelling HitPay subscription plan:', planId);
+      
+      // Use the exact API format as requested
+      const url = `https://api.sandbox.hit-pay.com/v1/subscription-plan/${planId}`;
+      const options = {
+        method: 'DELETE',
+        headers: {
+          'X-BUSINESS-API-KEY': this.apiKey
+        },
+        body: undefined
+      };
+
+      console.log('🌐 [HITPAY API] Making DELETE request to:', url);
+      console.log('� [HITPAY API] Method:', options.method);
+      console.log('🔑 [HITPAY API] Headers:', Object.keys(options.headers));
+
+      const response = await fetch(url, options);
+
+      // Handle response data
+      let data;
+      try {
+        data = await response.json();
+        console.log('📥 HitPay Response Data:', data);
+      } catch (parseError) {
+        // If JSON parsing fails, handle as successful deletion
+        console.log('✅ No response body (successful deletion)');
+        data = { 
+          success: true, 
+          message: 'Subscription plan deleted successfully',
+          deleted_at: new Date().toISOString()
+        };
+      }
+
+      if (!response.ok) {
+        console.error('❌ HitPay Cancel API Error:', response.status, data);
+        return {
+          success: false,
+          error: data?.message || `API Error: ${response.status} ${response.statusText}`,
+          data: data
+        };
+      }
+
+      console.log('✅ HitPay subscription plan cancelled successfully');
+      return {
+        success: true,
+        error: null,
+        data: {
+          id: planId,
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString(),
+          message: 'Subscription plan cancelled successfully',
+          ...data
+        }
+      };
+
+    } catch (error) {
+      console.error('💥 Network/Parse Error:', error);
+      return {
+        success: false,
+        error: `Network error: ${error.message}`,
+        data: null
+      };
+    }
+  }
+
+  /**
+   * Process a refund using HitPay API V2
+   * @param {Object} refundData - Refund configuration
+   * @param {number} refundData.amount - Amount to refund in cents
+   * @param {string} refundData.payment_id - The original payment ID to refund
+   * @param {string} refundData.webhook - Webhook URL for refund notifications (optional)
+   * @param {boolean} refundData.send_email - Whether to send email notification (optional)
+   * @param {string} refundData.email - Email address to send notification (optional)
+   * @returns {Object} Success/failure response with HitPay refund data
+   */
+  async processRefund(refundData) {
+    const { amount, payment_id, webhook, send_email = true, email } = refundData;
+
+    // Validate required fields
+    if (!amount || amount <= 0) {
+      return {
+        success: false,
+        error: 'Amount is required and must be greater than 0',
+        data: null
+      };
+    }
+
+    if (!payment_id) {
+      return {
+        success: false,
+        error: 'Payment ID is required for refund',
+        data: null
+      };
+    }
+
+    // Demo mode for testing without real HitPay credentials
+    if (this.isDemo) {
+      console.log('🎯 HitPay Demo Mode: Processing refund', refundData);
+      
+      return {
+        success: true,
+        error: null,
+        data: {
+          id: `demo_refund_${Date.now()}`,
+          payment_id: payment_id,
+          amount: amount,
+          status: 'succeeded',
+          created_at: new Date().toISOString(),
+          email: email,
+          demo: true,
+          message: 'Refund processed successfully in demo mode'
+        }
+      };
+    }
+
+    try {
+      console.log('💰 Processing HitPay refund:', refundData);
+
+      const requestBody = {
+        amount: amount,
+        payment_id: payment_id
+      };
+
+      // Add optional fields if provided
+      if (webhook) requestBody.webhook = webhook;
+      if (send_email !== undefined) requestBody.send_email = send_email.toString();
+      if (email) requestBody.email = email;
+
+      const response = await fetch(`${this.baseUrl}/refund`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-BUSINESS-API-KEY': this.apiKey
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        console.error('❌ HitPay Refund API Error:', response.status, responseData);
+        return {
+          success: false,
+          error: responseData.message || `API Error: ${response.status} ${response.statusText}`,
+          data: responseData
+        };
+      }
+
+      console.log('✅ HitPay refund processed successfully:', responseData);
+      return {
+        success: true,
+        error: null,
+        data: responseData
+      };
+
+    } catch (error) {
+      console.error('💥 Network/Parse Error:', error);
+      return {
+        success: false,
+        error: `Network error: ${error.message}`,
+        data: null
+      };
+    }
+  }
+
+  /**
+   * Cancel recurring billing subscription
+   * @param {string} recurringBillingId - The recurring billing ID to cancel
+   */
+  async cancelRecurringBilling(recurringBillingId) {
+    // Demo mode for testing
+    if (this.isDemo) {
+      console.log('🎯 HitPay Demo Mode: Cancelling recurring billing', recurringBillingId);
+      
+      const demoResponse = {
+        success: true,
+        message: 'Recurring billing cancelled successfully (demo mode)',
+        billing_id: recurringBillingId,
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString()
+      };
+      
+      console.log('💰 CANCELLATION RESPONSE (Demo Mode):');
+      console.log('====================================');
+      console.log('✅ SUCCESS: Recurring billing cancelled');
+      console.log('📊 Cancellation Details:', JSON.stringify(demoResponse, null, 2));
+      console.log('🆔 Billing ID:', demoResponse.billing_id);
+      console.log('💳 Status:', demoResponse.status);
+      console.log('====================================');
+      
+      return demoResponse;
+    }
+
+    try {
+      // Real API call to cancel recurring billing
+      console.log('🔄 [HITPAY API] Making DELETE request for recurring billing');
+      console.log('🌐 [HITPAY API] URL:', `${this.baseUrl}/recurring-billing/${recurringBillingId}`);
+      console.log('🔧 [HITPAY API] Method: DELETE');
+      
+      const response = await fetch(`${this.baseUrl}/recurring-billing/${recurringBillingId}`, {
+        method: 'DELETE',
+        headers: {
+          'X-BUSINESS-API-KEY': this.apiKey,
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`HitPay Cancel API Error: ${error || response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ HitPay recurring billing cancelled:', result);
+      return result;
+
+    } catch (error) {
+      console.error('❌ Error cancelling HitPay recurring billing:', error);
+      throw error;
     }
   }
 }
