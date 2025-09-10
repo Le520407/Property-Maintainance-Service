@@ -6,6 +6,7 @@ import {
   Clock,
   CreditCard,
   Home,
+  RefreshCw,
   Shield,
   Star,
   Users,
@@ -40,9 +41,13 @@ const MembershipPlans = () => {
     if (!user) return;
     
     try {
+      // Check for refresh parameter in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const forceRefresh = urlParams.get('refresh') === 'true';
+      
       const [tiersResponse, membershipResponse] = await Promise.all([
-        cachedApi.getMembershipTiers(),
-        cachedApi.getMembership(user.id)
+        cachedApi.getMembershipTiers(forceRefresh),
+        cachedApi.getMembership(user.id, forceRefresh)
       ]);
 
       console.log('Tiers:', tiersResponse.tiers);
@@ -64,6 +69,26 @@ const MembershipPlans = () => {
   useEffect(() => {
     fetchMembershipData();
   }, [user, fetchMembershipData]);
+
+  // Manual refresh function
+  const handleRefresh = async () => {
+    setLoading(true);
+    toast.loading('Refreshing membership status...', { id: 'refresh' });
+    try {
+      const [tiersResponse, membershipResponse] = await Promise.all([
+        cachedApi.getMembershipTiers(true),
+        cachedApi.getMembership(user.id, true)
+      ]);
+      setTiers(tiersResponse.tiers);
+      setCurrentMembership(membershipResponse.membership);
+      toast.success('Membership status updated!', { id: 'refresh' });
+    } catch (error) {
+      console.error('Error refreshing membership data:', error);
+      toast.error('Failed to refresh membership status', { id: 'refresh' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubscribe = async (tier) => {
     // Check authentication before proceeding
@@ -102,8 +127,8 @@ const MembershipPlans = () => {
           billingCycle: billingCycle
         });
       } else {
-        // Use membership payment endpoint for new subscriptions
-        response = await api.post('/membership/payment', {
+        // Use membership subscribe endpoint for new subscriptions (recurring payments)
+        response = await api.post('/membership/subscribe', {
           tierId: tier._id,
           billingCycle: billingCycle
         });
@@ -112,7 +137,8 @@ const MembershipPlans = () => {
       // Dismiss loading toast
       toast.dismiss('preparing');
 
-      if (response.paymentUrl) {
+      const redirectUrl = response.paymentUrl || response.checkoutUrl;
+      if (redirectUrl) {
         // Show redirect message
         toast.success(
           isUpgrade 
@@ -123,7 +149,7 @@ const MembershipPlans = () => {
         
         // Small delay for better UX, then redirect to HitPay
         setTimeout(() => {
-          window.location.href = response.paymentUrl;
+          window.location.href = redirectUrl;
         }, 1500);
         
       } else if (response.success) {
@@ -171,16 +197,17 @@ const MembershipPlans = () => {
           billingCycle: billingCycle
         });
       } else {
-        response = await api.post('/membership/payment', {
+        response = await api.post('/membership/subscribe', {
           tierId: selectedTier._id,
           billingCycle: billingCycle
         });
       }
 
-      if (response.paymentUrl) {
+      const redirectUrl = response.paymentUrl || response.checkoutUrl;
+      if (redirectUrl) {
         setShowPaymentModal(false);
         setSelectedTier(null);
-        window.location.href = response.paymentUrl;
+        window.location.href = redirectUrl;
       } else if (response.success) {
         toast.success(isUpgrade ? 'Plan upgraded!' : 'Membership activated!');
         setCurrentMembership(response.membership);
@@ -414,6 +441,14 @@ const MembershipPlans = () => {
                       : currentMembership.status
                     }
                   </div>
+                  <button
+                    onClick={handleRefresh}
+                    className="inline-flex items-center px-3 py-2 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors"
+                    title="Refresh to see latest status"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Refresh
+                  </button>
                   {currentMembership.status === 'ACTIVE' && (
                     <button
                       onClick={handleCancelMembership}

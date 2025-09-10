@@ -1,5 +1,10 @@
 const { MembershipTier, CustomerMembership } = require('../models/CustomerMembership');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+// Initialize Stripe only if we have a real key
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY !== 'sk_test_demo_key_for_development') {
+  stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+}
 
 class MembershipService {
   
@@ -171,27 +176,107 @@ class MembershipService {
     const membership = await this.getCustomerMembership(customerId);
     if (!membership) throw new Error('No active membership found');
 
-    // Check if we're in demo mode
-    const isDemoMode = process.env.STRIPE_SECRET_KEY.includes('demo') || process.env.STRIPE_SECRET_KEY.includes('test_demo');
-    console.log('Plan cancel - Demo mode:', isDemoMode);
-
-    // Cancel Stripe subscription (only in real mode)
-    if (!isDemoMode) {
-      await stripe.subscriptions.update(membership.stripeSubscriptionId, {
-        cancel_at_period_end: !immediate
-      });
+    if (!['ACTIVE', 'PENDING'].includes(membership.status)) {
+      throw new Error('Membership is already cancelled or inactive');
     }
 
-    if (immediate) {
-      membership.status = 'CANCELLED';
-      membership.endDate = new Date();
-    } else {
-      // Will be cancelled at the end of current billing period
-      membership.autoRenew = false;
-    }
+    // Check if we're in demo mode for Stripe
+    const isStripeDemo = process.env.STRIPE_SECRET_KEY?.includes('demo') || process.env.STRIPE_SECRET_KEY?.includes('test_demo');
+    const isHitPayDemo = process.env.HITPAY_SANDBOX === 'true';
+    
+    console.log('Plan cancel - Stripe Demo mode:', isStripeDemo, 'HitPay Demo mode:', isHitPayDemo);
 
-    await membership.save();
-    return membership;
+    try {
+      // Handle HitPay subscription cancellation - Use saved billing ID
+      if (membership.paymentMethod === 'HITPAY') {
+        console.log('🛑 Cancelling HitPay subscription...');
+        console.log('🔍 Frontend→Backend: PUT /api/membership/cancel (internal API)');
+        console.log('🔍 Backend→HitPay: Will use DELETE methods (external APIs)');
+        console.log('📊 Cancellation Context:');
+        console.log('  - Customer ID:', membership.customer);
+        console.log('  - Membership ID:', membership._id);
+        console.log('  - HitPay Billing ID:', membership.hitpayRecurringBillingId);
+        console.log('  - HitPay Plan ID:', membership.hitpayPlanId);
+        console.log('  - Tier:', membership.tier?.name);
+        console.log('  - Status:', membership.status);
+        
+        const hitpayService = require('./hitpayService');
+        
+        // Step 1: Cancel recurring billing (this shows in HitPay dashboard) 
+        // 🎯 This uses the billing ID we saved during subscription creation
+        if (membership.hitpayRecurringBillingId && !membership.hitpayRecurringBillingId.includes('demo_')) {
+          console.log('🔄 [HITPAY DELETE] Cancelling recurring billing:', membership.hitpayRecurringBillingId);
+          console.log('🌐 Method: DELETE /v1/recurring-billing/' + membership.hitpayRecurringBillingId);
+          console.log('💡 This billing ID was saved when user subscribed');
+          try {
+            const recurringResult = await hitpayService.cancelRecurringBilling(membership.hitpayRecurringBillingId);
+            console.log('✅ HitPay DELETE recurring billing - SUCCESS');
+            console.log('📊 Cancellation confirmed for billing ID:', membership.hitpayRecurringBillingId);
+          } catch (recurringError) {
+            console.warn('⚠️ HitPay DELETE recurring billing - FAILED:', recurringError.message);
+          }
+        } else if (membership.hitpayRecurringBillingId?.includes('demo_')) {
+          console.log('⚠️ Skipping HitPay cancellation for demo billing ID:', membership.hitpayRecurringBillingId);
+        } else {
+          console.log('❌ No billing ID found - cannot cancel HitPay subscription');
+          console.log('💡 This might be a legacy subscription or manual entry');
+        }
+        
+        // Step 2: Delete subscription plan (cleanup)
+        if (membership.hitpayPlanId && !membership.hitpayPlanId.includes('demo_')) {
+          console.log('🗑️ [HITPAY DELETE] Deleting subscription plan:', membership.hitpayPlanId);
+          console.log('🌐 Method: DELETE /v1/subscription-plan/' + membership.hitpayPlanId);
+          try {
+            const planResult = await hitpayService.cancelSubscriptionPlan(membership.hitpayPlanId);
+            if (planResult.success) {
+              console.log('✅ HitPay DELETE subscription plan - SUCCESS');
+            } else {
+              console.warn('⚠️ HitPay DELETE subscription plan - FAILED:', planResult.error);
+            }
+          } catch (planError) {
+            console.warn('⚠️ HitPay DELETE subscription plan - ERROR:', planError.message);
+          }
+        }
+        
+        // Skip if demo/test subscription
+        if (isHitPayDemo || (membership.hitpayRecurringBillingId && membership.hitpayRecurringBillingId.includes('demo_'))) {
+          console.log('⚠️ Skipping HitPay cancellation for demo/test subscription');
+        }
+      }
+
+      // Handle Stripe subscription cancellation
+      if (membership.stripeSubscriptionId && !isStripeDemo) {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        await stripe.subscriptions.update(membership.stripeSubscriptionId, {
+          cancel_at_period_end: !immediate
+        });
+        console.log('✅ Stripe subscription cancellation scheduled');
+      }
+
+      // Update membership status
+      if (immediate) {
+        membership.status = 'CANCELLED';
+        membership.endDate = new Date();
+        membership.autoRenew = false;
+        console.log('✅ Membership cancelled immediately');
+      } else {
+        // Cancel recurring billing immediately but keep access until period ends
+        membership.autoRenew = false;
+        membership.status = 'ACTIVE'; // Keep ACTIVE status until natural expiry
+        membership.cancelledAt = new Date(); // Track when cancellation was requested
+        membership.willExpireAt = membership.endDate; // Make it explicit when access ends
+        
+        console.log('✅ Recurring billing cancelled, access maintained until:', membership.endDate);
+        console.log('✅ No more charges will be taken from HitPay/Stripe');
+      }
+
+      await membership.save();
+      return membership;
+
+    } catch (error) {
+      console.error('❌ Error during membership cancellation:', error);
+      throw new Error('Failed to cancel membership: ' + error.message);
+    }
   }
 
   // Check if customer can create service request

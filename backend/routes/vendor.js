@@ -281,7 +281,14 @@ router.get('/jobs', authenticateToken, requireRole(['vendor']), async (req, res)
 
     const total = await Job.countDocuments(filter);
     
-    // Debug log removed
+    console.log('Found', jobs.length, 'jobs for vendor', req.user._id); // Debug log
+    
+    // Log job amounts for debugging
+    jobs.forEach(job => {
+      if (job.status === 'QUOTE_SENT') {
+        console.log(`📊 FETCHED JOB ${job.jobNumber}: totalAmount=${job.totalAmount}, estimatedBudget=${job.estimatedBudget}`);
+      }
+    });
 
     res.json({
       jobs,
@@ -301,15 +308,39 @@ router.get('/jobs', authenticateToken, requireRole(['vendor']), async (req, res)
 router.patch('/jobs/:jobId/status', authenticateToken, requireRole(['vendor']), async (req, res) => {
   try {
     const { jobId } = req.params;
-    const { status, notes } = req.body;
+    const { status, notes, totalAmount } = req.body;
+
+    console.log('Job status update request:', { jobId, status, totalAmount, notes });
 
     const job = await Job.findOne({ _id: jobId, vendorId: req.user._id });
+    
+    if (job) {
+      console.log('📋 JOB DETAILS:', {
+        jobNumber: job.jobNumber,
+        category: job.category,
+        itemsCategories: job.items.map(item => ({ serviceName: item.serviceName, category: item.category }))
+      });
+    }
     
     if (!job) {
       return res.status(404).json({ message: 'Job not found' });
     }
 
+    // Update totalAmount if provided (for quote updates)
+    if (totalAmount !== undefined && totalAmount !== null) {
+      console.log('🔄 BEFORE UPDATE - Job totalAmount:', job.totalAmount);
+      console.log('🔄 UPDATING to:', totalAmount);
+      job.totalAmount = totalAmount;
+      console.log('🔄 AFTER ASSIGNMENT - Job totalAmount:', job.totalAmount);
+      job.markModified('totalAmount'); // Ensure mongoose knows this field changed
+    }
+
     await job.updateStatus(status, req.user._id, notes);
+    
+    console.log('💾 BEFORE SAVE - Job totalAmount:', job.totalAmount);
+    const savedJob = await job.save(); // Ensure all changes are saved to database
+    console.log('✅ AFTER SAVE - Job totalAmount:', savedJob.totalAmount);
+    console.log('✅ SAVE COMPLETE - Job ID:', savedJob._id);
 
     // Update vendor stats if job is completed
     if (status === 'COMPLETED') {
@@ -348,17 +379,24 @@ router.patch('/jobs/:jobId/respond', authenticateToken, requireRole(['vendor']),
     }
 
     // Check if there's a pending assignment attempt
-    const pendingAttempt = job.assignmentAttempts.find(
+    let pendingAttempt = job.assignmentAttempts.find(
       attempt => attempt.vendorId.toString() === req.user._id.toString() && 
                  attempt.response === 'PENDING'
     );
 
+    // If no pending attempt exists, create one (this handles legacy data or missing assignment attempts)
     if (!pendingAttempt) {
-    // Debug log removed
-      return res.status(400).json({ message: 'No pending assignment found for this vendor' });
+      console.log('No pending assignment attempt found, creating one...');
+      job.assignmentAttempts.push({
+        vendorId: req.user._id,
+        assignedAt: new Date(),
+        response: 'PENDING'
+      });
+      pendingAttempt = job.assignmentAttempts[job.assignmentAttempts.length - 1];
+      console.log('Created pending assignment attempt');
     }
 
-    // Debug log removed
+    console.log('Found/created pending attempt, processing response...');
     await job.vendorResponse(req.user._id, response, reason);
 
     res.json({ message: `Job ${response.toLowerCase()} successfully`, job });

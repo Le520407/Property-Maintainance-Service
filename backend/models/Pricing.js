@@ -33,7 +33,7 @@ const pricingSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services']
+    enum: ['maintenance', 'painting', 'electrical', 'plumbing', 'flooring', 'installation', 'assembly', 'moving', 'renovation', 'security', 'cleaning']
   },
   features: [{
     name: {

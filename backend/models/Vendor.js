@@ -13,7 +13,7 @@ const servicePackageSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services']
+    enum: ['maintenance', 'painting', 'electrical', 'plumbing', 'flooring', 'installation', 'assembly', 'moving', 'renovation', 'security', 'cleaning']
   },
   price: {
     type: Number,
@@ -35,7 +35,7 @@ const priceListSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services']
+    enum: ['maintenance', 'painting', 'electrical', 'plumbing', 'flooring', 'installation', 'assembly', 'moving', 'renovation', 'security', 'cleaning']
   },
   baseRate: {
     type: Number,
@@ -139,7 +139,7 @@ const vendorSchema = new mongoose.Schema({
   // Service Information
   serviceCategories: [{
     type: String,
-    enum: ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services']
+    enum: ['maintenance', 'painting', 'electrical', 'plumbing', 'flooring', 'installation', 'assembly', 'moving', 'renovation', 'security', 'cleaning']
   }],
   serviceArea: {
     type: String,
@@ -214,7 +214,7 @@ const vendorSchema = new mongoose.Schema({
     description: String,
     category: {
       type: String,
-      enum: ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services']
+      enum: ['maintenance', 'painting', 'electrical', 'plumbing', 'flooring', 'installation', 'assembly', 'moving', 'renovation', 'security', 'cleaning']
     }
   }],
   

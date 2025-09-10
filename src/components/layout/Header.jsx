@@ -377,13 +377,22 @@ const Header = () => {
                     
                     {/* Customer-specific menu items */}
                     {user.role === 'customer' && (
-                      <Link
-                        to="/membership/plans"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        👑 Membership Plans
-                      </Link>
+                      <>
+                        <Link
+                          to="/membership/dashboard"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          ⚙️ Manage Subscription
+                        </Link>
+                        <Link
+                          to="/membership/plans"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          👑 Membership Plans
+                        </Link>
+                      </>
                     )}
                     
                     {user.role === 'customer' && (

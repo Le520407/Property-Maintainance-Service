@@ -8,11 +8,13 @@ import {
   TrendingUp,
   Users,
   Star,
-  Plus
+  Plus,
+  FileText,
+  Settings
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
-import MembershipCard from '../customer/MembershipCard';
+import MembershipCard from '../../components/customer/MembershipCard';
 
 const CustomerDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
@@ -55,7 +57,11 @@ const CustomerDashboard = () => {
             createdAt: '2024-01-15T10:30:00Z',
             vendor: { name: 'John Plumber' },
             totalAmount: 85,
-            membershipDiscount: 8.5
+            membershipDiscount: 8.5,
+            workProgress: {
+              percentage: 75,
+              workNotes: 'Materials ordered and work started. Replacing main faucet assembly and checking for additional leaks.'
+            }
           },
           {
             _id: '2',
@@ -64,7 +70,11 @@ const CustomerDashboard = () => {
             createdAt: '2024-01-10T14:20:00Z',
             vendor: { name: 'Mike Electric' },
             totalAmount: 120,
-            membershipDiscount: 12
+            membershipDiscount: 12,
+            workProgress: {
+              percentage: 100
+            },
+            completionDetails: 'Successfully replaced faulty outlet and tested all connections. Kitchen electrical system now fully operational with safety inspection passed.'
           }
         ],
         stats: {
@@ -82,11 +92,16 @@ const CustomerDashboard = () => {
   const getStatusColor = (status) => {
     const colors = {
       pending: 'bg-yellow-100 text-yellow-800',
+      assigned: 'bg-yellow-100 text-yellow-800',
+      in_discussion: 'bg-blue-100 text-blue-800',
+      quote_sent: 'bg-orange-100 text-orange-800',
+      quote_accepted: 'bg-purple-100 text-purple-800',
+      quote_rejected: 'bg-red-100 text-red-800',
       in_progress: 'bg-blue-100 text-blue-800',
       completed: 'bg-green-100 text-green-800',
       cancelled: 'bg-red-100 text-red-800'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status.toLowerCase()] || 'bg-gray-100 text-gray-800';
   };
 
   const getStatusIcon = (status) => {
@@ -253,14 +268,55 @@ const CustomerDashboard = () => {
                                 Membership discount: -${job.membershipDiscount}
                               </p>
                             )}
+                            
+                            {/* Latest Progress Update */}
+                            {job.workProgress?.workNotes && (
+                              <div className="mt-2 p-2 bg-blue-50 rounded text-xs">
+                                <p className="text-blue-800 font-medium">Latest Update:</p>
+                                <p className="text-blue-700">{job.workProgress.workNotes}</p>
+                              </div>
+                            )}
+                            
+                            {/* Completion Details */}
+                            {job.status === 'COMPLETED' && job.completionDetails && (
+                              <div className="mt-2 p-2 bg-green-50 rounded text-xs">
+                                <p className="text-green-800 font-medium">Work Completed:</p>
+                                <p className="text-green-700">{job.completionDetails}</p>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center space-x-4">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-                            {job.status.replace('_', ' ').toUpperCase()}
-                          </span>
-                          <div className="text-right">
-                            <p className="text-sm font-medium text-gray-900">${job.totalAmount}</p>
+                          <div className="flex flex-col items-end space-y-2">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
+                              {job.status.replace('_', ' ').toUpperCase()}
+                            </span>
+                            
+                            {/* Progress Bar for IN_PROGRESS jobs */}
+                            {(job.status === 'IN_PROGRESS' || job.status === 'COMPLETED') && job.workProgress?.percentage > 0 && (
+                              <div className="w-24">
+                                <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                                  <span>Progress</span>
+                                  <span>{job.workProgress.percentage}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                  <div 
+                                    className={`h-1.5 rounded-full ${
+                                      job.status === 'COMPLETED' ? 'bg-green-600' : 'bg-blue-600'
+                                    }`}
+                                    style={{ width: `${job.workProgress.percentage}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            )}
+                            
+                            <div className="text-right">
+                              <p className={`text-sm font-medium ${
+                                job.totalAmount ? 'text-green-600' : 'text-gray-500'
+                              }`}>
+                                {job.totalAmount ? `$${job.totalAmount.toLocaleString()}` : 'Quote pending'}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -323,8 +379,52 @@ const CustomerDashboard = () => {
                 <span className="font-medium">Membership Plans</span>
                 <Star className="h-5 w-5" />
               </Link>
+              
+              <Link
+                to="/subscription/manage"
+                className="w-full flex items-center justify-between p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
+              >
+                <span className="font-medium">Manage Subscription</span>
+                <Settings className="h-5 w-5" />
+              </Link>
+              
+              <Link
+                to="/subscription/billing-history"
+                className="w-full flex items-center justify-between p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                <span className="font-medium">Billing History</span>
+                <FileText className="h-5 w-5" />
+              </Link>
             </div>
           </motion.div>
+
+          {/* Recent Updates */}
+          {dashboardData.recentJobs.some(job => job.workProgress?.workNotes || job.completionDetails) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="bg-white rounded-lg shadow-sm p-6"
+            >
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Updates</h3>
+              <div className="space-y-3">
+                {dashboardData.recentJobs
+                  .filter(job => job.workProgress?.workNotes || job.completionDetails)
+                  .slice(0, 2)
+                  .map((job) => (
+                    <div key={job._id} className="border-l-4 border-blue-500 pl-4">
+                      <p className="text-sm font-medium text-gray-900">{job.title}</p>
+                      <p className="text-xs text-gray-600">
+                        {job.completionDetails || job.workProgress?.workNotes}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {new Date(job.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* Support Card */}
           <motion.div

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
+import { SERVICE_CATEGORIES_SIMPLE } from '../../constants/serviceCategories';
 
 const PricingMonitor = ({ jobs = [] }) => {
   const [pricingAnalysis, setPricingAnalysis] = useState(null);
@@ -205,11 +206,11 @@ const PricingMonitor = ({ jobs = [] }) => {
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
             >
               <option value="all">All Categories</option>
-              <option value="plumbing">Plumbing</option>
-              <option value="electrical">Electrical</option>
-              <option value="cleaning">Cleaning</option>
-              <option value="painting">Painting</option>
-              <option value="maintenance">Maintenance</option>
+              {SERVICE_CATEGORIES_SIMPLE.map(category => (
+                <option key={category} value={category}>
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
+                </option>
+              ))}
             </select>
             
             <select

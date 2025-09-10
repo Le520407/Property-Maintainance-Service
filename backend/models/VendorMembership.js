@@ -143,6 +143,11 @@ const vendorMembershipSchema = new mongoose.Schema({
     enum: ['BASIC', 'PROFESSIONAL', 'PREMIUM', 'ENTERPRISE'],
     default: 'BASIC'
   },
+  pendingUpgradeTier: {
+    type: String,
+    enum: ['BASIC', 'PROFESSIONAL', 'PREMIUM', 'ENTERPRISE'],
+    default: null
+  },
   subscriptionStatus: {
     type: String,
     enum: ['ACTIVE', 'INACTIVE', 'PENDING', 'CANCELLED', 'SUSPENDED'],
@@ -177,6 +182,16 @@ const vendorMembershipSchema = new mongoose.Schema({
   currentPeriodEnd: Date,
   stripeCustomerId: String,
   stripeSubscriptionId: String,
+  
+  // HitPay payment information
+  hitpayPaymentId: String,
+  hitpayReference: String,
+  paymentStatus: {
+    type: String,
+    enum: ['PENDING', 'PAID', 'FAILED', 'CANCELLED'],
+    default: 'PENDING'
+  },
+  lastPaymentDate: Date,
   
   // Usage tracking
   monthlyUsage: {

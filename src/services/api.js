@@ -5,6 +5,9 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api
 const request = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
   
+  console.log('🔍 API Debug - Endpoint:', endpoint);
+  console.log('🔍 API Debug - Token exists:', !!token);
+  console.log('🔍 API Debug - Options:', options);
   
   const config = {
     headers: {
@@ -14,6 +17,8 @@ const request = async (endpoint, options = {}) => {
     },
     ...options,
   };
+
+  console.log('🔍 API Debug - Final config:', config);
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
@@ -541,6 +546,12 @@ export const api = {
       body: JSON.stringify(statusData),
     }),
     
+    // Update job price (custom endpoint for price updates)
+    updateJobPrice: (jobId, priceData) => request(`/vendor/jobs/${jobId}/price`, {
+      method: 'PATCH',
+      body: JSON.stringify(priceData),
+    }),
+    
     // Update vendor profile
     updateProfile: (profileData) => request('/vendor/profile', {
       method: 'PUT',
@@ -609,6 +620,21 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ items }),
     }),
+  },
+
+  // Customer related
+  customer: {
+    // Respond to quote (accept/reject)
+    respondToQuote: (jobId, response) => request(`/jobs/${jobId}/quote-response`, {
+      method: 'PATCH',
+      body: JSON.stringify(response),
+    }),
+    
+    // Get customer jobs
+    getJobs: (status) => {
+      const params = status ? `?status=${status}` : '';
+      return request(`/jobs/my-orders${params ? `${params}` : ''}`);
+    },
   },
 };
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar,
   CreditCard,
@@ -10,7 +10,9 @@ import {
   AlertCircle,
   TrendingUp,
   Users,
-  Shield
+  Shield,
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -19,6 +21,8 @@ const MembershipDashboard = () => {
   const [membership, setMembership] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   useEffect(() => {
     fetchMembershipData();
@@ -26,35 +30,158 @@ const MembershipDashboard = () => {
 
   const fetchMembershipData = async () => {
     try {
+      console.log('🔍 Fetching membership data...');
+      
+      // Check if user is logged in
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('❌ No authentication token found');
+        toast.error('Please log in to view your membership');
+        setLoading(false);
+        return;
+      }
+      
       const response = await api.get('/membership/my-membership');
       
-      if (response.data.success) {
-        setMembership(response.data.membership);
-        setAnalytics(response.data.analytics);
+      console.log('📋 API Response:', response);
+      
+      if (response?.success) {
+        setMembership(response.membership);
+        setAnalytics(response.analytics);
+        console.log('✅ Membership data loaded successfully');
+      } else if (response?.success === false) {
+        console.error('❌ API returned unsuccessful response:', response);
+        toast.error(response.message || 'Failed to load membership data');
+      } else {
+        console.error('❌ Invalid response format:', response);
+        toast.error('Invalid response from server');
       }
     } catch (error) {
-      console.error('Error fetching membership data:', error);
-      toast.error('Failed to load membership data');
+      console.error('❌ Error fetching membership data:', error);
+      
+      // Check different error types
+      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        toast.error('Session expired. Please log in again.');
+      } else if (error.message.includes('404')) {
+        toast.error('Membership service not found. Please contact support.');
+      } else if (error.message.includes('500')) {
+        toast.error('Server error. Please try again later.');
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        toast.error('Unable to connect to server. Please check your connection.');
+      } else {
+        toast.error(error.message || 'Failed to load membership data');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancelMembership = async () => {
-    if (!window.confirm('Are you sure you want to cancel your membership? This action cannot be undone.')) {
+  const handleCancelMembership = async (immediate = false) => {
+    const confirmText = immediate 
+      ? 'Are you sure you want to cancel your membership immediately? You will lose access to all benefits right away and no refund will be provided.'
+      : 'Are you sure you want to cancel your membership? It will remain active until the end of your current billing period.';
+
+    if (!window.confirm(confirmText)) {
+      return;
+    }
+
+    setCancelLoading(true);
+    try {
+      console.log('🔍 Cancelling membership, immediate:', immediate);
+      
+      // Check if user is logged in
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Please log in to cancel your membership');
+        setCancelLoading(false);
+        return;
+      }
+      
+      const response = await api.put('/membership/cancel', { immediate });
+      
+      console.log('📋 Cancel API Response:', response);
+      
+      if (response?.success) {
+        const message = immediate 
+          ? 'Membership cancelled immediately - access ended' 
+          : 'Auto-renewal stopped - access continues until end of period';
+        toast.success(message);
+        setShowCancelModal(false);
+        fetchMembershipData(); // Refresh data
+        console.log('✅ Membership cancelled successfully');
+      } else if (response?.success === false) {
+        console.error('❌ API returned unsuccessful response:', response);
+        toast.error(response.message || 'Failed to cancel membership');
+      } else {
+        console.error('❌ Invalid response format:', response);
+        toast.error('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('❌ Cancellation failed:', error);
+      
+      // Check different error types
+      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        toast.error('Session expired. Please log in again.');
+      } else if (error.message.includes('404')) {
+        toast.error('Cancellation service not found. Please contact support.');
+      } else if (error.message.includes('500')) {
+        toast.error('Server error. Please try again later.');
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        toast.error('Unable to connect to server. Please check your connection.');
+      } else {
+        toast.error(error.message || 'Failed to cancel membership');
+      }
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleReactivateMembership = async () => {
+    if (!window.confirm('Are you sure you want to reactivate your membership?')) {
       return;
     }
 
     try {
-      const response = await api.put('/membership/cancel', { immediate: false });
+      console.log('🔍 Reactivating membership...');
       
-      if (response.data.success) {
-        toast.success('Membership will be cancelled at the end of your billing period');
+      // Check if user is logged in
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Please log in to reactivate your membership');
+        return;
+      }
+      
+      const response = await api.put('/membership/reactivate');
+      
+      console.log('📋 Reactivate API Response:', response);
+      
+      if (response?.success) {
+        toast.success('Membership reactivated successfully!');
+        setShowCancelModal(false);
         fetchMembershipData(); // Refresh data
+        console.log('✅ Membership reactivated successfully');
+      } else if (response?.success === false) {
+        console.error('❌ API returned unsuccessful response:', response);
+        toast.error(response.message || 'Failed to reactivate membership');
+      } else {
+        console.error('❌ Invalid response format:', response);
+        toast.error('Invalid response from server');
       }
     } catch (error) {
-      console.error('Cancellation failed:', error);
-      toast.error(error.response?.data?.message || 'Failed to cancel membership');
+      console.error('❌ Reactivation failed:', error);
+      
+      // Check different error types
+      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        toast.error('Session expired. Please log in again.');
+      } else if (error.message.includes('404')) {
+        toast.error('Reactivation service not found. Please contact support.');
+      } else if (error.message.includes('500')) {
+        toast.error('Server error. Please try again later.');
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        toast.error('Unable to connect to server. Please check your connection.');
+      } else {
+        toast.error(error.message || 'Failed to reactivate membership');
+      }
     }
   };
 
@@ -108,13 +235,42 @@ const MembershipDashboard = () => {
           </div>
           <div className="text-right">
             <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-              membership.status === 'ACTIVE' 
+              membership.cancelledAt && !membership.autoRenew
+                ? 'bg-orange-100 text-orange-800' // Cancelled but still active
+                : membership.status === 'ACTIVE' 
                 ? 'bg-green-100 text-green-800'
-                : 'bg-yellow-100 text-yellow-800'
+                : membership.status === 'CANCELLED'
+                ? 'bg-red-100 text-red-800'
+                : membership.status === 'PENDING'
+                ? 'bg-blue-100 text-blue-800'
+                : 'bg-gray-100 text-gray-800'
             }`}>
-              <CheckCircle className="h-4 w-4 mr-1" />
-              {membership.status}
+              {membership.cancelledAt && !membership.autoRenew ? (
+                <AlertTriangle className="h-4 w-4 mr-1" />
+              ) : membership.status === 'ACTIVE' ? (
+                <CheckCircle className="h-4 w-4 mr-1" />
+              ) : membership.status === 'CANCELLED' ? (
+                <X className="h-4 w-4 mr-1" />
+              ) : (
+                <Clock className="h-4 w-4 mr-1" />
+              )}
+              {membership.cancelledAt && !membership.autoRenew 
+                ? 'Cancelled (Active until expiry)'
+                : membership.status === 'ACTIVE' 
+                ? 'Active'
+                : membership.status
+              }
             </div>
+            {membership.cancelledAt && !membership.autoRenew && (
+              <p className="text-sm text-orange-600 mt-1">
+                Access until {new Date(membership.willExpireAt || membership.endDate).toLocaleDateString()}
+              </p>
+            )}
+            {membership.cancelledAt && !membership.autoRenew && (
+              <p className="text-xs text-green-600 mt-1">
+                ✓ No more charges will be taken
+              </p>
+            )}
           </div>
         </div>
       </motion.div>
@@ -268,14 +424,119 @@ const MembershipDashboard = () => {
           </button>
           
           <button
-            onClick={handleCancelMembership}
+            onClick={() => setShowCancelModal(true)}
             className="flex items-center px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
           >
             <AlertCircle className="h-4 w-4 mr-2" />
-            Cancel Membership
+            {membership.cancelledAt && !membership.autoRenew ? 'Manage Cancellation' : 'Cancel Membership'}
           </button>
         </div>
       </motion.div>
+
+      {/* Cancellation Modal */}
+      <AnimatePresence>
+        {showCancelModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowCancelModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {membership.cancelledAt && !membership.autoRenew ? 'Manage Cancellation' : 'Cancel Membership'}
+                </h3>
+                <button
+                  onClick={() => setShowCancelModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {membership.cancelledAt && !membership.autoRenew ? (
+                <div>
+                  <div className="flex items-center mb-4 p-3 bg-orange-50 rounded-lg">
+                    <AlertTriangle className="h-5 w-5 text-orange-600 mr-2" />
+                    <div>
+                      <p className="text-sm text-orange-800 font-medium">
+                        Recurring billing has been cancelled
+                      </p>
+                      <p className="text-xs text-orange-600">
+                        Access until {new Date(membership.willExpireAt || membership.endDate).toLocaleDateString()} • No more charges
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleReactivateMembership}
+                      className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Reactivate Auto-Renewal
+                    </button>
+                    
+                    <button
+                      onClick={() => handleCancelMembership(true)}
+                      disabled={cancelLoading}
+                      className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                    >
+                      {cancelLoading ? 'Processing...' : 'End Access Immediately'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="mb-4">
+                    <p className="text-gray-600 mb-4">
+                      Choose how you'd like to handle your membership:
+                    </p>
+                    
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => handleCancelMembership(false)}
+                        disabled={cancelLoading}
+                        className="w-full text-left p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                      >
+                        <div className="font-medium text-gray-900">Stop Auto-Renewal</div>
+                        <div className="text-sm text-gray-600">
+                          Keep access until {membership.nextBillingDate && new Date(membership.nextBillingDate).toLocaleDateString()} • No more charges
+                        </div>
+                      </button>
+                      
+                      <button
+                        onClick={() => handleCancelMembership(true)}
+                        disabled={cancelLoading}
+                        className="w-full text-left p-3 border border-red-300 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                      >
+                        <div className="font-medium text-red-900">End Access Immediately</div>
+                        <div className="text-sm text-red-600">
+                          Lose access right away (no refund)
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {cancelLoading && (
+                    <div className="text-center py-2">
+                      <div className="inline-block w-4 h-4 border-2 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="ml-2 text-sm text-gray-600">Processing cancellation...</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

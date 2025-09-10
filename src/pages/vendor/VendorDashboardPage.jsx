@@ -1,9 +1,15 @@
-import {
-  Activity,
-  AlertCircle,
-  Award,
-  BarChart3,
-  Calendar,
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { SERVICE_CATEGORIES_SIMPLE } from '../../constants/serviceCategories';
+import { 
+  User, 
+  Calendar, 
+  DollarSign, 
+  Star, 
+  TrendingUp, 
+  Award, 
+  Clock,
   CheckCircle,
   Clock,
   DollarSign,
@@ -47,16 +53,59 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
     description: vendor.description || ''
   });
 
-  const serviceCategories = ['home-repairs', 'painting-services', 'electrical-services', 'plumbing-services', 'carpentry-services', 'flooring-services', 'appliance-installation', 'furniture-assembly', 'moving-services', 'renovation', 'safety-security', 'cleaning-services'];
+  const serviceCategories = SERVICE_CATEGORIES_SIMPLE;
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  // Category migration mapping - old categories to new categories
+  const categoryMigrationMap = {
+    'home-repairs': 'maintenance',
+    'painting-services': 'painting',
+    'electrical-services': 'electrical',
+    'plumbing-services': 'plumbing',
+    'carpentry-services': 'maintenance',
+    'flooring-services': 'flooring',
+    'appliance-installation': 'installation',
+    'furniture-assembly': 'assembly',
+    'moving-services': 'moving',
+    'safety-security': 'security',
+    'cleaning-services': 'cleaning',
+    'general': 'maintenance',
+    'gardening': 'maintenance',
+    'hvac': 'maintenance'
+  };
+
+  // Function to migrate and validate categories
+  const migrateCategories = (categories) => {
+    if (!Array.isArray(categories)) return [];
+    
+    const migratedCategories = categories
+      .map(category => categoryMigrationMap[category] || category)
+      .filter(category => serviceCategories.includes(category));
+    
+    // Remove duplicates
+    return [...new Set(migratedCategories)];
+  };
 
   const saveProfile = async (updatedData) => {
     try {
       setLoading(true);
-      await api.vendor.updateProfile(updatedData);
+      
+      // Migrate and validate categories before sending
+      const migratedData = {
+        ...updatedData,
+        serviceCategories: migrateCategories(updatedData.serviceCategories)
+      };
+      
+      console.log('Original categories:', updatedData.serviceCategories); // Debug log
+      console.log('Migrated categories:', migratedData.serviceCategories); // Debug log
+      console.log('Available categories:', serviceCategories); // Debug available categories
+      
+      await api.vendor.updateProfile(migratedData);
       toast.success('Profile updated successfully!');
       onUpdate();
     } catch (error) {
       console.error('Error updating profile:', error);
+      console.error('Profile data that failed:', updatedData); // Debug log
       toast.error('Failed to update profile');
     } finally {
       setLoading(false);
@@ -952,8 +1001,10 @@ const VendorDashboardPage = () => {
                       }`}>
                         {job.status.replace('_', ' ')}
                       </span>
-                      <span className="text-sm text-gray-500">
-                        ${job.totalAmount?.toLocaleString()}
+                      <span className={`text-sm font-medium ${
+                        job.totalAmount ? 'text-green-600' : 'text-gray-500'
+                      }`}>
+                        {job.totalAmount ? `$${job.totalAmount.toLocaleString()}` : 'Price not set'}
                       </span>
                     </div>
                   </div>
@@ -1284,19 +1335,44 @@ const VendorDashboardPage = () => {
 const VendorJobAssignments = ({ status }) => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Frontend-only price override until backend is fixed
+  const [localPriceOverrides, setLocalPriceOverrides] = useState({});
   const [showJobDetails, setShowJobDetails] = useState(null);
+  const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, job: null });
   const navigate = useNavigate();
 
   const loadJobs = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('Loading jobs with status:', status); // Debug log
-      console.log('Current user from localStorage token:', localStorage.getItem('token')); // Debug log
+      console.log('🔄 Loading jobs with status:', status); // Debug log
       const response = await api.vendor.getJobs(status);
-      console.log('Jobs response:', response); // Debug log
+      console.log('📋 Jobs API response:', response); // Debug log
       const jobsArray = response.jobs || [];
-      console.log('Setting jobs array length:', jobsArray.length); // Debug log
-      setJobs(jobsArray);
+      console.log('💼 Jobs loaded:', jobsArray.length, 'jobs'); // Debug log
+      
+      // Log job prices for debugging  
+      jobsArray.forEach(job => {
+        if (job.status === 'QUOTE_SENT' || job.totalAmount) {
+          console.log(`💰 JOB DEBUG:`, {
+            jobNumber: job.jobNumber,
+            jobId: job._id,
+            status: job.status, 
+            totalAmount: job.totalAmount,
+            estimatedBudget: job.estimatedBudget,
+            fullJobData: job
+          });
+        }
+      });
+      
+      // Apply local price overrides to jobs (frontend-only fix)
+      const jobsWithOverrides = jobsArray.map(job => {
+        if (localPriceOverrides[job._id]) {
+          return { ...job, totalAmount: localPriceOverrides[job._id] };
+        }
+        return job;
+      });
+      
+      setJobs(jobsWithOverrides);
     } catch (error) {
       console.error('Error loading jobs:', error);
       toast.error('Failed to load jobs: ' + error.message);
@@ -1348,19 +1424,31 @@ const VendorJobAssignments = ({ status }) => {
   const handleStatusUpdate = async (jobId, newStatus) => {
     try {
       console.log('Updating job status:', { jobId, newStatus });
+      console.log('🔍 Available jobs IDs:', jobs.map(j => j._id));
+      console.log('🔍 Looking for job with ID:', jobId);
+      
+      let result;
       
       // Find the job to get current details
       const job = jobs.find(j => j._id === jobId);
       if (!job) {
+        console.log('❌ Job not found in jobs array');
         toast.error('Job not found');
         return;
       }
+      console.log('✅ Found job:', job.jobNumber);
 
       let updateData = { status: newStatus };
 
       // If sending a quote (setting price after communication), ask for price
       if (newStatus === 'QUOTE_SENT') {
-        const price = window.prompt('Please set your quote price for this job (in dollars).\nThis price will be sent to the customer for approval:');
+        const currentPrice = job.totalAmount ? `\nCurrent price: $${job.totalAmount}` : '';
+        const isEditing = job.status === 'QUOTE_SENT';
+        const promptText = isEditing 
+          ? `Edit your quote price for this job (in dollars).${currentPrice}\n\nEnter new price:` 
+          : 'Please set your quote price for this job (in dollars).\nThis price will be sent to the customer for approval:';
+          
+        const price = window.prompt(promptText);
         if (!price || isNaN(price) || parseFloat(price) <= 0) {
           toast.error('Please provide a valid price for the quote');
           return;
@@ -1373,13 +1461,55 @@ const VendorJobAssignments = ({ status }) => {
         }
       }
 
-      // Use the correct API endpoint for status updates
-      const result = await api.vendor.updateJobStatus(jobId, updateData);
+      // Always try to update via backend API first
+      console.log('📤 Sending status update to backend:', updateData);
+      try {
+        result = await api.vendor.updateJobStatus(jobId, updateData);
+        console.log('✅ Backend update successful:', result);
+      } catch (error) {
+        console.log('❌ Backend update failed:', error);
+        console.log('🚨 Falling back to frontend-only update');
+        
+        if (newStatus === 'QUOTE_SENT' && updateData.totalAmount) {
+          console.log('💾 Saving price locally:', { jobId, price: updateData.totalAmount });
+          
+          // Save price override in local state
+          setLocalPriceOverrides(prev => ({
+            ...prev,
+            [jobId]: updateData.totalAmount
+          }));
+          
+          result = {
+            message: 'Price updated locally (backend failed - customer may not see updated price)',
+            job: { ...job, totalAmount: updateData.totalAmount }
+          };
+        } else {
+          result = {
+            message: 'Status updated locally (backend failed)',
+            job: { ...job, status: newStatus }
+          };
+        }
+        
+        // Show warning that backend failed
+        toast.error('Backend update failed - using local update only. Customer may not see changes.', { duration: 4000 });
+      }
       
-      console.log('Status update result:', result);
+      console.log('📥 Update result:', result);
+      console.log('🔍 Returned job data:', result?.job || result?.data || result);
+      console.log('💰 Backend returned totalAmount:', (result?.job || result?.data || result)?.totalAmount);
       
       if (newStatus === 'QUOTE_SENT') {
-        toast.success(`Quote sent with price $${updateData.totalAmount}! Customer can now accept or reject your quote.`);
+        const isEditing = job.status === 'QUOTE_SENT';
+        const backendWorked = !result.message.includes('locally');
+        const statusText = backendWorked ? 
+          (isEditing ? `Quote price updated to $${updateData.totalAmount}!` : `Quote sent with price $${updateData.totalAmount}!`) :
+          (isEditing ? `Quote price updated to $${updateData.totalAmount}! (Local only - customer may not see update)` : `Quote sent with price $${updateData.totalAmount}! (Local only - customer may not see update)`);
+        
+        if (backendWorked) {
+          toast.success(statusText);
+        } else {
+          toast.error(statusText, { duration: 6000 });
+        }
       } else if (newStatus === 'IN_DISCUSSION') {
         toast.success('Job status set to discussion. You can now communicate with the customer about requirements.');
       } else if (newStatus === 'IN_PROGRESS') {
@@ -1390,7 +1520,11 @@ const VendorJobAssignments = ({ status }) => {
         toast.success(`Job status updated to ${newStatus.replace('_', ' ').toLowerCase()}!`);
       }
       
-      loadJobs(); // Reload jobs
+      // Add a small delay to ensure backend has processed the update, then reload
+      setTimeout(() => {
+        console.log('🔄 Refreshing job list after status update...');
+        loadJobs();
+      }, 500);
     } catch (error) {
       console.error('Error updating job status:', error);
       toast.error(`Failed to update job status: ${error.response?.data?.message || error.message}`);
@@ -1492,6 +1626,13 @@ const VendorJobAssignments = ({ status }) => {
                   {job.status === 'ASSIGNED' && (
                     <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
                       <button
+                        onClick={() => navigate('/messages')}
+                        className="flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Chat
+                      </button>
+                      <button
                         onClick={() => handleJobResponse(job._id, 'ACCEPTED')}
                         className="flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
                       >
@@ -1511,14 +1652,27 @@ const VendorJobAssignments = ({ status }) => {
                   {(job.status === 'ACCEPTED' || job.status === 'QUOTED' || job.status === 'IN_PROGRESS' || job.status === 'PAID' || job.status === 'IN_DISCUSSION' || job.status === 'QUOTE_SENT' || job.status === 'QUOTE_ACCEPTED') && (
                     <div className="space-y-3">
                       {/* Price Display */}
-                      {job.totalAmount && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-green-800">Job Price:</span>
-                            <span className="text-lg font-bold text-green-600">${job.totalAmount}</span>
-                          </div>
+                      <div className={`border rounded-lg p-3 ${
+                        job.totalAmount ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-medium ${
+                            job.totalAmount ? 'text-green-800' : 'text-gray-600'
+                          }`}>
+                            Job Price:
+                          </span>
+                          <span className={`text-lg font-bold ${
+                            job.totalAmount ? 'text-green-600' : 'text-gray-500'
+                          }`}>
+                            {job.totalAmount ? `$${job.totalAmount.toLocaleString()}` : 'Not set yet'}
+                          </span>
                         </div>
-                      )}
+                        {job.status === 'IN_DISCUSSION' && !job.totalAmount && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Use "Send Quote & Price" to set the job price
+                          </p>
+                        )}
+                      </div>
                       
                       <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
                         <button
@@ -1529,91 +1683,18 @@ const VendorJobAssignments = ({ status }) => {
                           Chat
                         </button>
                         
-                        {/* Status Update Dropdown */}
-                        <div className="relative">
-                          <select
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                handleStatusUpdate(job._id, e.target.value);
-                                e.target.value = ''; // Reset selection
-                              }
-                            }}
-                            className="flex items-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
-                            defaultValue=""
-                          >
-                            <option value="">Update Status</option>
-                            {job.status === 'ACCEPTED' && <option value="IN_DISCUSSION">Start Discussion</option>}
-                            {job.status === 'IN_DISCUSSION' && <option value="QUOTE_SENT">Send Quote & Price</option>}
-                            {(job.status === 'QUOTE_ACCEPTED' || job.status === 'PAID') && <option value="IN_PROGRESS">Start Work</option>}
-                            {job.status === 'IN_PROGRESS' && <option value="COMPLETED">Mark Complete</option>}
-                          </select>
-                        </div>
-                        
-                        {/* Quick Action Buttons */}
-                        {job.status === 'ACCEPTED' && (
-                          <button
-                            onClick={() => handleStatusUpdate(job._id, 'IN_DISCUSSION')}
-                            className="flex items-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                          >
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            Start Discussion
-                          </button>
-                        )}
-                        
-                        {job.status === 'IN_DISCUSSION' && (
-                          <button
-                            onClick={() => handleStatusUpdate(job._id, 'QUOTE_SENT')}
-                            className="flex items-center px-3 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors"
-                          >
-                            <DollarSign className="h-4 w-4 mr-2" />
-                            Send Quote & Price
-                          </button>
-                        )}
-                        
-                        {(job.status === 'QUOTE_ACCEPTED' || job.status === 'PAID') && (
-                          <button
-                            onClick={() => handleStatusUpdate(job._id, 'IN_PROGRESS')}
-                            className="flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
-                          >
-                            <Activity className="h-4 w-4 mr-2" />
-                            Start Work
-                          </button>
-                        )}
-                        
-                        {job.status === 'IN_PROGRESS' && (
-                          <button
-                            onClick={() => handleStatusUpdate(job._id, 'COMPLETED')}
-                            className="flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
-                          >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Mark Complete
-                          </button>
-                        )}
+                        {/* Update Job Status Button */}
+                        <button
+                          onClick={() => setStatusUpdateModal({ isOpen: true, job })}
+                          className="flex items-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          Update Job
+                        </button>
                       </div>
                     </div>
                   )}
 
-                  {job.status === 'COMPLETED' && (
-                    <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
-                      <button
-                        onClick={() => navigate(`/jobs/${job._id}`)}
-                        className="flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        View Details
-                      </button>
-                      <button
-                        onClick={() => {
-                          // Update job status to next stage
-                          console.log('Update job progress for:', job._id);
-                        }}
-                        className="flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Update Status
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             </motion.div>
@@ -1733,61 +1814,254 @@ const VendorJobAssignments = ({ status }) => {
           </div>
         </div>
       )}
+
+      {/* Job Status Update Modal */}
+      {statusUpdateModal.isOpen && (
+        <JobStatusUpdateModal 
+          job={statusUpdateModal.job}
+          onClose={() => setStatusUpdateModal({ isOpen: false, job: null })}
+          onUpdate={() => {
+            setStatusUpdateModal({ isOpen: false, job: null });
+            loadJobs();
+          }}
+        />
+      )}
     </div>
   );
 };
 
-// Business Management Component with integrated tabs
-const BusinessManagement = ({ vendor, onUpdate }) => {
-  const [activeTab, setActiveTab] = useState('services');
+// Job Status Update Modal Component
+const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [workDetails, setWorkDetails] = useState('');
+  const [progressPercentage, setProgressPercentage] = useState(job.workProgress?.percentage || 0);
+  const [completionNotes, setCompletionNotes] = useState('');
+  const [priceAmount, setPriceAmount] = useState(job.totalAmount || '');
+  const [loading, setLoading] = useState(false);
 
-  const tabs = [
-    { id: 'services', name: 'Operation & Services', icon: FileText },
-    // { id: 'pricing', name: 'Price Lists', icon: DollarSign },
-    // { id: 'schedule', name: 'Schedule Time', icon: Calendar }
-  ];
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'services':
-        return <ProfileTab vendor={vendor} onUpdate={onUpdate} activeSection="services" />;
-      case 'pricing':
-        return <VendorPricingManagement />;
-      case 'schedule':
-        return <ProfileTab vendor={vendor} onUpdate={onUpdate} activeSection="schedule" />;
+  // Get available status options based on current status
+  const getStatusOptions = () => {
+    switch (job.status) {
+      case 'ACCEPTED':
+        return [{ value: 'IN_DISCUSSION', label: 'Start Discussion', description: 'Begin discussing job requirements with customer' }];
+      case 'IN_DISCUSSION':
+        return [{ value: 'QUOTE_SENT', label: 'Send Quote & Price', description: 'Send pricing quote to customer' }];
+      case 'QUOTE_SENT':
+        return [{ value: 'QUOTE_SENT', label: 'Update Quote Price', description: 'Update the quote amount' }];
+      case 'QUOTE_ACCEPTED':
+      case 'PAID':
+        return [{ value: 'IN_PROGRESS', label: 'Start Work', description: 'Begin working on the job' }];
+      case 'IN_PROGRESS':
+        return [
+          { value: 'IN_PROGRESS', label: 'Update Progress', description: 'Update work progress and details' },
+          { value: 'COMPLETED', label: 'Mark Complete', description: 'Mark job as completed' }
+        ];
       default:
-        return <ProfileTab vendor={vendor} onUpdate={onUpdate} activeSection="services" />;
+        return [];
     }
   };
 
-  return (
-    <div className="bg-white rounded-lg shadow-sm">
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="flex space-x-8 px-6">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-orange-500 text-orange-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Icon className="h-5 w-5 mr-2" />
-                {tab.name}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-      {/* Tab Content */}
-      <div className="p-6">
-        {renderTabContent()}
+    try {
+      if (selectedStatus === 'QUOTE_SENT') {
+        // Handle quote updates
+        if (!priceAmount || parseFloat(priceAmount) <= 0) {
+          toast.error('Please provide a valid quote amount');
+          setLoading(false);
+          return;
+        }
+        
+        await api.vendor.updateJobStatus(job._id, {
+          status: selectedStatus,
+          totalAmount: parseFloat(priceAmount),
+          notes: workDetails || `Quote ${job.status === 'QUOTE_SENT' ? 'updated' : 'sent'}: $${priceAmount}`
+        });
+        
+        toast.success(`Quote ${job.status === 'QUOTE_SENT' ? 'updated' : 'sent'} successfully!`);
+        
+      } else if (selectedStatus === 'IN_PROGRESS' && job.status === 'IN_PROGRESS') {
+        // Handle progress updates
+        await api.vendor.updateJobProgress(job._id, {
+          percentage: parseInt(progressPercentage),
+          notes: workDetails,
+          status: 'IN_PROGRESS'
+        });
+        
+        toast.success('Work progress updated successfully!');
+        
+      } else if (selectedStatus === 'COMPLETED') {
+        // Handle job completion
+        if (!completionNotes.trim()) {
+          toast.error('Please provide completion details');
+          setLoading(false);
+          return;
+        }
+        
+        await api.vendor.updateJobStatus(job._id, {
+          status: selectedStatus,
+          notes: completionNotes
+        });
+        
+        await api.vendor.updateJobProgress(job._id, {
+          percentage: 100,
+          notes: completionNotes,
+          status: 'COMPLETED'
+        });
+        
+        toast.success('Job marked as completed!');
+        
+      } else {
+        // Handle other status updates
+        await api.vendor.updateJobStatus(job._id, {
+          status: selectedStatus,
+          notes: workDetails || `Status updated to ${selectedStatus.replace('_', ' ').toLowerCase()}`
+        });
+        
+        toast.success('Job status updated successfully!');
+      }
+      
+      onUpdate();
+      
+    } catch (error) {
+      console.error('Error updating job:', error);
+      toast.error(`Failed to update job: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const statusOptions = getStatusOptions();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+      <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold text-gray-900">Update Job Status</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="mb-6">
+          <h3 className="text-lg font-medium text-gray-900">Job: {job.jobNumber}</h3>
+          <p className="text-gray-600">{job.title}</p>
+          <p className="text-sm text-gray-500">Current Status: <span className="font-medium">{job.status.replace('_', ' ')}</span></p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Status Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">Select Action</label>
+            <div className="space-y-3">
+              {statusOptions.map((option) => (
+                <div key={option.value} className="flex items-start">
+                  <input
+                    type="radio"
+                    id={option.value}
+                    name="status"
+                    value={option.value}
+                    checked={selectedStatus === option.value}
+                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    className="mt-1 mr-3"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor={option.value} className="block text-sm font-medium text-gray-900 cursor-pointer">
+                      {option.label}
+                    </label>
+                    <p className="text-xs text-gray-500">{option.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quote Amount (for quote-related statuses) */}
+          {selectedStatus === 'QUOTE_SENT' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Quote Amount ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={priceAmount}
+                onChange={(e) => setPriceAmount(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter quote amount"
+                required
+              />
+            </div>
+          )}
+
+          {/* Progress Percentage (for progress updates) */}
+          {selectedStatus === 'IN_PROGRESS' && job.status === 'IN_PROGRESS' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Work Progress (%)</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={progressPercentage}
+                onChange={(e) => setProgressPercentage(e.target.value)}
+                className="w-full"
+              />
+              <div className="flex justify-between text-sm text-gray-500 mt-1">
+                <span>0%</span>
+                <span className="font-medium">{progressPercentage}%</span>
+                <span>100%</span>
+              </div>
+            </div>
+          )}
+
+          {/* Work Details */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              {selectedStatus === 'COMPLETED' ? 'Completion Details' : 'Work Details / Notes'}
+            </label>
+            <textarea
+              value={selectedStatus === 'COMPLETED' ? completionNotes : workDetails}
+              onChange={(e) => {
+                if (selectedStatus === 'COMPLETED') {
+                  setCompletionNotes(e.target.value);
+                } else {
+                  setWorkDetails(e.target.value);
+                }
+              }}
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder={
+                selectedStatus === 'COMPLETED' 
+                  ? 'Describe what was completed, any important notes for the customer...'
+                  : 'Add any notes or details about this update...'
+              }
+              required={selectedStatus === 'COMPLETED'}
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-4 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!selectedStatus || loading}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Updating...' : 'Update Job'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

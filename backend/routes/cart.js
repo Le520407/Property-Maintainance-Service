@@ -258,10 +258,33 @@ router.post('/sync', authenticateToken, async (req, res) => {
     let cart = await Cart.findOne({ userId: req.user._id });
     
     if (!cart) {
-      cart = new Cart({
-        userId: req.user._id,
-        items: []
-      });
+      // Use findOneAndUpdate with upsert to prevent duplicate key errors
+      try {
+        cart = await Cart.findOneAndUpdate(
+          { userId: req.user._id },
+          { 
+            userId: req.user._id,
+            items: [],
+            totalAmount: 0,
+            totalItems: 0
+          },
+          { 
+            upsert: true, 
+            new: true,
+            setDefaultsOnInsert: true
+          }
+        );
+      } catch (upsertError) {
+        // If cart was created by another request in the meantime, fetch it
+        if (upsertError.code === 11000) {
+          cart = await Cart.findOne({ userId: req.user._id });
+          if (!cart) {
+            throw new Error('Unable to create or find cart');
+          }
+        } else {
+          throw upsertError;
+        }
+      }
     }
     
     // Merge local cart items with database cart

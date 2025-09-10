@@ -896,15 +896,26 @@ const VendorDashboard = () => {
         className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-6 rounded-lg shadow-md"
       >
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex-1">
             <h2 className="text-xl font-semibold mb-2">Subscription Status</h2>
             <p className="text-orange-50">Current Plan: {subscriptionInfo.plan}</p>
             <p className="text-orange-50">Next Billing: {subscriptionInfo.nextBilling}</p>
           </div>
-          <div className="text-right">
-            <span className="bg-green-400 text-green-900 px-3 py-1 rounded-full text-sm font-medium">
-              {subscriptionInfo.status}
-            </span>
+          <div className="text-right space-y-2">
+            <div>
+              <span className="bg-green-400 text-green-900 px-3 py-1 rounded-full text-sm font-medium">
+                {subscriptionInfo.status}
+              </span>
+            </div>
+            <div>
+              <Link
+                to="/membership/dashboard"
+                className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-lg hover:bg-orange-50 transition-colors text-sm font-medium"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Manage Subscription
+              </Link>
+            </div>
           </div>
         </div>
       </motion.div>
