@@ -1,15 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { SERVICE_CATEGORIES_SIMPLE } from '../../constants/serviceCategories';
-import { 
-  User, 
-  Calendar, 
-  DollarSign, 
-  Star, 
-  TrendingUp, 
-  Award, 
-  Clock,
+import {
+  Activity,
+  AlertCircle,
+  Award,
+  BarChart3,
+  Calendar,
   CheckCircle,
   Clock,
   DollarSign,
@@ -30,8 +24,8 @@ import {
 import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import { SERVICE_CATEGORIES_SIMPLE } from '../../constants/serviceCategories';
 import VendorCalendar from '../../components/vendor/VendorCalendar';
-import VendorPricingManagement from '../../components/vendor/VendorPricingManagement';
 import { api } from '../../services/api';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -54,7 +48,6 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
   });
 
   const serviceCategories = SERVICE_CATEGORIES_SIMPLE;
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   // Category migration mapping - old categories to new categories
   const categoryMigrationMap = {
@@ -1116,7 +1109,12 @@ const VendorDashboardPage = () => {
 
     // Business Section
     if (activeSection === 'business') {
-      return <BusinessManagement vendor={vendor} onUpdate={fetchDashboardData} />;
+      return (
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Business Management</h3>
+          <p className="text-gray-600">Business management features coming soon...</p>
+        </div>
+      );
     }
 
     // Earnings Section
@@ -1336,6 +1334,7 @@ const VendorJobAssignments = ({ status }) => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   // Frontend-only price override until backend is fixed
+  // eslint-disable-next-line no-unused-vars
   const [localPriceOverrides, setLocalPriceOverrides] = useState({});
   const [showJobDetails, setShowJobDetails] = useState(null);
   const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, job: null });
@@ -1379,7 +1378,7 @@ const VendorJobAssignments = ({ status }) => {
     } finally {
       setLoading(false);
     }
-  }, [status]);
+  }, [status, localPriceOverrides]);
 
   useEffect(() => {
     loadJobs();
@@ -1418,116 +1417,6 @@ const VendorJobAssignments = ({ status }) => {
       console.error('Error responding to job:', error);
       console.error('Error details:', error.response?.data || error.message);
       toast.error(`Failed to ${response.toLowerCase()} job: ${error.response?.data?.message || error.message}`);
-    }
-  };
-
-  const handleStatusUpdate = async (jobId, newStatus) => {
-    try {
-      console.log('Updating job status:', { jobId, newStatus });
-      console.log('🔍 Available jobs IDs:', jobs.map(j => j._id));
-      console.log('🔍 Looking for job with ID:', jobId);
-      
-      let result;
-      
-      // Find the job to get current details
-      const job = jobs.find(j => j._id === jobId);
-      if (!job) {
-        console.log('❌ Job not found in jobs array');
-        toast.error('Job not found');
-        return;
-      }
-      console.log('✅ Found job:', job.jobNumber);
-
-      let updateData = { status: newStatus };
-
-      // If sending a quote (setting price after communication), ask for price
-      if (newStatus === 'QUOTE_SENT') {
-        const currentPrice = job.totalAmount ? `\nCurrent price: $${job.totalAmount}` : '';
-        const isEditing = job.status === 'QUOTE_SENT';
-        const promptText = isEditing 
-          ? `Edit your quote price for this job (in dollars).${currentPrice}\n\nEnter new price:` 
-          : 'Please set your quote price for this job (in dollars).\nThis price will be sent to the customer for approval:';
-          
-        const price = window.prompt(promptText);
-        if (!price || isNaN(price) || parseFloat(price) <= 0) {
-          toast.error('Please provide a valid price for the quote');
-          return;
-        }
-        updateData.totalAmount = parseFloat(price);
-      } else {
-        // Keep existing price for other status updates
-        if (job.totalAmount) {
-          updateData.totalAmount = job.totalAmount;
-        }
-      }
-
-      // Always try to update via backend API first
-      console.log('📤 Sending status update to backend:', updateData);
-      try {
-        result = await api.vendor.updateJobStatus(jobId, updateData);
-        console.log('✅ Backend update successful:', result);
-      } catch (error) {
-        console.log('❌ Backend update failed:', error);
-        console.log('🚨 Falling back to frontend-only update');
-        
-        if (newStatus === 'QUOTE_SENT' && updateData.totalAmount) {
-          console.log('💾 Saving price locally:', { jobId, price: updateData.totalAmount });
-          
-          // Save price override in local state
-          setLocalPriceOverrides(prev => ({
-            ...prev,
-            [jobId]: updateData.totalAmount
-          }));
-          
-          result = {
-            message: 'Price updated locally (backend failed - customer may not see updated price)',
-            job: { ...job, totalAmount: updateData.totalAmount }
-          };
-        } else {
-          result = {
-            message: 'Status updated locally (backend failed)',
-            job: { ...job, status: newStatus }
-          };
-        }
-        
-        // Show warning that backend failed
-        toast.error('Backend update failed - using local update only. Customer may not see changes.', { duration: 4000 });
-      }
-      
-      console.log('📥 Update result:', result);
-      console.log('🔍 Returned job data:', result?.job || result?.data || result);
-      console.log('💰 Backend returned totalAmount:', (result?.job || result?.data || result)?.totalAmount);
-      
-      if (newStatus === 'QUOTE_SENT') {
-        const isEditing = job.status === 'QUOTE_SENT';
-        const backendWorked = !result.message.includes('locally');
-        const statusText = backendWorked ? 
-          (isEditing ? `Quote price updated to $${updateData.totalAmount}!` : `Quote sent with price $${updateData.totalAmount}!`) :
-          (isEditing ? `Quote price updated to $${updateData.totalAmount}! (Local only - customer may not see update)` : `Quote sent with price $${updateData.totalAmount}! (Local only - customer may not see update)`);
-        
-        if (backendWorked) {
-          toast.success(statusText);
-        } else {
-          toast.error(statusText, { duration: 6000 });
-        }
-      } else if (newStatus === 'IN_DISCUSSION') {
-        toast.success('Job status set to discussion. You can now communicate with the customer about requirements.');
-      } else if (newStatus === 'IN_PROGRESS') {
-        toast.success('Job work started! Payment will be processed through the website after completion.');
-      } else if (newStatus === 'COMPLETED') {
-        toast.success('Job marked as completed! Payment will be processed automatically through the website.');
-      } else {
-        toast.success(`Job status updated to ${newStatus.replace('_', ' ').toLowerCase()}!`);
-      }
-      
-      // Add a small delay to ensure backend has processed the update, then reload
-      setTimeout(() => {
-        console.log('🔄 Refreshing job list after status update...');
-        loadJobs();
-      }, 500);
-    } catch (error) {
-      console.error('Error updating job status:', error);
-      toast.error(`Failed to update job status: ${error.response?.data?.message || error.message}`);
     }
   };
 

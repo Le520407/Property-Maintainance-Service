@@ -2,11 +2,13 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Route, Routes } from 'react-router-dom';
 
 import AboutPage from './pages/AboutPage.jsx';
+import AgentAgreementPage from './pages/legal/AgentAgreementPage.jsx';
 import AgentRegisterPage from './pages/auth/AgentRegisterPage.jsx';
 import { AnimatePresence } from 'framer-motion';
 import AnnouncementManagement from './pages/admin/AnnouncementManagement.jsx';
 import AnnouncementsPage from './pages/AnnouncementsPage.jsx';
 import ApiTest from './components/ApiTest.jsx';
+import BillingHistoryPage from './pages/customer/BillingHistoryPage.jsx';
 import BlogDetailPage from './pages/BlogDetailPage.jsx';
 import BlogPage from './pages/BlogPage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
@@ -14,6 +16,7 @@ import CartPage from './pages/CartPage.jsx';
 import { CartProvider } from './contexts/CartContext';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
+import CustomerDashboard from './pages/customer/CustomerDashboard.jsx';
 import CustomerRegisterPage from './pages/auth/CustomerRegisterPage.jsx';
 import FAQManagement from './pages/admin/FAQManagement.jsx';
 import FAQPage from './pages/FAQPage.jsx';
@@ -22,19 +25,11 @@ import Header from './components/layout/Header.jsx';
 import HomePage from './pages/HomePage.jsx';
 import HomepageManagement from './pages/admin/HomepageManagement.jsx';
 import JobDetailsPage from './pages/jobs/JobDetailsPage.jsx';
-import ApiTest from './components/ApiTest.jsx';
-import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
-
-// Customer Components
-import BillingHistoryPage from './pages/customer/BillingHistoryPage.jsx';
-import CustomerDashboard from './pages/customer/CustomerDashboard.jsx';
-import SubscriptionManagementPage from './pages/SubscriptionManagementPage.jsx';
-
-// Membership Components
-import MembershipPlans from './components/customer/MembershipPlans.jsx';
+import { LanguageProvider } from './contexts/LanguageContext.js';
+import LoginPage from './pages/auth/LoginPage.jsx';
 import MembershipDashboard from './components/customer/MembershipDashboard.jsx';
 import MembershipPlans from './components/customer/MembershipPlans.jsx';
-import MembershipSuccess from './pages/MembershipSuccess.jsx';
+import MembershipSuccessSimple from './pages/MembershipSuccessSimple.jsx';
 import { MessagesProvider } from './contexts/MessagesContext';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import OrderManagement from './pages/admin/OrderManagement.jsx';
@@ -43,6 +38,7 @@ import OrderSuccessPage from './pages/OrderSuccessPage.jsx';
 import OrdersPage from './pages/OrdersPage.jsx';
 import PaymentPage from './pages/PaymentPage.jsx';
 import PricingPage from './pages/PricingPage.jsx';
+import PrivacyPolicyPage from './pages/legal/PrivacyPolicyPage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import ProductsPage from './pages/ProductsPage.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
@@ -53,12 +49,65 @@ import RegisterSelectionPage from './pages/auth/RegisterSelectionPage.jsx';
 import ServiceDetailPage from './pages/ServiceDetailPage.jsx';
 import ServicesPage from './pages/ServicesPage.jsx';
 import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
+import SubscriptionManagementPage from './pages/SubscriptionManagementPage.jsx';
 import SubscriptionPage from './pages/SubscriptionPage.jsx';
+import TermsPage from './pages/legal/TermsPage.jsx';
 import UnifiedMessagesPage from './pages/UnifiedMessagesPage.jsx';
 import UserManagement from './pages/admin/UserManagement.jsx';
+import VendorAgreementPage from './pages/legal/VendorAgreementPage.jsx';
 import VendorDashboardPage from './pages/vendor/VendorDashboardPage.jsx';
 import VendorMembership from './components/vendor/VendorMembership.jsx';
 import VendorMembershipSuccessPage from './pages/VendorMembershipSuccessPage.jsx';
+import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
+
+// Auth Pages
+
+
+
+// Legal Pages
+
+
+
+
+
+
+
+
+
+
+// Customer Components
+
+
+
+
+// Membership Components
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Context
 
@@ -219,7 +268,7 @@ function App() {
                           <MembershipDashboard />
                         </ProtectedRoute>
                       } />
-                      <Route path="/membership/success" element={<MembershipSuccess />} />
+                      <Route path="/membership/success" element={<MembershipSuccessSimple />} />
                       
                       {/* Vendor Membership Routes */}
                       <Route path="/vendor/membership" element={
