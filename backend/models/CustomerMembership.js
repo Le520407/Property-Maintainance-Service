@@ -71,6 +71,7 @@ const customerMembershipSchema = new mongoose.Schema({
   // Cancellation tracking
   cancelledAt: Date, // When the user requested cancellation
   willExpireAt: Date, // Explicit field showing when access will end
+  expiredAt: Date, // When the membership actually expired (status changed to EXPIRED)
   cancellationReason: String, // Optional reason for cancellation
   paymentMethod: {
     type: String,
@@ -104,11 +105,67 @@ customerMembershipSchema.index({ nextBillingDate: 1 });
 customerMembershipSchema.index({ 'currentUsage.month': 1 });
 
 // Instance methods
+customerMembershipSchema.methods.hasActiveAccess = function() {
+  const now = new Date();
+  
+  // Active memberships have access
+  if (this.status === 'ACTIVE') return true;
+  
+  // Cancelled memberships have access until the end date
+  if (this.status === 'CANCELLED') {
+    return this.endDate && now <= this.endDate;
+  }
+  
+  // Expired, suspended, or pending memberships have no access
+  return false;
+};
+
 customerMembershipSchema.methods.canCreateServiceRequest = function() {
+  // First check if membership has active access
+  if (!this.hasActiveAccess()) return false;
+  
   const tierFeatures = this.tier.features;
   if (tierFeatures.serviceRequestsPerMonth === -1) return true; // Unlimited
   
   return this.currentUsage.serviceRequestsUsed < tierFeatures.serviceRequestsPerMonth;
+};
+
+customerMembershipSchema.methods.getAccessStatus = function() {
+  const now = new Date();
+  
+  if (this.status === 'ACTIVE') {
+    return {
+      hasAccess: true,
+      statusMessage: 'Active membership with full access',
+      expiresAt: this.endDate
+    };
+  }
+  
+  if (this.status === 'CANCELLED') {
+    const hasAccess = this.endDate && now <= this.endDate;
+    return {
+      hasAccess,
+      statusMessage: hasAccess 
+        ? `Cancelled - access until ${this.endDate.toLocaleDateString()}`
+        : 'Cancelled and expired - no access',
+      expiresAt: this.endDate,
+      isCancelled: true
+    };
+  }
+  
+  if (this.status === 'EXPIRED') {
+    return {
+      hasAccess: false,
+      statusMessage: 'Membership expired - no access',
+      expiresAt: this.endDate
+    };
+  }
+  
+  return {
+    hasAccess: false,
+    statusMessage: `Membership ${this.status.toLowerCase()} - no access`,
+    expiresAt: this.endDate
+  };
 };
 
 customerMembershipSchema.methods.getResponseTime = function() {

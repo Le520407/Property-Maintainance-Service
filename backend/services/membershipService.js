@@ -204,37 +204,67 @@ class MembershipService {
         
         // Step 1: Cancel recurring billing (this shows in HitPay dashboard) 
         // 🎯 This uses the billing ID we saved during subscription creation
-        if (membership.hitpayRecurringBillingId && !membership.hitpayRecurringBillingId.includes('demo_')) {
-          console.log('🔄 [HITPAY DELETE] Cancelling recurring billing:', membership.hitpayRecurringBillingId);
-          console.log('🌐 Method: DELETE /v1/recurring-billing/' + membership.hitpayRecurringBillingId);
-          console.log('💡 This billing ID was saved when user subscribed');
-          try {
-            const recurringResult = await hitpayService.cancelRecurringBilling(membership.hitpayRecurringBillingId);
-            console.log('✅ HitPay DELETE recurring billing - SUCCESS');
-            console.log('📊 Cancellation confirmed for billing ID:', membership.hitpayRecurringBillingId);
-          } catch (recurringError) {
-            console.warn('⚠️ HitPay DELETE recurring billing - FAILED:', recurringError.message);
+        if (membership.hitpayRecurringBillingId) {
+          // Check if this is a real HitPay billing ID vs our custom/demo ID
+          const isRealHitPayId = membership.hitpayRecurringBillingId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+          const isDemo = membership.hitpayRecurringBillingId.includes('demo_') || 
+                         membership.hitpayRecurringBillingId.includes('membership_');
+          
+          if (isRealHitPayId && !isDemo) {
+            console.log('🔄 [HITPAY DELETE] Cancelling recurring billing:', membership.hitpayRecurringBillingId);
+            console.log('🌐 Method: DELETE /v1/recurring-billing/' + membership.hitpayRecurringBillingId);
+            console.log('💡 This is a real HitPay billing ID');
+            try {
+              const recurringResult = await hitpayService.cancelRecurringBilling(membership.hitpayRecurringBillingId);
+              console.log('✅ HitPay DELETE recurring billing - SUCCESS');
+              console.log('📊 Cancellation confirmed for billing ID:', membership.hitpayRecurringBillingId);
+              console.log('📊 HitPay response status:', recurringResult.status);
+            } catch (recurringError) {
+              console.warn('⚠️ HitPay DELETE recurring billing - FAILED:', recurringError.message);
+              
+              // Check if error is due to ID not found (already cancelled or doesn't exist)
+              if (recurringError.message.includes('No query results')) {
+                console.log('💡 Billing ID not found in HitPay - may already be cancelled or deleted');
+              }
+            }
+          } else {
+            console.log('⚠️ Skipping HitPay API call - this is not a real HitPay billing ID');
+            console.log('🔍 Billing ID type detected:', isDemo ? 'demo/custom ID' : 'invalid format');
+            console.log('🔍 Billing ID:', membership.hitpayRecurringBillingId);
+            console.log('💡 Will only update local database status');
           }
-        } else if (membership.hitpayRecurringBillingId?.includes('demo_')) {
-          console.log('⚠️ Skipping HitPay cancellation for demo billing ID:', membership.hitpayRecurringBillingId);
         } else {
           console.log('❌ No billing ID found - cannot cancel HitPay subscription');
           console.log('💡 This might be a legacy subscription or manual entry');
         }
         
         // Step 2: Delete subscription plan (cleanup)
-        if (membership.hitpayPlanId && !membership.hitpayPlanId.includes('demo_')) {
-          console.log('🗑️ [HITPAY DELETE] Deleting subscription plan:', membership.hitpayPlanId);
-          console.log('🌐 Method: DELETE /v1/subscription-plan/' + membership.hitpayPlanId);
-          try {
-            const planResult = await hitpayService.cancelSubscriptionPlan(membership.hitpayPlanId);
-            if (planResult.success) {
-              console.log('✅ HitPay DELETE subscription plan - SUCCESS');
-            } else {
-              console.warn('⚠️ HitPay DELETE subscription plan - FAILED:', planResult.error);
+        if (membership.hitpayPlanId) {
+          // Check if this is a real HitPay plan ID
+          const isRealHitPayPlanId = membership.hitpayPlanId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+          const isDemo = membership.hitpayPlanId.includes('demo_');
+          
+          if (isRealHitPayPlanId && !isDemo) {
+            console.log('🗑️ [HITPAY DELETE] Deleting subscription plan:', membership.hitpayPlanId);
+            console.log('🌐 Method: DELETE /v1/subscription-plan/' + membership.hitpayPlanId);
+            try {
+              const planResult = await hitpayService.cancelSubscriptionPlan(membership.hitpayPlanId);
+              if (planResult.success) {
+                console.log('✅ HitPay DELETE subscription plan - SUCCESS');
+              } else {
+                console.warn('⚠️ HitPay DELETE subscription plan - FAILED:', planResult.error);
+              }
+            } catch (planError) {
+              console.warn('⚠️ HitPay DELETE subscription plan - ERROR:', planError.message);
+              
+              // Check if error is due to ID not found
+              if (planError.message.includes('No query results')) {
+                console.log('💡 Plan ID not found in HitPay - may already be deleted');
+              }
             }
-          } catch (planError) {
-            console.warn('⚠️ HitPay DELETE subscription plan - ERROR:', planError.message);
+          } else {
+            console.log('⚠️ Skipping HitPay plan deletion - not a real HitPay plan ID');
+            console.log('🔍 Plan ID:', membership.hitpayPlanId);
           }
         }
         
@@ -253,21 +283,27 @@ class MembershipService {
         console.log('✅ Stripe subscription cancellation scheduled');
       }
 
-      // Update membership status
+      // Update membership status based on cancellation type
       if (immediate) {
-        membership.status = 'CANCELLED';
+        membership.status = 'EXPIRED'; // Immediate cancellation = expired
         membership.endDate = new Date();
         membership.autoRenew = false;
-        console.log('✅ Membership cancelled immediately');
+        membership.cancelledAt = new Date();
+        membership.willExpireAt = new Date();
+        membership.cancellationReason = 'Immediate cancellation requested';
+        console.log('✅ Membership cancelled and expired immediately');
       } else {
-        // Cancel recurring billing immediately but keep access until period ends
+        // Cancel recurring billing but maintain access until period ends
+        membership.status = 'CANCELLED'; // Change status to CANCELLED to show user it's cancelled
         membership.autoRenew = false;
-        membership.status = 'ACTIVE'; // Keep ACTIVE status until natural expiry
         membership.cancelledAt = new Date(); // Track when cancellation was requested
         membership.willExpireAt = membership.endDate; // Make it explicit when access ends
+        membership.cancellationReason = 'End-of-period cancellation requested';
         
-        console.log('✅ Recurring billing cancelled, access maintained until:', membership.endDate);
+        console.log('✅ Subscription cancelled - access maintained until:', membership.endDate);
+        console.log('✅ Status changed to CANCELLED - user can see it\'s cancelled but still has access');
         console.log('✅ No more charges will be taken from HitPay/Stripe');
+        console.log('✅ Will automatically expire on:', membership.endDate);
       }
 
       await membership.save();
@@ -286,8 +322,16 @@ class MembershipService {
 
     await membership.resetMonthlyUsage();
     
-    if (membership.canCreateServiceRequest()) {
+    // Use the new access logic that handles CANCELLED status properly
+    if (membership.hasActiveAccess() && membership.canCreateServiceRequest()) {
       return { allowed: true, membership };
+    } else if (!membership.hasActiveAccess()) {
+      const accessStatus = membership.getAccessStatus();
+      return { 
+        allowed: false, 
+        reason: accessStatus.statusMessage,
+        membership 
+      };
     } else {
       return { 
         allowed: false, 

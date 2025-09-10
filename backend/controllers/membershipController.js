@@ -52,6 +52,7 @@ class MembershipController {
 
       // Calculate period end date (for display purposes)
       const periodEndDate = membership.endDate || membership.nextBillingDate;
+      const accessStatus = membership.getAccessStatus();
       
       // Enhance membership data with billing information
       const enhancedMembership = {
@@ -65,9 +66,11 @@ class MembershipController {
           daysUntilRenewal: membership.nextBillingDate ? 
             Math.ceil((new Date(membership.nextBillingDate) - new Date()) / (1000 * 60 * 60 * 24)) : null
         },
+        accessStatus: accessStatus,
+        hasActiveAccess: membership.hasActiveAccess(),
         canUpgrade: membership.status === 'ACTIVE',
         canCancel: membership.status === 'ACTIVE',
-        canReactivate: ['CANCELLED', 'SUSPENDED'].includes(membership.status)
+        canReactivate: ['CANCELLED', 'SUSPENDED'].includes(membership.status) && membership.hasActiveAccess()
       };
 
       const analytics = await membershipService.getMembershipAnalytics(userId);
