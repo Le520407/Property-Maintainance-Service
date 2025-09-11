@@ -198,7 +198,7 @@ const MembershipDashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-12 pt-28">
         <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -206,7 +206,7 @@ const MembershipDashboard = () => {
 
   if (!membership) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-8 pt-28">
         <div className="bg-white rounded-lg shadow-sm p-8 text-center">
           <Shield className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">No Active Membership</h3>
@@ -254,7 +254,7 @@ const MembershipDashboard = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-8 pt-28">
       {/* Page Title with Status */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}

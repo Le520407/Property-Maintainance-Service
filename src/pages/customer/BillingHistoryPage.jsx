@@ -153,7 +153,7 @@ const BillingHistoryPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-28">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
       </div>
     );
@@ -161,7 +161,7 @@ const BillingHistoryPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-28">
         <div className="text-center">
           <div className="text-red-600 text-xl mb-4">Error loading billing history</div>
           <p className="text-gray-600">{error}</p>
@@ -177,7 +177,7 @@ const BillingHistoryPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-28">
       {/* Navigation */}
       <CustomerSubscriptionNav />
       

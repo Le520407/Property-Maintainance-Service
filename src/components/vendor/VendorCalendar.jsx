@@ -1,7 +1,10 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { Calendar, momentLocalizer } from 'react-big-calendar';
+import moment from 'moment';
+import { motion } from 'framer-motion';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import './VendorCalendar.css';
 
-import { Calendar, momentLocalizer } from 'react-big-calendar';
 import {
   Calendar as CalendarIcon,
   CheckCircle,
@@ -12,11 +15,8 @@ import {
   User,
   X
 } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
 
 import { api } from '../../services/api';
-import moment from 'moment';
-import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 // Import calendar CSS

@@ -2,7 +2,7 @@ const crypto = require('crypto');
 
 class HitPayService {
   constructor() {
-    this.baseUrl = process.env.HITPAY_BASE_URL || 'https://api.hit-pay.com/v1';
+    this.baseUrl = process.env.HITPAY_BASE_URL || 'https://api.sandbox.hit-pay.com/v1';
     this.apiKey = process.env.HITPAY_API_KEY || 'test_d82989991c25051a639bcc27a6e685b6aaa2ff19a8ce3f9767e6c77f0d87df88';
     this.salt = process.env.HITPAY_SALT;
     this.webhookSecret = process.env.HITPAY_WEBHOOK_SECRET;
@@ -190,7 +190,7 @@ class HitPayService {
 
   /**
    * Create one-time payment request (POST /v1/payment-requests)
-   * Mandatory fields: amount, currency
+   * Using the exact HitPay API format you specified
    */
   async createPayment(paymentData) {
     // Demo mode for testing without real HitPay credentials
@@ -212,7 +212,7 @@ class HitPayService {
       console.log('=============================================');
       console.log('✅ SUCCESS: Payment request created');
       console.log('📊 Payment Details:', JSON.stringify(demoResponse, null, 2));
-      console.log('💵 Amount:', (demoResponse.amount / 100).toFixed(2), demoResponse.currency);
+      console.log('💵 Amount:', demoResponse.amount, demoResponse.currency);
       console.log('🔗 Payment URL:', demoResponse.url);
       console.log('🏷️ Payment Request ID:', demoResponse.payment_request_id);
       console.log('📧 Customer Email:', demoResponse.email);
@@ -229,53 +229,39 @@ class HitPayService {
         throw new Error('Missing mandatory fields: amount and currency are required');
       }
 
-      const formData = new URLSearchParams();
-      // Mandatory fields
-      formData.append('amount', paymentData.amount.toString());
-      formData.append('currency', paymentData.currency);
-      
-      // Optional fields matching your example
-      if (paymentData.email) {
-        formData.append('email', paymentData.email);
-      }
-      if (paymentData.redirect_url) {
-        formData.append('redirect_url', paymentData.redirect_url);
-      }
-      if (paymentData.reference_number) {
-        formData.append('reference_number', paymentData.reference_number);
-      }
-      if (paymentData.webhook) {
-        formData.append('webhook', paymentData.webhook);
-      }
-      
-      // Additional optional fields
-      if (paymentData.name) {
-        formData.append('name', paymentData.name);
-      }
-      if (paymentData.purpose) {
-        formData.append('purpose', paymentData.purpose);
-      }
-      if (paymentData.send_email !== undefined) {
-        formData.append('send_email', paymentData.send_email ? 'true' : 'false');
-      }
-      
-      // Payment methods
-      if (paymentData.payment_methods && paymentData.payment_methods.length > 0) {
-        paymentData.payment_methods.forEach(method => {
-          formData.append('payment_methods[]', method);
-        });
+      // Create the exact payload format from your specification
+      const payload = {
+        amount: paymentData.amount,
+        currency: paymentData.currency || 'SGD',
+        payment_methods: paymentData.payment_methods || ['card'],
+        email: paymentData.email,
+        name: paymentData.name || '',
+        phone: paymentData.phone || '',
+        purpose: paymentData.purpose || '',
+        reference_number: paymentData.reference_number || `REF${Date.now()}`,
+        redirect_url: paymentData.redirect_url || `${process.env.FRONTEND_URL}/payment/success`,
+        webhook: paymentData.webhook || `${process.env.WEBHOOK_URL}/api/hitpay/webhook/job`,
+        allow_repeated_payments: 'false',
+        add_admin_fee: 'false',
+        send_email: 'false',
+        send_sms: 'true',
+        generate_qr: false
+      };
+
+      // Add address if provided
+      if (paymentData.address) {
+        payload.address = paymentData.address;
       }
 
-      console.log('🚀 Creating HitPay payment request with data:', Object.fromEntries(formData));
+      console.log('🚀 Creating HitPay payment request with payload:', JSON.stringify(payload, null, 2));
 
       const response = await fetch(`${this.baseUrl}/payment-requests`, {
         method: 'POST',
         headers: {
           'X-BUSINESS-API-KEY': this.apiKey,
-          'X-Requested-With': 'XMLHttpRequest',
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         },
-        body: formData.toString()
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
@@ -295,7 +281,7 @@ class HitPayService {
       console.log('===============================');
       console.log('✅ SUCCESS: Payment request created');
       console.log('📊 Payment Details:', JSON.stringify(result, null, 2));
-      console.log('💵 Amount:', (result.amount / 100).toFixed(2), result.currency);
+      console.log('💵 Amount:', result.amount, result.currency);
       console.log('🔗 Payment URL:', result.url);
       console.log('🏷️ Payment Request ID:', result.id);
       console.log('🔢 Reference:', result.reference_number);
