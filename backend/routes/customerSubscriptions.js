@@ -189,6 +189,26 @@ router.post('/subscribe',
       await subscription.save();
       await subscription.populate('customer', 'name email');
 
+      // **NEW: Process referral rewards when subscription is first created successfully**
+      try {
+        const referralRewardService = require('../services/referralRewardService');
+        const rewardResult = await referralRewardService.processReferralRewards(
+          req.user._id, 
+          subscription._id, 
+          subscription.currentPrice, 
+          'subscription'
+        );
+        
+        if (rewardResult.processed) {
+          console.log(`🎁 Referral rewards processed for new subscription ${subscription._id}:`, rewardResult);
+        } else {
+          console.log(`ℹ️ No referral rewards for subscription ${subscription._id}: ${rewardResult.reason}`);
+        }
+      } catch (rewardError) {
+        console.error('Error processing referral rewards for subscription:', rewardError);
+        // Don't fail subscription creation if reward processing fails
+      }
+
       res.status(201).json({
         success: true,
         data: subscription,
@@ -863,6 +883,26 @@ router.post('/webhook/hitpay-recurring', async (req, res) => {
         amount,
         paymentId: payment_id
       });
+
+      // **NEW: Process referral rewards when subscription payment is completed**
+      try {
+        const referralRewardService = require('../services/referralRewardService');
+        const rewardResult = await referralRewardService.processReferralRewards(
+          subscription.customer, 
+          subscription._id, 
+          parseFloat(amount), 
+          'subscription'
+        );
+        
+        if (rewardResult.processed) {
+          console.log(`🎁 Referral rewards processed for subscription payment ${subscription._id}:`, rewardResult);
+        } else {
+          console.log(`ℹ️ No referral rewards for subscription ${subscription._id}: ${rewardResult.reason}`);
+        }
+      } catch (rewardError) {
+        console.error('Error processing referral rewards for subscription payment:', rewardError);
+        // Don't fail webhook processing if reward processing fails
+      }
 
     } else if (status === 'failed') {
       // Failed payment

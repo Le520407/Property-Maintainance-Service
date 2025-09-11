@@ -76,6 +76,11 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  customerTier: {
+    type: String,
+    enum: ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'],
+    default: 'BRONZE'
+  },
   
   // Vendor/Technician specific fields
   skills: [{
@@ -162,11 +167,7 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  agentTier: {
-    type: String,
-    enum: ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'],
-    default: 'BRONZE'
-  },
+  // agentTier: removed - no tier system for referral agents
   isAgentActive: {
     type: Boolean,
     default: true

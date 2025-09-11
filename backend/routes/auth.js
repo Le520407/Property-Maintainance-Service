@@ -77,6 +77,11 @@ router.post('/register', async (req, res) => {
         // Update tier if needed
         await referralData.updateTier();
         await referralData.save();
+        
+        // **NEW: Build referral chain for the new user**
+        const referralRewardService = require('../services/referralRewardService');
+        await referralRewardService.buildReferralChain(user, referralCode.toUpperCase());
+        
       } catch (referralError) {
         console.error('Error applying referral:', referralError);
         // Don't fail registration if referral application fails
@@ -186,7 +191,6 @@ router.post('/register-agent', async (req, res) => {
       agentCode,
       inviteCode: inviteCode.toUpperCase(),
       commissionRate: 15.0,
-      agentTier: 'BRONZE',
       isAgentActive: true
     });
 
@@ -227,7 +231,6 @@ router.post('/register-agent', async (req, res) => {
         status: user.status,
         agentCode: user.agentCode,
         referralCode: user.referralCode,
-        agentTier: user.agentTier,
         commissionRate: user.commissionRate
       }
     });

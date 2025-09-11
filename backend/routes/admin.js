@@ -1131,7 +1131,7 @@ router.get('/agents', auth, async (req, res) => {
 
     const filter = { role: 'referral' };
     
-    if (tier) filter.agentTier = tier;
+    // tier filter removed - no tier system for agents
     if (status === 'active') filter.isAgentActive = true;
     if (status === 'inactive') filter.isAgentActive = false;
     if (search) {
@@ -1295,42 +1295,7 @@ router.patch('/agents/:agentId/commission', auth, async (req, res) => {
   }
 });
 
-// Manual tier upgrade
-router.patch('/agents/:agentId/tier', auth, async (req, res) => {
-  try {
-    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
-    const { tier } = req.body;
-    
-    if (!['BRONZE', 'SILVER', 'GOLD', 'PLATINUM'].includes(tier)) {
-      return res.status(400).json({ message: 'Invalid tier' });
-    }
-
-    const agent = await User.findById(req.params.agentId);
-    if (!agent || agent.role !== 'referral') {
-      return res.status(404).json({ message: 'Agent not found' });
-    }
-
-    const oldTier = agent.agentTier;
-    agent.agentTier = tier;
-    await agent.save();
-
-    res.json({
-      success: true,
-      message: 'Agent tier updated successfully',
-      data: {
-        oldTier,
-        newTier: tier
-      }
-    });
-
-  } catch (error) {
-    console.error('Update agent tier error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
+// Manual tier upgrade - REMOVED (no tier system for agents)
 
 // Get agent analytics overview
 router.get('/agents/analytics/overview', auth, async (req, res) => {
@@ -1342,20 +1307,10 @@ router.get('/agents/analytics/overview', auth, async (req, res) => {
     const totalAgents = await User.countDocuments({ role: 'referral' });
     const activeAgents = await User.countDocuments({ role: 'referral', isAgentActive: true });
 
-    const tierBreakdown = await User.aggregate([
-      { $match: { role: 'referral' } },
-      {
-        $group: {
-          _id: '$agentTier',
-          count: { $sum: 1 },
-          totalEarnings: { $sum: '$totalCommissionEarned' },
-          avgEarnings: { $avg: '$totalCommissionEarned' }
-        }
-      }
-    ]);
+    // tierBreakdown removed - no tier system for agents
 
     const topPerformers = await User.find({ role: 'referral' })
-      .select('firstName lastName email agentCode agentTier totalCommissionEarned')
+      .select('firstName lastName email agentCode totalCommissionEarned')
       .sort({ totalCommissionEarned: -1 })
       .limit(10);
 
@@ -1378,7 +1333,6 @@ router.get('/agents/analytics/overview', auth, async (req, res) => {
           activeAgents,
           inactiveAgents: totalAgents - activeAgents
         },
-        tierBreakdown,
         topPerformers,
         commissions: totalCommissionsPaid[0] || { total: 0, pending: 0 }
       }
