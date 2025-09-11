@@ -627,4 +627,195 @@ router.delete('/pricing/:id', authenticateToken, requireRole(['vendor']), async 
   }
 });
 
+// Get customer list for vendor
+router.get('/customers', authenticateToken, requireRole(['vendor']), async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '' } = req.query;
+    const vendorId = req.user._id;
+
+    // Build aggregation pipeline to get unique customers
+    const pipeline = [
+      {
+        $match: {
+          vendorId: vendorId,
+          status: { $in: ['COMPLETED', 'IN_PROGRESS', 'ASSIGNED'] }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'customerId',
+          foreignField: '_id',
+          as: 'customer'
+        }
+      },
+      {
+        $unwind: '$customer'
+      },
+      {
+        $group: {
+          _id: '$customerId',
+          customer: { $first: '$customer' },
+          totalJobs: { $sum: 1 },
+          completedJobs: {
+            $sum: { $cond: [{ $eq: ['$status', 'COMPLETED'] }, 1, 0] }
+          },
+          totalSpent: {
+            $sum: { $cond: [{ $eq: ['$status', 'COMPLETED'] }, '$totalAmount', 0] }
+          },
+          lastJobDate: { $max: '$updatedAt' },
+          jobs: { $push: '$$ROOT' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'ratings',
+          let: { customerId: '$_id', vendorId: vendorId },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$customerId', '$$customerId'] },
+                    { $eq: ['$vendorId', '$$vendorId'] }
+                  ]
+                }
+              }
+            }
+          ],
+          as: 'ratings'
+        }
+      },
+      {
+        $addFields: {
+          averageRating: {
+            $cond: {
+              if: { $gt: [{ $size: '$ratings' }, 0] },
+              then: { $avg: '$ratings.overallRating' },
+              else: null
+            }
+          },
+          ratingCount: { $size: '$ratings' }
+        }
+      }
+    ];
+
+    // Add search filter if provided
+    if (search) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { 'customer.name': { $regex: search, $options: 'i' } },
+            { 'customer.email': { $regex: search, $options: 'i' } },
+            { 'customer.phone': { $regex: search, $options: 'i' } }
+          ]
+        }
+      });
+    }
+
+    // Add sorting
+    pipeline.push({
+      $sort: { lastJobDate: -1 }
+    });
+
+    // Execute aggregation
+    const customers = await Job.aggregate(pipeline);
+
+    // Apply pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const paginatedCustomers = customers.slice(startIndex, endIndex);
+
+    // Get total count for pagination
+    const totalCustomers = customers.length;
+    const totalPages = Math.ceil(totalCustomers / limit);
+
+    // Format response
+    const formattedCustomers = paginatedCustomers.map(customer => ({
+      _id: customer._id,
+      name: customer.customer.name,
+      email: customer.customer.email,
+      phone: customer.customer.phone,
+      totalJobs: customer.totalJobs,
+      completedJobs: customer.completedJobs,
+      totalSpent: customer.totalSpent || 0,
+      averageRating: customer.averageRating,
+      ratingCount: customer.ratingCount,
+      lastJobDate: customer.lastJobDate,
+      joinDate: customer.customer.createdAt
+    }));
+
+    res.json({
+      customers: formattedCustomers,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalCustomers,
+        hasNext: endIndex < totalCustomers,
+        hasPrev: startIndex > 0
+      }
+    });
+
+  } catch (error) {
+    console.error('Get customers error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Get detailed customer information
+router.get('/customers/:customerId', authenticateToken, requireRole(['vendor']), async (req, res) => {
+  try {
+    const vendorId = req.user._id;
+    const customerId = req.params.customerId;
+
+    // Get customer basic info
+    const customer = await User.findById(customerId).select('name email phone createdAt');
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    // Get all jobs between this vendor and customer
+    const jobs = await Job.find({
+      vendorId: vendorId,
+      customerId: customerId
+    }).sort({ createdAt: -1 });
+
+    // Get all ratings from this customer for this vendor
+    const ratings = await Rating.find({
+      vendorId: vendorId,
+      customerId: customerId
+    }).populate('jobId', 'title').sort({ createdAt: -1 });
+
+    // Calculate statistics
+    const stats = {
+      totalJobs: jobs.length,
+      completedJobs: jobs.filter(job => job.status === 'COMPLETED').length,
+      totalSpent: jobs
+        .filter(job => job.status === 'COMPLETED')
+        .reduce((sum, job) => sum + (job.totalAmount || 0), 0),
+      averageRating: ratings.length > 0 
+        ? ratings.reduce((sum, rating) => sum + rating.overallRating, 0) / ratings.length 
+        : null,
+      ratingCount: ratings.length
+    };
+
+    res.json({
+      customer: {
+        _id: customer._id,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        joinDate: customer.createdAt
+      },
+      stats,
+      jobs,
+      ratings
+    });
+
+  } catch (error) {
+    console.error('Get customer details error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 module.exports = router;

@@ -1,22 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { 
-  Calendar, 
-  Package, 
-  CreditCard, 
-  CheckCircle, 
-  Clock, 
-  User,
+import {
+  ArrowRight,
+  Calendar,
+  CheckCircle,
+  Clock,
+  CreditCard,
   DollarSign,
-  Star,
   Eye,
-  X,
-  ArrowRight
+  MessageSquare,
+  Package,
+  Star,
+  User,
+  X
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useEffect, useState } from 'react';
+
+import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
+import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const CustomerDashboard = () => {
   const { user } = useAuth();
@@ -216,7 +218,7 @@ const CustomerDashboard = () => {
           className="bg-white rounded-2xl shadow-lg p-6 mb-8"
         >
           <h2 className="text-xl font-bold text-gray-900 mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <Link
               to="/services"
               className="flex flex-col items-center p-4 rounded-xl border-2 border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-md group"
@@ -236,7 +238,25 @@ const CustomerDashboard = () => {
             </Link>
 
             <Link
-              to="/referral"
+              to="/feedback"
+              className="flex flex-col items-center p-4 rounded-xl border-2 border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-md group"
+              style={{ backgroundColor: '#EC5C0D', color: 'white' }}
+            >
+              <MessageSquare className="h-8 w-8 mb-2" />
+              <span className="text-sm font-medium text-center">Rate & Feedback</span>
+            </Link>
+
+            <Link
+              to="/feedback"
+              className="flex flex-col items-center p-4 rounded-xl border-2 border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-md group"
+              style={{ backgroundColor: '#EC5C0D', color: 'white' }}
+            >
+              <MessageSquare className="h-8 w-8 mb-2" />
+              <span className="text-sm font-medium text-center">Rate & Feedback</span>
+            </Link>
+
+            <Link
+              to="/referrals"
               className="flex flex-col items-center p-4 rounded-xl border-2 border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-md group"
               style={{ backgroundColor: '#EC5C0D', color: 'white' }}
             >

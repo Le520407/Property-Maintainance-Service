@@ -17,6 +17,7 @@ import { CartProvider } from './contexts/CartContext';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import CustomerDashboard from './pages/customer/CustomerDashboard.jsx';
+import CustomerFeedback from './pages/customer/CustomerFeedback.jsx';
 import CustomerRegisterPage from './pages/auth/CustomerRegisterPage.jsx';
 import FAQManagement from './pages/admin/FAQManagement.jsx';
 import FAQPage from './pages/FAQPage.jsx';
@@ -43,6 +44,7 @@ import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import ProductsPage from './pages/ProductsPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
+import RateVendor from './pages/customer/RateVendor.jsx';
 import React from 'react';
 import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
 import ReferralPage from './pages/ReferralPage.jsx';
@@ -228,6 +230,11 @@ function App() {
                           <PaymentPage />
                         </ProtectedRoute>
                       } />
+                      <Route path="/jobs" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <CustomerFeedback />
+                        </ProtectedRoute>
+                      } />
                       <Route path="/jobs/:jobId" element={
                         <ProtectedRoute>
                           <JobDetailsPage />
@@ -293,6 +300,34 @@ function App() {
                       <Route path="/customer/dashboard" element={
                         <ProtectedRoute requiredRole="customer">
                           <CustomerDashboard />
+                        </ProtectedRoute>
+                      } />
+                      
+                      {/* Customer Feedback Route */}
+                      <Route path="/customer/feedback" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <CustomerFeedback />
+                        </ProtectedRoute>
+                      } />
+                      
+                      {/* Legacy feedback route for backward compatibility */}
+                      <Route path="/feedback" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <CustomerFeedback />
+                        </ProtectedRoute>
+                      } />
+                      
+                      {/* Rate Vendor Route */}
+                      <Route path="/rate-vendor/:jobId" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <RateVendor />
+                        </ProtectedRoute>
+                      } />
+                      
+                      {/* Customer Subscription Management Routes */}
+                      <Route path="/subscription/manage" element={
+                        <ProtectedRoute requiredRole="customer">
+                          <SubscriptionPage />
                         </ProtectedRoute>
                       } />
                       
