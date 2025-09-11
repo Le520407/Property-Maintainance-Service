@@ -141,6 +141,39 @@ router.post('/order-attachments', auth, orderAttachmentUpload.array('files', 10)
   }
 });
 
+// Rating images upload route (for customer feedback)
+router.post('/rating-images', auth, orderAttachmentUpload.array('images', 5), (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: 'No images uploaded' });
+    }
+
+    // Only customers can upload rating images
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Only customers can upload rating images' });
+    }
+
+    // Return uploaded image information
+    const uploadedImages = req.files.map(file => ({
+      filename: file.filename,
+      originalName: file.originalname,
+      size: file.size,
+      mimetype: file.mimetype,
+      url: `/uploads/order-attachments/${file.filename}`,
+      type: 'GENERAL' // Default type, can be overridden by frontend
+    }));
+    
+    res.status(200).json({
+      message: 'Images uploaded successfully',
+      images: uploadedImages
+    });
+
+  } catch (error) {
+    console.error('Rating images upload error:', error);
+    res.status(500).json({ message: 'Failed to upload rating images' });
+  }
+});
+
 // 错误处理中间件
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {

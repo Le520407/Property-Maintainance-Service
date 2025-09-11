@@ -35,6 +35,35 @@ import { api } from '../../services/api';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
+// Helper function to construct proper image URLs
+const getImageUrl = (relativeUrl) => {
+  console.log('🔍 Processing image URL:', relativeUrl);
+  
+  // Handle empty or undefined URLs
+  if (!relativeUrl) {
+    console.warn('⚠️ Empty or undefined image URL');
+    return null;
+  }
+  
+  // Handle complete URLs
+  if (relativeUrl.startsWith('http')) {
+    console.log('✅ Using complete URL:', relativeUrl);
+    return relativeUrl;
+  }
+  
+  // Skip blob URLs (these are from old data and can't be accessed)
+  if (relativeUrl.startsWith('blob:')) {
+    console.warn('⚠️ Skipping blob URL (old data):', relativeUrl);
+    return null;
+  }
+  
+  // Get the base server URL without /api
+  const serverBaseUrl = (process.env.REACT_APP_API_URL || 'http://localhost:5000/api').replace('/api', '');
+  const fullUrl = `${serverBaseUrl}${relativeUrl}`;
+  console.log('🖼️ Image URL Construction:', { relativeUrl, serverBaseUrl, fullUrl });
+  return fullUrl;
+};
+
 const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
   const [activeSection, setActiveSection] = useState(initialSection || 'profile');
   const [servicePackages, setServicePackages] = useState(vendor.servicePackages || []);
@@ -740,6 +769,7 @@ const ReviewsComponent = () => {
       distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
     }
   });
+  const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
     fetchRatings();
@@ -949,6 +979,57 @@ const ReviewsComponent = () => {
                   </div>
                 )}
                 
+                {/* Customer Photos */}
+                {rating.images && rating.images.length > 0 && (
+                  <div className="mb-4">
+                    <h5 className="text-sm font-medium text-gray-900 mb-2">Customer Photos</h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {rating.images.map((image, index) => {
+                        const imageUrl = getImageUrl(image.url);
+                        console.log('🖼️ Rendering image:', { image, imageUrl });
+                        
+                        // Skip images with invalid URLs
+                        if (!imageUrl) {
+                          console.warn('⚠️ Skipping image with invalid URL:', image);
+                          return null;
+                        }
+                        
+                        return (
+                          <div key={index} className="relative group">
+                            <img
+                              src={imageUrl}
+                              alt={image.caption || `Photo ${index + 1}`}
+                              className="w-full h-24 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-75 transition-opacity"
+                              onClick={() => setSelectedImage({...image, url: imageUrl})}
+                              onError={(e) => {
+                                console.error('❌ Image failed to load:', imageUrl, e);
+                                e.target.style.display = 'none';
+                              }}
+                              onLoad={() => console.log('✅ Image loaded successfully:', imageUrl)}
+                            />
+                            {image.caption && (
+                              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                {image.caption}
+                              </div>
+                            )}
+                          {image.type && image.type !== 'GENERAL' && (
+                            <div className="absolute top-1 right-1">
+                              <span className={`text-xs px-1.5 py-0.5 rounded text-white font-medium ${
+                                image.type === 'BEFORE' ? 'bg-blue-500' :
+                                image.type === 'AFTER' ? 'bg-green-500' :
+                                image.type === 'ISSUE' ? 'bg-red-500' : 'bg-gray-500'
+                              }`}>
+                                {image.type}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Recommendation */}
                 {rating.wouldRecommend !== undefined && (
                   <div className="flex items-center text-sm">
@@ -984,6 +1065,40 @@ const ReviewsComponent = () => {
           </div>
         )}
       </div>
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={() => setSelectedImage(null)}>
+          <div className="relative max-w-4xl max-h-full p-4">
+            <img
+              src={selectedImage.url}
+              alt={selectedImage.caption || 'Customer Photo'}
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-2 right-2 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-75 transition-opacity"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            {selectedImage.caption && (
+              <div className="absolute bottom-2 left-2 right-2 bg-black bg-opacity-50 text-white p-3 rounded-lg">
+                <p className="text-sm">{selectedImage.caption}</p>
+                {selectedImage.type && selectedImage.type !== 'GENERAL' && (
+                  <span className={`inline-block mt-1 text-xs px-2 py-1 rounded font-medium ${
+                    selectedImage.type === 'BEFORE' ? 'bg-blue-500' :
+                    selectedImage.type === 'AFTER' ? 'bg-green-500' :
+                    selectedImage.type === 'ISSUE' ? 'bg-red-500' : 'bg-gray-500'
+                  }`}>
+                    {selectedImage.type}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

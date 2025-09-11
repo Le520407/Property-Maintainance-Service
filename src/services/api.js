@@ -56,6 +56,25 @@ export const api = {
     method: 'DELETE',
   }),
 
+  // File upload with multipart/form-data
+  uploadFiles: (endpoint, formData) => {
+    const token = localStorage.getItem('token');
+    return fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    }).then(response => {
+      if (!response.ok) {
+        return response.json().then(errorData => {
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        });
+      }
+      return response.json();
+    });
+  },
+
   // Authentication related
   auth: {
     // User registration
@@ -400,6 +419,15 @@ export const api = {
     
     // Get rating for a job
     getRating: (jobId) => request(`/jobs/${jobId}/rating`),
+    
+    // Upload rating images
+    uploadRatingImages: (images) => {
+      const formData = new FormData();
+      images.forEach((image, index) => {
+        formData.append('images', image.file || image);
+      });
+      return api.uploadFiles('/upload/rating-images', formData);
+    },
   },
   
   // Vendor related

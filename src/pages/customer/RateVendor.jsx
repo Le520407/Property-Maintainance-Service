@@ -1,20 +1,31 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Star,
   ArrowLeft,
-  Camera,
-  ThumbsUp,
-  ThumbsDown,
   Award,
-  User,
-  MapPin,
   Calendar,
-  DollarSign
+  Camera,
+  DollarSign,
+  MapPin,
+  Star,
+  ThumbsDown,
+  ThumbsUp,
+  User
 } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+
 import { api } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
+
+// Helper function to construct proper image URLs
+const getImageUrl = (relativeUrl) => {
+  if (!relativeUrl) return '';
+  if (relativeUrl.startsWith('http')) return relativeUrl;
+  
+  // Get the base server URL without /api
+  const serverBaseUrl = (process.env.REACT_APP_API_URL || 'http://localhost:5000/api').replace('/api', '');
+  return `${serverBaseUrl}${relativeUrl}`;
+};
 
 const RateVendor = () => {
   const { jobId } = useParams();
@@ -29,13 +40,6 @@ const RateVendor = () => {
   // Rating form state
   const [overallRating, setOverallRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
-  const [criteria, setCriteria] = useState({
-    quality: 0,
-    timeliness: 0,
-    professionalism: 0,
-    communication: 0,
-    cleanliness: 0
-  });
   const [title, setTitle] = useState('');
   const [comment, setComment] = useState('');
   const [wouldRecommend, setWouldRecommend] = useState(null);
@@ -43,14 +47,6 @@ const RateVendor = () => {
   const [negativeAspects, setNegativeAspects] = useState([]);
   const [images, setImages] = useState([]);
   const [isAnonymous, setIsAnonymous] = useState(false);
-
-  const criteriaLabels = {
-    quality: 'Work Quality',
-    timeliness: 'Timeliness',
-    professionalism: 'Professionalism',
-    communication: 'Communication',
-    cleanliness: 'Cleanliness'
-  };
 
   const ratingLabels = {
     1: 'Poor',
@@ -87,6 +83,20 @@ const RateVendor = () => {
   ];
 
   const fetchJobDetails = useCallback(async () => {
+    // Validate user and role
+    if (!user || user.role !== 'customer') {
+      console.warn('Invalid user context for rating');
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    // Validate jobId before making API calls
+    if (!jobId || jobId === 'undefined' || jobId === 'null') {
+      console.warn('Invalid jobId provided:', jobId);
+      navigate('/feedback', { replace: true });
+      return;
+    }
+
     try {
       setLoading(true);
       
@@ -95,14 +105,19 @@ const RateVendor = () => {
       const jobData = jobResponse.job;
       
       if (!jobData) {
+        console.warn('Job not found for ID:', jobId);
         toast.error('Job not found');
-        navigate('/jobs');
+        navigate('/feedback', { replace: true });
         return;
       }
 
-      if (jobData.customerId._id !== user._id) {
-        toast.error('You can only rate your own jobs');
-        navigate('/jobs');
+      // More flexible customer ID comparison
+      const jobCustomerId = jobData.customerId?._id || jobData.customerId;
+      const currentUserId = user._id || user.id; // Handle both _id and id formats
+      
+      if (jobCustomerId?.toString() !== currentUserId?.toString()) {
+        console.warn('Access denied: Job does not belong to current user');
+        navigate('/feedback', { replace: true });
         return;
       }
 
@@ -122,7 +137,6 @@ const RateVendor = () => {
           // Pre-fill form with existing rating
           const rating = ratingResponse.rating;
           setOverallRating(rating.overallRating);
-          setCriteria(rating.criteria);
           setTitle(rating.title || '');
           setComment(rating.comment || '');
           setWouldRecommend(rating.wouldRecommend);
@@ -142,18 +156,11 @@ const RateVendor = () => {
     } finally {
       setLoading(false);
     }
-  }, [jobId, user._id, navigate]);
+  }, [jobId, user, navigate]);
 
   useEffect(() => {
     fetchJobDetails();
   }, [fetchJobDetails]);
-
-  const handleCriteriaRating = (criterion, value) => {
-    setCriteria(prev => ({
-      ...prev,
-      [criterion]: value
-    }));
-  };
 
   const handleAspectToggle = (aspect, isPositive) => {
     if (isPositive) {
@@ -171,28 +178,77 @@ const RateVendor = () => {
     }
   };
 
-  const handleImageUpload = (event) => {
+  const handleImageUpload = async (event) => {
     const files = Array.from(event.target.files);
     if (files.length + images.length > 5) {
       toast.error('Maximum 5 images allowed');
       return;
     }
 
-    // In a real app, you would upload these to a cloud storage service
-    const imageUrls = files.map(file => ({
-      file,
-      url: URL.createObjectURL(file),
-      name: file.name,
-      type: 'GENERAL'
-    }));
-    
-    setImages(prev => [...prev, ...imageUrls]);
+    try {
+      // Create temporary preview images with loading state
+      const tempImages = files.map(file => ({
+        file,
+        url: URL.createObjectURL(file),
+        name: file.name,
+        type: 'GENERAL',
+        isUploading: true
+      }));
+      
+      setImages(prev => [...prev, ...tempImages]);
+
+      // Upload images to server
+      const uploadResponse = await api.jobs.uploadRatingImages(files.map(file => ({ file })));
+      
+      if (uploadResponse.images) {
+        // Replace temporary images with uploaded images
+        setImages(prev => {
+          const newImages = [...prev];
+          // Remove the temporary images
+          const tempCount = tempImages.length;
+          newImages.splice(-tempCount, tempCount);
+          
+          // Add the uploaded images
+          const uploadedImages = uploadResponse.images.map(img => ({
+            url: getImageUrl(img.url),
+            name: img.originalName,
+            type: img.type || 'GENERAL',
+            isUploading: false
+          }));
+          
+          return [...newImages, ...uploadedImages];
+        });
+        
+        // Cleanup blob URLs
+        tempImages.forEach(img => URL.revokeObjectURL(img.url));
+        
+        toast.success(`${files.length} image(s) uploaded successfully`);
+      }
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      toast.error('Failed to upload images. Please try again.');
+      
+      // Remove temporary images on error
+      setImages(prev => prev.filter(img => !img.isUploading));
+      
+      // Cleanup blob URLs
+      files.forEach(file => {
+        const url = URL.createObjectURL(file);
+        URL.revokeObjectURL(url);
+      });
+    }
   };
 
   const removeImage = (index) => {
     setImages(prev => {
       const updated = [...prev];
-      URL.revokeObjectURL(updated[index].url);
+      const imageToRemove = updated[index];
+      
+      // Only revoke blob URLs, not server URLs
+      if (imageToRemove.url.startsWith('blob:')) {
+        URL.revokeObjectURL(imageToRemove.url);
+      }
+      
       updated.splice(index, 1);
       return updated;
     });
@@ -221,13 +277,15 @@ const RateVendor = () => {
     try {
       const ratingData = {
         overallRating,
-        criteria,
         title: title.trim(),
         comment: comment.trim(),
         wouldRecommend,
         positiveAspects,
         negativeAspects,
-        images: images.map(img => ({ url: img.url, type: img.type || 'GENERAL' })),
+        images: images.filter(img => !img.isUploading).map(img => ({ 
+          url: img.url, 
+          type: img.type || 'GENERAL' 
+        })),
         isAnonymous
       };
 
@@ -366,25 +424,6 @@ const RateVendor = () => {
                 {ratingLabels[overallRating]}
               </span>
             )}
-          </div>
-        </div>
-
-        {/* Detailed Criteria */}
-        <div>
-          <label className="block text-lg font-medium text-gray-900 mb-4">
-            Rate Specific Aspects
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {Object.entries(criteriaLabels).map(([key, label]) => (
-              <div key={key} className="flex items-center justify-between">
-                <span className="text-gray-700">{label}</span>
-                {renderStarRating(
-                  criteria[key], 
-                  (value) => handleCriteriaRating(key, value),
-                  'w-6 h-6'
-                )}
-              </div>
-            ))}
           </div>
         </div>
 
@@ -531,12 +570,20 @@ const RateVendor = () => {
                   <img
                     src={image.url}
                     alt={`Upload ${index + 1}`}
-                    className="w-full h-24 object-cover rounded-lg"
+                    className={`w-full h-24 object-cover rounded-lg ${
+                      image.isUploading ? 'opacity-50' : ''
+                    }`}
                   />
+                  {image.isUploading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600"
+                    disabled={image.isUploading}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     ×
                   </button>

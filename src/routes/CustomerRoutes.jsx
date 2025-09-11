@@ -1,13 +1,14 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import CustomerLayout from '../components/layout/CustomerLayout';
+import { Navigate, Route, Routes } from 'react-router-dom';
+
 import CustomerDashboard from '../pages/customer/CustomerDashboard';
-import MembershipPlans from '../components/customer/MembershipPlans';
-import MembershipDashboard from '../components/customer/MembershipDashboard';
-import MembershipSuccess from '../pages/MembershipSuccess.jsx';
-import CustomerProfile from '../pages/customer/CustomerProfile';
-import RateVendor from '../pages/customer/RateVendor';
 import CustomerFeedback from '../pages/customer/CustomerFeedback';
+import CustomerLayout from '../components/layout/CustomerLayout';
+import CustomerProfile from '../pages/customer/CustomerProfile';
+import MembershipDashboard from '../components/customer/MembershipDashboard';
+import MembershipPlans from '../components/customer/MembershipPlans';
+import MembershipSuccess from '../pages/MembershipSuccess.jsx';
+import RateVendor from '../pages/customer/RateVendor';
+import React from 'react';
 
 const CustomerRoutes = () => {
   return (

@@ -1,9 +1,21 @@
+import { ArrowLeft, Home, Search } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, ArrowLeft, Search } from 'lucide-react';
 
 const NotFoundPage = () => {
+  const navigate = useNavigate();
+
+  const handleGoBack = () => {
+    // Check if there's history to go back to
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      // If no history, navigate to home
+      navigate('/');
+    }
+  };
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full text-center">
@@ -37,7 +49,7 @@ const NotFoundPage = () => {
             </Link>
             
             <button
-              onClick={() => window.history.back()}
+              onClick={handleGoBack}
               className="text-gray-600 hover:text-gray-800 font-medium inline-flex items-center mx-auto"
             >
               <ArrowLeft size={20} className="mr-2" />

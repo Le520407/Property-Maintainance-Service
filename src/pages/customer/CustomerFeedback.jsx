@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import {
-  Star,
-  Calendar,
-  User,
-  MapPin,
-  Clock,
-  CheckCircle,
-  MessageSquare,
   ArrowLeft,
+  Calendar,
+  CheckCircle,
+  Clock,
   Filter,
-  Search
+  MapPin,
+  MessageSquare,
+  Search,
+  Star,
+  User
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+
+import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 const CustomerFeedback = () => {
@@ -39,10 +40,25 @@ const CustomerFeedback = () => {
       const ratedJobIds = new Set();
       for (const job of completedJobs) {
         try {
-          await api.jobs.getRating(job._id);
-          ratedJobIds.add(job._id);
+          // Silently check for existing rating - suppress all console output
+          const originalConsoleError = console.error;
+          console.error = () => {}; // Temporarily disable console.error
+          
+          const ratingResponse = await fetch(`http://localhost:5000/api/jobs/${job._id}/rating`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          console.error = originalConsoleError; // Restore console.error
+          
+          if (ratingResponse.ok) {
+            ratedJobIds.add(job._id);
+          }
+          // If not ok (404), job is not rated yet - that's fine, no error logging
         } catch (error) {
-          // No rating found, that's fine
+          // Network or other errors - still don't log for rating checks
         }
       }
       
