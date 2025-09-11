@@ -56,6 +56,25 @@ export const api = {
     method: 'DELETE',
   }),
 
+  // File upload with multipart/form-data
+  uploadFiles: (endpoint, formData) => {
+    const token = localStorage.getItem('token');
+    return fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    }).then(response => {
+      if (!response.ok) {
+        return response.json().then(errorData => {
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        });
+      }
+      return response.json();
+    });
+  },
+
   // Authentication related
   auth: {
     // User registration
@@ -371,11 +390,14 @@ export const api = {
     // Get user's jobs
     getUserJobs: (params = {}) => {
       const queryString = new URLSearchParams(params).toString();
-      return request(`/jobs/user?${queryString}`);
+      return request(`/jobs/my-orders?${queryString}`);
     },
     
-    // Get job details
+    // Get job details (backward compatibility)
     getJob: (id) => request(`/jobs/${id}`),
+    
+    // Get job by ID
+    getById: (id) => request(`/jobs/${id}`),
     
     // Update job
     updateJob: (id, jobData) => request(`/jobs/${id}`, {
@@ -388,6 +410,24 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ reason }),
     }),
+    
+    // Submit rating for a job
+    submitRating: (jobId, ratingData) => request(`/jobs/${jobId}/rating`, {
+      method: 'POST',
+      body: JSON.stringify(ratingData),
+    }),
+    
+    // Get rating for a job
+    getRating: (jobId) => request(`/jobs/${jobId}/rating`),
+    
+    // Upload rating images
+    uploadRatingImages: (images) => {
+      const formData = new FormData();
+      images.forEach((image, index) => {
+        formData.append('images', image.file || image);
+      });
+      return api.uploadFiles('/upload/rating-images', formData);
+    },
   },
   
   // Vendor related
@@ -451,6 +491,15 @@ export const api = {
       const queryString = new URLSearchParams(params).toString();
       return request(`/vendor/analytics?${queryString}`);
     },
+    
+    // Get customer list
+    getCustomers: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return request(`/vendor/customers?${queryString}`);
+    },
+    
+    // Get customer details
+    getCustomerDetails: (customerId) => request(`/vendor/customers/${customerId}`),
   },
 
   // CMS related
@@ -518,48 +567,6 @@ export const api = {
         body: JSON.stringify({ helpful }),
       }),
     },
-  },
-
-  // Vendor related
-  vendor: {
-    // Get vendor jobs
-    getJobs: (status) => {
-      const params = status ? `?status=${status}` : '';
-      return request(`/vendor/jobs${params}`);
-    },
-    
-    // Respond to job assignment
-    respondToJob: (jobId, response) => request(`/vendor/jobs/${jobId}/respond`, {
-      method: 'PATCH',
-      body: JSON.stringify(response),
-    }),
-    
-    // Update job progress
-    updateJobProgress: (jobId, progressData) => request(`/vendor/jobs/${jobId}/progress`, {
-      method: 'PATCH',
-      body: JSON.stringify(progressData),
-    }),
-    
-    // Update job status
-    updateJobStatus: (jobId, statusData) => request(`/vendor/jobs/${jobId}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify(statusData),
-    }),
-    
-    // Update job price (custom endpoint for price updates)
-    updateJobPrice: (jobId, priceData) => request(`/vendor/jobs/${jobId}/price`, {
-      method: 'PATCH',
-      body: JSON.stringify(priceData),
-    }),
-    
-    // Update vendor profile
-    updateProfile: (profileData) => request('/vendor/profile', {
-      method: 'PUT',
-      body: JSON.stringify(profileData),
-    }),
-    
-    // Get vendor dashboard data
-    getDashboard: () => request('/vendor/dashboard'),
   },
 
   // Messages related

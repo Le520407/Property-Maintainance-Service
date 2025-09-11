@@ -35,6 +35,35 @@ import { api } from '../../services/api';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
+// Helper function to construct proper image URLs
+const getImageUrl = (relativeUrl) => {
+  console.log('🔍 Processing image URL:', relativeUrl);
+  
+  // Handle empty or undefined URLs
+  if (!relativeUrl) {
+    console.warn('⚠️ Empty or undefined image URL');
+    return null;
+  }
+  
+  // Handle complete URLs
+  if (relativeUrl.startsWith('http')) {
+    console.log('✅ Using complete URL:', relativeUrl);
+    return relativeUrl;
+  }
+  
+  // Skip blob URLs (these are from old data and can't be accessed)
+  if (relativeUrl.startsWith('blob:')) {
+    console.warn('⚠️ Skipping blob URL (old data):', relativeUrl);
+    return null;
+  }
+  
+  // Get the base server URL without /api
+  const serverBaseUrl = (process.env.REACT_APP_API_URL || 'http://localhost:5000/api').replace('/api', '');
+  const fullUrl = `${serverBaseUrl}${relativeUrl}`;
+  console.log('🖼️ Image URL Construction:', { relativeUrl, serverBaseUrl, fullUrl });
+  return fullUrl;
+};
+
 const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
   const [activeSection, setActiveSection] = useState(initialSection || 'profile');
   const [servicePackages, setServicePackages] = useState(vendor.servicePackages || []);
@@ -729,6 +758,535 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
   );
 };
 
+// Reviews Component
+const ReviewsComponent = () => {
+  const [ratingsData, setRatingsData] = useState({
+    ratings: [],
+    loading: true,
+    stats: {
+      averageRating: 0,
+      totalRatings: 0,
+      distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+    }
+  });
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  useEffect(() => {
+    fetchRatings();
+  }, []);
+
+  const fetchRatings = async () => {
+    try {
+      setRatingsData(prev => ({ ...prev, loading: true }));
+      
+      const response = await api.vendor.getRatings();
+      console.log('📊 Ratings data received:', response);
+      
+      // Calculate statistics
+      const ratings = response.ratings || [];
+      const totalRatings = ratings.length;
+      
+      if (totalRatings > 0) {
+        const averageRating = ratings.reduce((sum, rating) => sum + rating.overallRating, 0) / totalRatings;
+        
+        // Calculate distribution
+        const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        ratings.forEach(rating => {
+          const rounded = Math.round(rating.overallRating);
+          if (distribution[rounded] !== undefined) {
+            distribution[rounded]++;
+          }
+        });
+        
+        setRatingsData({
+          ratings,
+          loading: false,
+          stats: {
+            averageRating,
+            totalRatings,
+            distribution
+          }
+        });
+      } else {
+        setRatingsData({
+          ratings: [],
+          loading: false,
+          stats: {
+            averageRating: 0,
+            totalRatings: 0,
+            distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+          }
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error fetching ratings:', error);
+      setRatingsData(prev => ({ ...prev, loading: false }));
+      toast.error('Failed to load ratings');
+    }
+  };
+
+  const renderStars = (rating) => {
+    return [...Array(5)].map((_, i) => (
+      <Star
+        key={i}
+        className={`h-4 w-4 ${
+          i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+        }`}
+      />
+    ));
+  };
+
+  if (ratingsData.loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Rating Statistics */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-6">Rating Overview</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Average Rating */}
+          <div className="text-center">
+            <div className="text-3xl font-bold text-gray-900 mb-2">
+              {ratingsData.stats.averageRating.toFixed(1)}
+            </div>
+            <div className="flex justify-center mb-2">
+              {renderStars(Math.round(ratingsData.stats.averageRating))}
+            </div>
+            <div className="text-sm text-gray-500">
+              Based on {ratingsData.stats.totalRatings} reviews
+            </div>
+          </div>
+          
+          {/* Rating Distribution */}
+          <div className="md:col-span-2">
+            <h4 className="text-sm font-medium text-gray-700 mb-3">Rating Distribution</h4>
+            <div className="space-y-2">
+              {[5, 4, 3, 2, 1].map((stars) => {
+                const count = ratingsData.stats.distribution[stars];
+                const percentage = ratingsData.stats.totalRatings > 0 
+                  ? (count / ratingsData.stats.totalRatings) * 100 
+                  : 0;
+                
+                return (
+                  <div key={stars} className="flex items-center">
+                    <div className="flex items-center w-12">
+                      <span className="text-sm text-gray-600">{stars}</span>
+                      <Star className="h-3 w-3 text-yellow-400 fill-current ml-1" />
+                    </div>
+                    <div className="flex-1 mx-3">
+                      <div className="h-2 bg-gray-200 rounded-full">
+                        <div 
+                          className="h-2 bg-yellow-400 rounded-full" 
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    <div className="w-12 text-sm text-gray-600 text-right">
+                      {count}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Individual Reviews */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-6">Customer Reviews</h3>
+        
+        {ratingsData.ratings.length > 0 ? (
+          <div className="space-y-6">
+            {ratingsData.ratings.map((rating) => (
+              <div key={rating._id} className="border-b border-gray-200 pb-6 last:border-b-0">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className="flex mr-3">
+                      {renderStars(rating.overallRating)}
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {rating.isAnonymous ? 'Anonymous Customer' : rating.customerId?.name || 'Customer'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {new Date(rating.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Job: {rating.jobId?.title || 'Service'}
+                  </div>
+                </div>
+                
+                {rating.title && (
+                  <h4 className="font-medium text-gray-900 mb-2">{rating.title}</h4>
+                )}
+                
+                {rating.comment && (
+                  <p className="text-gray-700 mb-3">{rating.comment}</p>
+                )}
+                
+                {/* Criteria Breakdown */}
+                {rating.criteria && (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+                    {Object.entries(rating.criteria).map(([key, value]) => (
+                      <div key={key} className="text-center">
+                        <div className="text-xs text-gray-500 capitalize mb-1">
+                          {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                        </div>
+                        <div className="flex justify-center">
+                          {renderStars(value)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Positive/Negative Aspects */}
+                {(rating.positiveAspects?.length > 0 || rating.negativeAspects?.length > 0) && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {rating.positiveAspects?.map((aspect, index) => (
+                      <span
+                        key={`pos-${index}`}
+                        className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full"
+                      >
+                        + {aspect.replace(/_/g, ' ').toLowerCase()}
+                      </span>
+                    ))}
+                    {rating.negativeAspects?.map((aspect, index) => (
+                      <span
+                        key={`neg-${index}`}
+                        className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full"
+                      >
+                        - {aspect.replace(/_/g, ' ').toLowerCase()}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Customer Photos */}
+                {rating.images && rating.images.length > 0 && (
+                  <div className="mb-4">
+                    <h5 className="text-sm font-medium text-gray-900 mb-2">Customer Photos</h5>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {rating.images.map((image, index) => {
+                        const imageUrl = getImageUrl(image.url);
+                        console.log('🖼️ Rendering image:', { image, imageUrl });
+                        
+                        // Skip images with invalid URLs
+                        if (!imageUrl) {
+                          console.warn('⚠️ Skipping image with invalid URL:', image);
+                          return null;
+                        }
+                        
+                        return (
+                          <div key={index} className="relative group">
+                            <img
+                              src={imageUrl}
+                              alt={image.caption || `Photo ${index + 1}`}
+                              className="w-full h-24 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-75 transition-opacity"
+                              onClick={() => setSelectedImage({...image, url: imageUrl})}
+                              onError={(e) => {
+                                console.error('❌ Image failed to load:', imageUrl, e);
+                                e.target.style.display = 'none';
+                              }}
+                              onLoad={() => console.log('✅ Image loaded successfully:', imageUrl)}
+                            />
+                            {image.caption && (
+                              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                {image.caption}
+                              </div>
+                            )}
+                          {image.type && image.type !== 'GENERAL' && (
+                            <div className="absolute top-1 right-1">
+                              <span className={`text-xs px-1.5 py-0.5 rounded text-white font-medium ${
+                                image.type === 'BEFORE' ? 'bg-blue-500' :
+                                image.type === 'AFTER' ? 'bg-green-500' :
+                                image.type === 'ISSUE' ? 'bg-red-500' : 'bg-gray-500'
+                              }`}>
+                                {image.type}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recommendation */}
+                {rating.wouldRecommend !== undefined && (
+                  <div className="flex items-center text-sm">
+                    <span className="text-gray-600 mr-2">Would recommend:</span>
+                    <span className={rating.wouldRecommend ? 'text-green-600' : 'text-red-600'}>
+                      {rating.wouldRecommend ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Vendor Response */}
+                {rating.vendorResponse && (
+                  <div className="mt-4 bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center mb-2">
+                      <div className="text-sm font-medium text-gray-900">Your Response</div>
+                      <div className="text-xs text-gray-500 ml-2">
+                        {new Date(rating.vendorResponse.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-700">{rating.vendorResponse.message}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Star className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+            <p className="text-gray-500">No reviews yet</p>
+            <p className="text-sm text-gray-400">
+              Complete some jobs to start receiving customer reviews
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={() => setSelectedImage(null)}>
+          <div className="relative max-w-4xl max-h-full p-4">
+            <img
+              src={selectedImage.url}
+              alt={selectedImage.caption || 'Customer Photo'}
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-2 right-2 bg-black bg-opacity-50 text-white rounded-full p-2 hover:bg-opacity-75 transition-opacity"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            {selectedImage.caption && (
+              <div className="absolute bottom-2 left-2 right-2 bg-black bg-opacity-50 text-white p-3 rounded-lg">
+                <p className="text-sm">{selectedImage.caption}</p>
+                {selectedImage.type && selectedImage.type !== 'GENERAL' && (
+                  <span className={`inline-block mt-1 text-xs px-2 py-1 rounded font-medium ${
+                    selectedImage.type === 'BEFORE' ? 'bg-blue-500' :
+                    selectedImage.type === 'AFTER' ? 'bg-green-500' :
+                    selectedImage.type === 'ISSUE' ? 'bg-red-500' : 'bg-gray-500'
+                  }`}>
+                    {selectedImage.type}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Customer List Component
+const CustomerListComponent = () => {
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalCustomers: 0
+  });
+
+  const fetchCustomers = useCallback(async (page = 1) => {
+    try {
+      setLoading(true);
+      const response = await api.vendor.getCustomers({ 
+        page, 
+        limit: 10, 
+        search: searchTerm 
+      });
+      
+      setCustomers(response.customers || []);
+      setPagination(response.pagination || {});
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      toast.error('Failed to load customers');
+    } finally {
+      setLoading(false);
+    }
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchCustomers();
+    }, 500); // Debounce search
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, fetchCustomers]);
+
+  const renderStars = (rating) => {
+    if (!rating) return <span className="text-gray-400 text-sm">No ratings</span>;
+    
+    return (
+      <div className="flex items-center">
+        {[...Array(5)].map((_, i) => (
+          <Star
+            key={i}
+            className={`h-4 w-4 ${
+              i < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+            }`}
+          />
+        ))}
+        <span className="ml-2 text-sm text-gray-600">({rating.toFixed(1)})</span>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-20 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-medium text-gray-900">Customer List</h3>
+        
+        {/* Search */}
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search customers..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
+          />
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <User className="h-4 w-4 text-gray-400" />
+          </div>
+        </div>
+      </div>
+
+      {customers.length > 0 ? (
+        <div className="space-y-4">
+          {customers.map((customer) => (
+            <div key={customer._id} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-orange-100 rounded-full p-3">
+                    <User className="h-6 w-6 text-orange-600" />
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium text-gray-900">{customer.name}</h4>
+                    <p className="text-sm text-gray-600">{customer.email}</p>
+                    {customer.phone && (
+                      <p className="text-sm text-gray-600">{customer.phone}</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="text-right">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-gray-500">Total Jobs</div>
+                      <div className="font-medium">{customer.totalJobs}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">Completed</div>
+                      <div className="font-medium text-green-600">{customer.completedJobs}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">Total Spent</div>
+                      <div className="font-medium">${customer.totalSpent.toFixed(2)}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500">Last Job</div>
+                      <div className="font-medium">
+                        {new Date(customer.lastJobDate).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Rating */}
+                  <div className="mt-2">
+                    {renderStars(customer.averageRating)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6">
+              <div className="text-sm text-gray-600">
+                Showing {customers.length} of {pagination.totalCustomers} customers
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => fetchCustomers(pagination.currentPage - 1)}
+                  disabled={!pagination.hasPrev}
+                  className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span className="px-3 py-1">
+                  Page {pagination.currentPage} of {pagination.totalPages}
+                </span>
+                <button
+                  onClick={() => fetchCustomers(pagination.currentPage + 1)}
+                  disabled={!pagination.hasNext}
+                  className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <Users className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+          <p className="text-gray-500">No customers found</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Feedback Component (same as Reviews but focuses on feedback management)
+const FeedbackComponent = () => {
+  return <ReviewsComponent showFeedbackActions={true} />;
+};
+
 const VendorDashboardPage = () => {
   const location = useLocation();
   const [dashboardData, setDashboardData] = useState(null);
@@ -1167,24 +1725,9 @@ const VendorDashboardPage = () => {
 
     // Customer Relations Section
     if (activeSection === 'customers') {
-      if (activeTab === 'reviews') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Customer Reviews</h3>
-          <p className="text-gray-600">Reviews interface coming soon...</p>
-        </div>
-      );
-      if (activeTab === 'customer-list') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Customer List</h3>
-          <p className="text-gray-600">Customer management coming soon...</p>
-        </div>
-      );
-      if (activeTab === 'feedback') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Feedback Management</h3>
-          <p className="text-gray-600">Feedback management coming soon...</p>
-        </div>
-      );
+      if (activeTab === 'reviews') return <ReviewsComponent />;
+      if (activeTab === 'customer-list') return <CustomerListComponent />;
+      if (activeTab === 'feedback') return <FeedbackComponent />;
       if (activeTab === 'communication') return (
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Customer Communication</h3>

@@ -86,7 +86,13 @@ router.get('/my-orders', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only customers can view their orders' });
     }
 
-    const jobs = await Job.find({ customerId: req.user._id })
+    // Build query with optional status filter
+    const query = { customerId: req.user._id };
+    if (req.query.status) {
+      query.status = req.query.status;
+    }
+
+    const jobs = await Job.find(query)
       .populate('vendorId', 'firstName lastName email phone')
       .populate('vendorDetails', 'companyName serviceCategories')
       .sort({ createdAt: -1 });
@@ -697,6 +703,151 @@ router.get('/analytics/vendor-performance', auth, requireRole('admin'), async (r
   } catch (error) {
     console.error('Error getting vendor analytics:', error);
     res.status(500).json({ message: 'Failed to get vendor analytics' });
+  }
+});
+
+// Submit rating/feedback for completed job (Customer only)
+router.post('/:id/rating', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'customer') {
+      return res.status(403).json({ message: 'Only customers can rate jobs' });
+    }
+
+    const job = await Job.findById(req.params.id).populate('vendorId', '_id');
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    if (job.customerId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only rate your own jobs' });
+    }
+
+    if (job.status !== 'COMPLETED') {
+      return res.status(400).json({ message: 'Job must be completed to submit a rating' });
+    }
+
+    if (!job.vendorId) {
+      return res.status(400).json({ message: 'No vendor assigned to this job' });
+    }
+
+    // Check if rating already exists
+    const Rating = require('../models/Rating');
+    const existingRating = await Rating.findOne({ 
+      jobId: job._id, 
+      customerId: req.user._id 
+    });
+
+    if (existingRating) {
+      return res.status(400).json({ message: 'You have already rated this job' });
+    }
+
+    const {
+      overallRating,
+      criteria = {},
+      title,
+      comment,
+      wouldRecommend,
+      positiveAspects = [],
+      negativeAspects = [],
+      images = [],
+      isAnonymous = false
+    } = req.body;
+
+    // Validate required fields
+    if (!overallRating || overallRating < 1 || overallRating > 5) {
+      return res.status(400).json({ message: 'Overall rating must be between 1 and 5' });
+    }
+
+    if (wouldRecommend === undefined || wouldRecommend === null) {
+      return res.status(400).json({ message: 'Recommendation field is required' });
+    }
+
+    // Create rating
+    const ratingData = {
+      jobId: job._id,
+      customerId: req.user._id,
+      vendorId: job.vendorId._id,
+      overallRating: parseInt(overallRating),
+      criteria: {
+        quality: criteria.quality || overallRating,
+        timeliness: criteria.timeliness || overallRating,
+        professionalism: criteria.professionalism || overallRating,
+        communication: criteria.communication || overallRating,
+        cleanliness: criteria.cleanliness || overallRating
+      },
+      title: title || '',
+      comment: comment || '',
+      wouldRecommend: Boolean(wouldRecommend),
+      positiveAspects: Array.isArray(positiveAspects) ? positiveAspects : [],
+      negativeAspects: Array.isArray(negativeAspects) ? negativeAspects : [],
+      images: Array.isArray(images) ? images.map(img => ({
+        url: img.url || img,
+        caption: img.caption || '',
+        type: img.type || 'GENERAL'
+      })) : [],
+      isAnonymous: Boolean(isAnonymous),
+      isPublic: true,
+      adminReview: {
+        status: 'APPROVED' // Auto-approve for now
+      }
+    };
+
+    const rating = new Rating(ratingData);
+    await rating.save();
+
+    // Populate the rating for response
+    await rating.populate([
+      { path: 'customerId', select: 'firstName lastName' },
+      { path: 'vendorId', select: 'firstName lastName' },
+      { path: 'jobId', select: 'jobNumber title' }
+    ]);
+
+    res.status(201).json({
+      message: 'Rating submitted successfully',
+      rating: rating
+    });
+
+  } catch (error) {
+    console.error('Error submitting rating:', error);
+    res.status(500).json({ 
+      message: 'Failed to submit rating',
+      error: error.message 
+    });
+  }
+});
+
+// Get rating for a specific job (if exists)
+router.get('/:id/rating', auth, async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    // Check permissions
+    const isCustomer = job.customerId.toString() === req.user._id.toString();
+    const isVendor = job.vendorId && job.vendorId.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isCustomer && !isVendor && !isAdmin) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const Rating = require('../models/Rating');
+    const rating = await Rating.findOne({ jobId: job._id })
+      .populate('customerId', 'firstName lastName')
+      .populate('vendorId', 'firstName lastName')
+      .populate('jobId', 'jobNumber title');
+
+    if (!rating) {
+      return res.status(404).json({ message: 'No rating found for this job' });
+    }
+
+    res.json({ rating });
+
+  } catch (error) {
+    console.error('Error fetching job rating:', error);
+    res.status(500).json({ message: 'Failed to fetch rating' });
   }
 });
 
