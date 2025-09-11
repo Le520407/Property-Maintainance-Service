@@ -254,6 +254,26 @@ router.post('/webhook/hitpay', async (req, res) => {
         order.paymentStatus = 'paid';
         order.status = 'confirmed';
         console.log(`✅ Order ${order.orderNumber} payment completed`);
+        
+        // **NEW: Trigger referral rewards when order is completed**
+        try {
+          const referralRewardService = require('../services/referralRewardService');
+          const rewardResult = await referralRewardService.processReferralRewards(
+            order.customer, 
+            order._id, 
+            order.total, 
+            'order'
+          );
+          
+          if (rewardResult.processed) {
+            console.log(`🎁 Referral rewards processed for order ${order.orderNumber}:`, rewardResult);
+          } else {
+            console.log(`ℹ️ No referral rewards for order ${order.orderNumber}: ${rewardResult.reason}`);
+          }
+        } catch (rewardError) {
+          console.error('Error processing referral rewards for order:', rewardError);
+          // Don't fail order completion if reward processing fails
+        }
         break;
         
       case 'failed':

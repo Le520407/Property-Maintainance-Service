@@ -560,17 +560,7 @@ const UserManagement = () => {
               <p className="text-xs text-gray-500 mb-1">Agent Code</p>
               <p className="text-sm font-mono font-medium text-purple-600">{userData.agentCode || 'N/A'}</p>
             </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-1">Agent Tier</p>
-              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                userData.agentTier === 'BRONZE' ? 'bg-orange-100 text-orange-800' :
-                userData.agentTier === 'SILVER' ? 'bg-gray-100 text-gray-800' :
-                userData.agentTier === 'GOLD' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-purple-100 text-purple-800'
-              }`}>
-                {userData.agentTier || 'BRONZE'}
-              </span>
-            </div>
+            {/* Agent Tier removed - no tier system for agents */}
             <div>
               <p className="text-xs text-gray-500 mb-1">Commission Rate</p>
               <p className="text-sm font-medium">{userData.commissionRate || 15}%</p>
