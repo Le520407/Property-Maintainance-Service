@@ -99,6 +99,125 @@ const MembershipPlans = () => {
     }
   };
 
+  // Create ordered benefits array with available benefits first, then unavailable
+  const createBenefitsArray = (tier) => {
+    const allBenefits = [
+      {
+        component: (
+          <div className="flex items-center">
+            <CheckCircle className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+            <span className="text-gray-700">
+              {tier.features.serviceRequestsPerMonth === -1 
+                ? 'Unlimited service requests' 
+                : `Up to ${tier.features.serviceRequestsPerMonth} service requests`}
+            </span>
+          </div>
+        ),
+        available: true
+      },
+      {
+        component: (
+          <div className="flex items-center">
+            <Clock className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+            <span className="text-gray-700">
+              {tier.features.responseTimeHours}h response time
+            </span>
+          </div>
+        ),
+        available: true
+      },
+      // Only show material discount if it exists (remove "no discount" option)
+      ...(tier.features.materialDiscountPercent > 0 ? [{
+        component: (
+          <div className="flex items-center">
+            <CreditCard className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+            <span className="text-gray-700">
+              {tier.features.materialDiscountPercent}% material discount
+            </span>
+          </div>
+        ),
+        available: true
+      }] : []),
+      ...(tier.features.annualInspections > 0 ? [{
+        component: (
+          <div className="flex items-center">
+            <Shield className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+            <span className="text-gray-700">
+              {tier.features.annualInspections === 1 ? 'Annual inspection' : `${tier.features.annualInspections} inspections/year`}
+            </span>
+          </div>
+        ),
+        available: true
+      }] : [{
+        component: (
+          <div className="flex items-center">
+            <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+            <span className="text-gray-500">No inspections</span>
+          </div>
+        ),
+        available: false
+      }]),
+      ...(tier.features.emergencyService ? [{
+        component: (
+          <div className="flex items-center">
+            <Zap className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+            <span className="text-gray-700">Emergency service</span>
+          </div>
+        ),
+        available: true
+      }] : [{
+        component: (
+          <div className="flex items-center">
+            <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+            <span className="text-gray-500">No emergency service</span>
+          </div>
+        ),
+        available: false
+      }]),
+      ...(tier.features.prioritySupport ? [{
+        component: (
+          <div className="flex items-center">
+            <Star className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+            <span className="text-gray-700">Priority support</span>
+          </div>
+        ),
+        available: true
+      }] : [{
+        component: (
+          <div className="flex items-center">
+            <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+            <span className="text-gray-500">Standard support</span>
+          </div>
+        ),
+        available: false
+      }]),
+      ...(tier.features.dedicatedManager ? [{
+        component: (
+          <div className="flex items-center">
+            <Users className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
+            <span className="text-gray-700">Dedicated manager</span>
+          </div>
+        ),
+        available: true
+      }] : [{
+        component: (
+          <div className="flex items-center">
+            <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
+            <span className="text-gray-500">No dedicated manager</span>
+          </div>
+        ),
+        available: false
+      }])
+    ];
+
+    // Separate available and unavailable benefits
+    const availableBenefits = allBenefits.filter(benefit => benefit.available);
+    const unavailableBenefits = allBenefits.filter(benefit => !benefit.available);
+    
+    // Return available benefits first, then unavailable
+    return [...availableBenefits, ...unavailableBenefits];
+  };
+
   const handleSubscribe = async (tier) => {
     // Check authentication before proceeding
     if (!user) {
@@ -108,6 +227,33 @@ const MembershipPlans = () => {
 
     if (user.role !== 'customer') {
       toast.error('Only customers can subscribe to membership plans');
+      return;
+    }
+
+    // ⚠️ REDIRECT LOGIC: If user has ACTIVE or CANCELLED membership, redirect to management page
+    if (currentMembership && ['ACTIVE', 'CANCELLED'].includes(currentMembership.status)) {
+      if (currentMembership.status === 'ACTIVE') {
+        toast('You already have an active membership. Redirecting to manage your subscription...', {
+          icon: '💼',
+          duration: 3000
+        });
+      } else if (currentMembership.status === 'CANCELLED') {
+        toast('You have a cancelled membership with remaining access. Redirecting to manage your subscription...', {
+          icon: '⚠️',
+          duration: 3000
+        });
+      }
+      
+      // Redirect to membership dashboard for plan changes
+      setTimeout(() => {
+        window.location.href = '/membership/dashboard';
+      }, 1000);
+      return;
+    }
+
+    // ✅ ALLOW SUBSCRIPTION: Only for users with EXPIRED status or no membership
+    if (currentMembership && !['EXPIRED'].includes(currentMembership.status)) {
+      toast.error(`Cannot subscribe with current membership status: ${currentMembership.status}`);
       return;
     }
 
@@ -473,6 +619,8 @@ const MembershipPlans = () => {
           </motion.div>
         )}
 
+
+
         {/* Billing Cycle Toggle */}
         <div className="flex justify-center mb-16">
           <div className="bg-white rounded-2xl p-2 flex shadow-lg border border-gray-200">
@@ -576,87 +724,13 @@ const MembershipPlans = () => {
                     )}
                   </div>
 
-                  {/* Features List */}
+                  {/* Features List - All Benefits Always Visible */}
                   <div className="space-y-4 mb-8 flex-grow">
-                    <div className="flex items-center">
-                      <CheckCircle className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-700">
-                        {tier.features.serviceRequestsPerMonth === -1 
-                          ? 'Unlimited service requests' 
-                          : `Up to ${tier.features.serviceRequestsPerMonth} service requests`}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center">
-                      <Clock className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
-                      <span className="text-gray-700">
-                        {tier.features.responseTimeHours}h response time
-                      </span>
-                    </div>
-
-                    {tier.features.materialDiscountPercent > 0 ? (
-                      <div className="flex items-center">
-                        <CreditCard className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
-                        <span className="text-gray-700">
-                          {tier.features.materialDiscountPercent}% material discount
-                        </span>
+                    {createBenefitsArray(tier).map((benefit, benefitIndex) => (
+                      <div key={benefitIndex}>
+                        {benefit.component}
                       </div>
-                    ) : (
-                      <div className="flex items-center">
-                        <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
-                        <span className="text-gray-500">No material discount</span>
-                      </div>
-                    )}
-
-                    {tier.features.annualInspections > 0 ? (
-                      <div className="flex items-center">
-                        <Shield className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
-                        <span className="text-gray-700">
-                          {tier.features.annualInspections === 1 ? 'Annual inspection' : `${tier.features.annualInspections} inspections/year`}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center">
-                        <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
-                        <span className="text-gray-500">No inspections</span>
-                      </div>
-                    )}
-
-                    {tier.features.emergencyService ? (
-                      <div className="flex items-center">
-                        <Zap className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
-                        <span className="text-gray-700">Emergency service</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center">
-                        <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
-                        <span className="text-gray-500">No emergency service</span>
-                      </div>
-                    )}
-
-                    {tier.features.prioritySupport ? (
-                      <div className="flex items-center">
-                        <Star className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
-                        <span className="text-gray-700">Priority support</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center">
-                        <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
-                        <span className="text-gray-500">Standard support</span>
-                      </div>
-                    )}
-
-                    {tier.features.dedicatedManager ? (
-                      <div className="flex items-center">
-                        <Users className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
-                        <span className="text-gray-700">Dedicated manager</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center">
-                        <XCircle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
-                        <span className="text-gray-500">No dedicated manager</span>
-                      </div>
-                    )}
+                    ))}
                   </div>
 
                   {/* Action Button */}
@@ -667,14 +741,10 @@ const MembershipPlans = () => {
                           toast('You are already subscribed to this plan');
                           return;
                         }
-                        if (currentMembership && currentMembership.status === 'CANCELLED') {
-                          toast.error('Cannot upgrade cancelled membership');
-                          return;
-                        }
                         setSelectedTier(tier);
                         handleSubscribe(tier);
                       }}
-                      disabled={isCurrentPlan || subscribing || (currentMembership && currentMembership.status === 'CANCELLED')}
+                      disabled={isCurrentPlan || subscribing}
                       className={`w-full py-3 px-6 rounded-xl font-semibold text-lg transition-all duration-300 ${
                         isCurrentPlan
                           ? 'bg-gray-200 text-gray-500 cursor-not-allowed'

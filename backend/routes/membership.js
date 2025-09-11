@@ -52,6 +52,55 @@ router.post('/hitpay-webhook', express.json(), membershipController.hitpayWebhoo
 // Activate membership by reference (public endpoint for HitPay success redirects)
 router.post('/activate-by-reference', express.json(), membershipController.activateByReference);
 
+// HitPay success handler (public endpoint for handling payment success)
+router.post('/hitpay-success', express.json(), membershipController.handleHitPaySuccess);
+
+// HitPay success GET handler for direct redirects (processes URL params and redirects to frontend)
+router.get('/success', async (req, res) => {
+  try {
+    const { userId, status, source, type } = req.query;
+    
+    console.log('🎉 GET /membership/success called with params:', req.query);
+    
+    // If this is a HitPay success redirect with type=recurring, auto-activate using hitpayRecurringBillingId
+    if (source === 'hitpay' && type === 'recurring' && status === 'active') {
+      console.log('🔄 Auto-activating membership for HitPay recurring payment...');
+      
+      // Parse multiple reference parameters from raw query string
+      const urlString = req.url;
+      const referenceMatches = urlString.match(/reference=([^&]*)/g) || [];
+      const referenceValues = referenceMatches.map(match => decodeURIComponent(match.split('=')[1]));
+      
+      console.log('📋 Extracted references:', { allReferences: referenceValues });
+      
+      if (referenceValues.length >= 2) {
+        const hitpayRecurringBillingId = referenceValues[1]; // Second reference is the billing ID
+        console.log('🎯 Using hitpayRecurringBillingId for activation:', hitpayRecurringBillingId);
+        
+        // Call the membership controller to activate by billing ID
+        const activationResult = await membershipController.activateByRecurringBillingId(hitpayRecurringBillingId);
+        
+        if (activationResult.success) {
+          console.log('✅ Membership activated successfully via recurring billing ID');
+        } else {
+          console.warn('⚠️ Membership activation warning:', activationResult.message);
+        }
+      } else {
+        console.warn('⚠️ Not enough reference parameters found in URL');
+      }
+    }
+    
+    // Redirect to frontend success page with all original parameters
+    const frontendUrl = `${process.env.FRONTEND_URL}/membership/success${req.url.substring(req.url.indexOf('?'))}`;
+    console.log('🔗 Redirecting to frontend:', frontendUrl);
+    res.redirect(frontendUrl);
+    
+  } catch (error) {
+    console.error('Error in GET /membership/success:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/membership/error?error=processing_failed`);
+  }
+});
+
 // Development test endpoint (only in development mode)
 if (process.env.NODE_ENV === 'development') {
   router.post('/test-activate-pending', express.json(), async (req, res) => {
@@ -127,6 +176,7 @@ router.post('/payment', (req, res, next) => {
   console.log('POST /api/membership/payment - Request received:', req.body);
   next();
 }, paymentValidation, membershipController.createPayment);
+router.post('/retry-payment', membershipController.retryPayment);
 router.put('/change-plan', (req, res, next) => {
   console.log('PUT /api/membership/change-plan - Request received:', {
     body: req.body,
@@ -135,6 +185,10 @@ router.put('/change-plan', (req, res, next) => {
   });
   next();
 }, changePlanValidation, membershipController.changePlan);
+
+// Plan change with payment flow
+// Change plan with payment (for customers)
+router.post('/change-plan-payment', changePlanValidation, membershipController.changePlanWithPayment);
 
 // Preview plan change cost
 router.post('/plan-change-preview', (req, res, next) => {

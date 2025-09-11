@@ -23,10 +23,27 @@ const MembershipDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [showChangePlanModal, setShowChangePlanModal] = useState(false);
+  const [availablePlans, setAvailablePlans] = useState([]);
+  const [changingPlan, setChangingPlan] = useState(false);
+  const [selectedBillingCycle, setSelectedBillingCycle] = useState('MONTHLY');
+  const [completingPayment, setCompletingPayment] = useState(false);
 
   useEffect(() => {
     fetchMembershipData();
+    fetchAvailablePlans();
   }, []);
+
+  const fetchAvailablePlans = async () => {
+    try {
+      const response = await api.get('/membership/tiers');
+      if (response?.success) {
+        setAvailablePlans(response.tiers);
+      }
+    } catch (error) {
+      console.error('Error fetching available plans:', error);
+    }
+  };
 
   const fetchMembershipData = async () => {
     try {
@@ -77,6 +94,32 @@ const MembershipDashboard = () => {
   };
 
   const handleCancelMembership = async (immediate = false) => {
+    // Debug: Log the current membership object
+    console.log('🔍 DEBUG: Membership object:', {
+      status: membership.status,
+      cancelledAt: membership.cancelledAt,
+      autoRenew: membership.autoRenew,
+      willExpireAt: membership.willExpireAt,
+      endDate: membership.endDate
+    });
+
+    // Check if membership is already cancelled or expired
+    if (membership.status === 'CANCELLED' || membership.status === 'EXPIRED') {
+      if (membership.status === 'CANCELLED' && immediate) {
+        // Allow immediate cancellation if status is CANCELLED but not yet EXPIRED
+        // This is for users who cancelled auto-renewal but want to end access immediately
+        console.log('🔍 Allowing immediate cancellation for CANCELLED membership');
+      } else {
+        const errorMsg = membership.status === 'EXPIRED' 
+          ? 'Membership has already expired' 
+          : 'Membership is already cancelled';
+        console.log('🔍 DEBUG: Preventing cancellation -', errorMsg);
+        toast.error(errorMsg);
+        setShowCancelModal(false);
+        return;
+      }
+    }
+
     const confirmText = immediate 
       ? 'Are you sure you want to cancel your membership immediately? You will lose access to all benefits right away and no refund will be provided.'
       : 'Are you sure you want to cancel your membership? It will remain active until the end of your current billing period.';
@@ -88,6 +131,7 @@ const MembershipDashboard = () => {
     setCancelLoading(true);
     try {
       console.log('🔍 Cancelling membership, immediate:', immediate);
+      console.log('🔍 Current membership status:', membership.status);
       
       // Check if user is logged in
       const token = localStorage.getItem('token');
@@ -130,8 +174,13 @@ const MembershipDashboard = () => {
     } catch (error) {
       console.error('❌ Cancellation failed:', error);
       
-      // Check different error types
-      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+      // Check different error types and specific error messages
+      if (error.message.includes('Membership is already cancelled or inactive')) {
+        toast.error('This membership is already cancelled or inactive');
+        // Close modal and refresh data to show current status
+        setShowCancelModal(false);
+        fetchMembershipData();
+      } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
         toast.error('Session expired. Please log in again.');
       } else if (error.message.includes('404')) {
         toast.error('Cancellation service not found. Please contact support.');
@@ -147,52 +196,94 @@ const MembershipDashboard = () => {
     }
   };
 
-  const handleReactivateMembership = async () => {
-    if (!window.confirm('Are you sure you want to reactivate your membership?')) {
+  const handleChangePlan = async (newTier) => {
+    if (!window.confirm(`Are you sure you want to change to the ${newTier.displayName} plan? You will be redirected to complete the payment, and after successful payment, your current plan will be cancelled and the new plan will start immediately.`)) {
       return;
     }
 
+    setChangingPlan(true);
     try {
-      console.log('🔍 Reactivating membership...');
+      // Create payment request for plan change
+      const response = await api.post('/membership/change-plan-payment', {
+        newTierId: newTier._id,
+        billingCycle: selectedBillingCycle,
+        immediate: true
+      });
+
+      if (response?.success && response?.paymentUrl) {
+        // Redirect to HitPay payment page
+        window.location.href = response.paymentUrl;
+      } else {
+        toast.error(response?.message || 'Failed to initiate payment for plan change');
+      }
+    } catch (error) {
+      console.error('Plan change payment failed:', error);
+      toast.error(error.message || 'Failed to initiate payment for plan change');
+    } finally {
+      setChangingPlan(false);
+    }
+  };
+
+  const handleCompletePayment = async () => {
+    if (!membership || membership.status !== 'PENDING') {
+      toast.error('No pending payment found');
+      return;
+    }
+
+    setCompletingPayment(true);
+    try {
+      console.log('🔄 Attempting to complete payment for pending membership...');
       
       // Check if user is logged in
       const token = localStorage.getItem('token');
       if (!token) {
-        toast.error('Please log in to reactivate your membership');
+        toast.error('Please log in to complete your payment');
+        setCompletingPayment(false);
         return;
       }
-      
-      const response = await api.put('/membership/reactivate');
-      
-      console.log('📋 Reactivate API Response:', response);
-      
+
+      // Call API to retry payment for the pending membership
+      const response = await api.post('/membership/retry-payment', {});
+
+      console.log('📋 Retry Payment API Response:', response);
+
       if (response?.success) {
-        toast.success('Membership reactivated successfully!');
-        setShowCancelModal(false);
-        fetchMembershipData(); // Refresh data
-        console.log('✅ Membership reactivated successfully');
-      } else if (response?.success === false) {
-        console.error('❌ API returned unsuccessful response:', response);
-        toast.error(response.message || 'Failed to reactivate membership');
+        const redirectUrl = response.paymentUrl || response.checkoutUrl;
+        if (redirectUrl) {
+          // Show success message and redirect to payment gateway
+          toast.success('Redirecting to payment gateway to complete your membership...', { 
+            duration: 2000 
+          });
+          
+          // Small delay for better UX, then redirect to HitPay
+          setTimeout(() => {
+            window.location.href = redirectUrl;
+          }, 1500);
+        } else {
+          // If no payment URL, membership might have been activated directly
+          toast.success('Payment completed successfully!');
+          fetchMembershipData(); // Refresh membership data
+        }
       } else {
-        console.error('❌ Invalid response format:', response);
-        toast.error('Invalid response from server');
+        console.error('❌ API returned unsuccessful response:', response);
+        toast.error(response.message || 'Failed to initiate payment completion');
       }
     } catch (error) {
-      console.error('❌ Reactivation failed:', error);
+      console.error('❌ Complete payment failed:', error);
       
-      // Check different error types
       if (error.message.includes('401') || error.message.includes('Unauthorized')) {
         toast.error('Session expired. Please log in again.');
       } else if (error.message.includes('404')) {
-        toast.error('Reactivation service not found. Please contact support.');
+        toast.error('Payment service not found. Please contact support.');
       } else if (error.message.includes('500')) {
         toast.error('Server error. Please try again later.');
       } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
         toast.error('Unable to connect to server. Please check your connection.');
       } else {
-        toast.error(error.message || 'Failed to reactivate membership');
+        toast.error(error.message || 'Failed to complete payment');
       }
+    } finally {
+      setCompletingPayment(false);
     }
   };
 
@@ -270,13 +361,15 @@ const MembershipDashboard = () => {
                 membership.status === 'CANCELLED' && membership.hasActiveAccess ? 'bg-orange-100 text-orange-800' :
                 membership.status === 'CANCELLED' && !membership.hasActiveAccess ? 'bg-red-100 text-red-800' :
                 membership.status === 'EXPIRED' ? 'bg-gray-100 text-gray-800' :
-                membership.status === 'PENDING' ? 'bg-blue-100 text-blue-800' :
+                membership.status === 'PENDING' ? 'bg-orange-100 text-orange-800' :
                 'bg-gray-100 text-gray-800'
               }`}>
                 {membership.status === 'ACTIVE' && <CheckCircle className="h-4 w-4 mr-1" />}
                 {membership.status === 'CANCELLED' && membership.hasActiveAccess && <AlertTriangle className="h-4 w-4 mr-1" />}
-                {((membership.status === 'CANCELLED' && !membership.hasActiveAccess) || membership.status === 'EXPIRED') && <X className="h-4 w-4 mr-1" />}
+                {membership.status === 'CANCELLED' && !membership.hasActiveAccess && <X className="h-4 w-4 mr-1" />}
+                {membership.status === 'EXPIRED' && <X className="h-4 w-4 mr-1" />}
                 {membership.status === 'PENDING' && <Clock className="h-4 w-4 mr-1" />}
+                {/* Show the actual status from database for immediate cancellations */}
                 {membership.status}
               </span>
             </h1>
@@ -397,23 +490,44 @@ const MembershipDashboard = () => {
 
         {/* PENDING Status */}
         {membership.status === 'PENDING' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <div className="flex items-center">
-              <Clock className="h-6 w-6 text-blue-600 mr-3" />
+              <Clock className="h-6 w-6 text-orange-600 mr-3" />
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-blue-900">Membership Pending</h3>
-                <p className="text-blue-700 text-sm">
-                  Your membership is being activated. This usually takes a few minutes.
+                <h3 className="text-lg font-semibold text-orange-900">Payment Pending</h3>
+                <p className="text-orange-700 text-sm">
+                  Your membership payment is pending. Click below to complete your payment and activate your plan.
                 </p>
                 <p className="text-gray-600 text-xs mt-1">
-                  Contact support if this status persists for more than 30 minutes
+                  Having trouble? Contact support if you need assistance
                 </p>
               </div>
-              <div className="text-right">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+              <div className="text-right flex flex-col items-end space-y-2">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
                   <Clock className="h-4 w-4 mr-1" />
                   PENDING
                 </span>
+                <button
+                  onClick={handleCompletePayment}
+                  disabled={completingPayment}
+                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                    completingPayment
+                      ? 'bg-orange-400 text-white cursor-not-allowed'
+                      : 'bg-orange-600 text-white hover:bg-orange-700 shadow-md hover:shadow-lg'
+                  }`}
+                >
+                  {completingPayment ? (
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Processing...
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Complete Payment
+                    </div>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -450,7 +564,7 @@ const MembershipDashboard = () => {
                 : membership.status === 'ACTIVE' 
                 ? 'bg-green-100 text-green-800' // Active
                 : membership.status === 'PENDING'
-                ? 'bg-blue-100 text-blue-800' // Pending
+                ? 'bg-orange-100 text-orange-800' // Pending
                 : 'bg-gray-100 text-gray-800' // Default
             }`}>
               {membership.status === 'CANCELLED' && membership.hasActiveAccess ? (
@@ -629,7 +743,7 @@ const MembershipDashboard = () => {
         <h3 className="text-lg font-medium text-gray-900 mb-4">Manage Your Membership</h3>
         <div className="flex flex-wrap gap-4">
           <button
-            onClick={() => window.location.href = '/membership/plans'}
+            onClick={() => setShowChangePlanModal(true)}
             className="flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
           >
             <Settings className="h-4 w-4 mr-2" />
@@ -645,11 +759,31 @@ const MembershipDashboard = () => {
           </button>
           
           <button
-            onClick={() => setShowCancelModal(true)}
-            className="flex items-center px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+            onClick={() => {
+              console.log('🔍 Cancel button clicked. Membership status:', membership.status);
+              console.log('🔍 Is expired?', membership.status === 'EXPIRED');
+              if (membership.status !== 'EXPIRED') {
+                setShowCancelModal(true);
+              }
+            }}
+            disabled={membership.status === 'EXPIRED'}
+            className={`flex items-center px-4 py-2 border rounded-lg transition-colors ${
+              membership.status === 'EXPIRED'
+                ? 'border-gray-300 text-gray-400 cursor-not-allowed'
+                : membership.status === 'CANCELLED'
+                  ? 'border-orange-300 text-orange-700 hover:bg-orange-50'
+                  : 'border-red-300 text-red-700 hover:bg-red-50'
+            }`}
           >
             <AlertCircle className="h-4 w-4 mr-2" />
-            {membership.cancelledAt && !membership.autoRenew ? 'Manage Cancellation' : 'Cancel Membership'}
+            {membership.status === 'EXPIRED' 
+              ? 'Already Expired' 
+              : membership.status === 'CANCELLED'
+                ? 'Cancel Immediately'
+                : (membership.cancelledAt && !membership.autoRenew) 
+                  ? 'Cancel Immediately' 
+                  : 'Cancel Membership'
+            }
           </button>
         </div>
       </motion.div>
@@ -673,7 +807,7 @@ const MembershipDashboard = () => {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {membership.cancelledAt && !membership.autoRenew ? 'Manage Cancellation' : 'Cancel Membership'}
+                  {(membership.status === 'CANCELLED' || (membership.cancelledAt && !membership.autoRenew)) ? 'Cancel Immediately' : 'Cancel Membership'}
                 </h3>
                 <button
                   onClick={() => setShowCancelModal(false)}
@@ -683,7 +817,7 @@ const MembershipDashboard = () => {
                 </button>
               </div>
 
-              {membership.cancelledAt && !membership.autoRenew ? (
+              {(membership.status === 'CANCELLED' || (membership.cancelledAt && !membership.autoRenew)) ? (
                 <div>
                   <div className="flex items-center mb-4 p-3 bg-orange-50 rounded-lg">
                     <AlertTriangle className="h-5 w-5 text-orange-600 mr-2" />
@@ -698,20 +832,19 @@ const MembershipDashboard = () => {
                   </div>
                   
                   <div className="space-y-3">
-                    <button
-                      onClick={handleReactivateMembership}
-                      className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      Reactivate Auto-Renewal
-                    </button>
-                    
-                    <button
-                      onClick={() => handleCancelMembership(true)}
-                      disabled={cancelLoading}
-                      className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                    >
-                      {cancelLoading ? 'Processing...' : 'End Access Immediately'}
-                    </button>
+                    {membership.status === 'EXPIRED' ? (
+                      <div className="p-3 bg-gray-50 rounded-lg text-center">
+                        <p className="text-sm text-gray-600">Membership has already been cancelled and expired</p>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleCancelMembership(true)}
+                        disabled={cancelLoading}
+                        className="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        {cancelLoading ? 'Processing...' : 'End Access Immediately'}
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -757,6 +890,251 @@ const MembershipDashboard = () => {
                   )}
                 </div>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Plan Change Modal */}
+      <AnimatePresence>
+        {showChangePlanModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowChangePlanModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    Change Your Plan
+                  </h3>
+                  <button
+                    onClick={() => setShowChangePlanModal(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                {/* Current Plan Info */}
+                {membership && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                    <h4 className="font-semibold text-orange-900 mb-2">Current Plan</h4>
+                    <p className="text-orange-800">
+                      {membership.tier?.displayName} - {membership.billingCycle} billing
+                    </p>
+                    <p className="text-sm text-orange-600">
+                      Your current plan will be cancelled immediately and the new plan will start right away.
+                    </p>
+                  </div>
+                )}
+
+                {/* Billing Cycle Toggle */}
+                <div className="flex justify-center mb-6">
+                  <div className="bg-gray-100 p-1 rounded-lg">
+                    <button
+                      onClick={() => setSelectedBillingCycle('MONTHLY')}
+                      className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                        selectedBillingCycle === 'MONTHLY'
+                          ? 'bg-white text-orange-600 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Monthly
+                    </button>
+                    <button
+                      onClick={() => setSelectedBillingCycle('YEARLY')}
+                      className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                        selectedBillingCycle === 'YEARLY'
+                          ? 'bg-white text-orange-600 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Yearly (Save 2 months)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Available Plans */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {availablePlans.map((plan) => {
+                    const isCurrentPlan = membership?.tier?._id === plan._id;
+                    const price = selectedBillingCycle === 'YEARLY' ? plan.yearlyPrice : plan.monthlyPrice;
+                    const savings = selectedBillingCycle === 'YEARLY' ? (plan.monthlyPrice * 12 - plan.yearlyPrice) : 0;
+                    
+                    // Determine if this is an upgrade or downgrade
+                    const currentPrice = selectedBillingCycle === 'YEARLY' 
+                      ? membership?.tier?.yearlyPrice || 0 
+                      : membership?.tier?.monthlyPrice || 0;
+                    const isUpgrade = price > currentPrice;
+                    const isDowngrade = price < currentPrice && !isCurrentPlan;
+
+                    return (
+                      <motion.div
+                        key={plan._id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`bg-white border-2 rounded-xl p-6 transition-all duration-300 hover:shadow-lg ${
+                          isCurrentPlan 
+                            ? 'border-orange-500 bg-orange-50' 
+                            : 'border-gray-200 hover:border-orange-300'
+                        }`}
+                      >
+                        {/* Plan Header */}
+                        <div className="text-center mb-4">
+                          <div className="flex items-center justify-center mb-2">
+                            <h3 className="text-xl font-bold text-gray-900">
+                              {plan.displayName}
+                            </h3>
+                            {isUpgrade && (
+                              <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                UPGRADE
+                              </span>
+                            )}
+                            {isDowngrade && (
+                              <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
+                                DOWNGRADE
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-3xl font-bold text-orange-600 mb-1">
+                            ${price}
+                            <span className="text-sm text-gray-600 font-normal">
+                              /{selectedBillingCycle === 'YEARLY' ? 'year' : 'month'}
+                            </span>
+                          </div>
+                          {selectedBillingCycle === 'YEARLY' && savings > 0 && (
+                            <p className="text-sm text-green-600 font-medium">
+                              Save ${savings}/year
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Plan Features */}
+                        <div className="space-y-3 mb-6">
+                          {plan.features ? (
+                            <>
+                              <div className="flex items-center">
+                                <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                                <span className="text-gray-700 text-sm">
+                                  {plan.features.serviceRequestsPerMonth} service request{plan.features.serviceRequestsPerMonth > 1 ? 's' : ''} per month
+                                </span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                                <span className="text-gray-700 text-sm">
+                                  {plan.features.responseTimeHours}hr response time
+                                </span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                                <span className="text-gray-700 text-sm">
+                                  {plan.features.annualInspections} annual inspections
+                                </span>
+                              </div>
+                              {plan.features.materialDiscountPercent > 0 && (
+                                <div className="flex items-center">
+                                  <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                                  <span className="text-gray-700 text-sm">
+                                    {plan.features.materialDiscountPercent}% material discount
+                                  </span>
+                                </div>
+                              )}
+                              {plan.features.emergencyService && (
+                                <div className="flex items-center">
+                                  <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                                  <span className="text-gray-700 text-sm">24/7 emergency service</span>
+                                </div>
+                              )}
+                              {plan.features.prioritySupport && (
+                                <div className="flex items-center">
+                                  <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                                  <span className="text-gray-700 text-sm">Priority support</span>
+                                </div>
+                              )}
+                              {plan.features.dedicatedManager && (
+                                <div className="flex items-center">
+                                  <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                                  <span className="text-gray-700 text-sm">Dedicated account manager</span>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex items-center">
+                                <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                                <span className="text-gray-700 text-sm">Priority booking</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                                <span className="text-gray-700 text-sm">24/7 customer support</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                                <span className="text-gray-700 text-sm">Service discounts</span>
+                              </div>
+                              <div className="flex items-center">
+                                <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                                <span className="text-gray-700 text-sm">Regular maintenance check</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Action Button */}
+                        <button
+                          onClick={() => {
+                            if (isCurrentPlan) {
+                              toast('This is your current plan');
+                              return;
+                            }
+                            handleChangePlan(plan);
+                          }}
+                          disabled={isCurrentPlan || changingPlan}
+                          className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${
+                            isCurrentPlan
+                              ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                              : changingPlan
+                              ? 'bg-orange-400 text-white cursor-wait'
+                              : 'bg-orange-600 text-white hover:bg-orange-700 hover:shadow-lg'
+                          }`}
+                        >
+                          {isCurrentPlan 
+                            ? 'Current Plan' 
+                            : changingPlan 
+                            ? 'Redirecting to Payment...' 
+                            : 'Pay & Switch to This Plan'
+                          }
+                        </button>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {/* Warning Message */}
+                <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-start">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600 mr-3 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-yellow-900 mb-1">Payment Required</h4>
+                      <p className="text-yellow-800 text-sm">
+                        When you select a new plan, you'll be redirected to our secure payment gateway to complete the payment. 
+                        After successful payment, your current subscription will be cancelled immediately and the new plan will start right away.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </motion.div>
           </motion.div>
         )}

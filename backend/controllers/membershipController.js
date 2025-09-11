@@ -196,7 +196,7 @@ class MembershipController {
         customerEmail: req.user.email,
         customerName: req.user.fullName || `${req.user.firstName} ${req.user.lastName}`,
         startDate: startDate.toISOString().split('T')[0], // YYYY-MM-DD format
-        redirectUrl: `${process.env.FRONTEND_URL}/membership/success`,
+        redirectUrl: `${process.env.FRONTEND_URL}/membership/success?userId=${userId}&reference=${planId}&source=hitpay`,
         reference: `sub_${userId}_${Date.now()}`,
         paymentMethods: ['card'] // Use only card for now to avoid validation issues
       };
@@ -245,6 +245,24 @@ class MembershipController {
       }
 
       // Store the subscription details in our database (pending until payment)
+      
+      // ENHANCED CHECK: Prevent duplicate memberships
+      const anyExistingMembership = await CustomerMembership.findOne({ customer: userId });
+      if (anyExistingMembership && !['CANCELLED', 'EXPIRED'].includes(anyExistingMembership.status)) {
+        console.log(`⚠️  User ${userId} already has ${anyExistingMembership.status} membership - preventing duplicate creation`);
+        return res.status(400).json({
+          success: false,
+          message: `You already have a ${anyExistingMembership.status.toLowerCase()} membership. Please cancel it first or use the upgrade option.`,
+          existingMembershipStatus: anyExistingMembership.status
+        });
+      }
+      
+      // If there's an old cancelled/expired membership, clean it up
+      if (anyExistingMembership && ['CANCELLED', 'EXPIRED'].includes(anyExistingMembership.status)) {
+        console.log(`🗑️  Removing old ${anyExistingMembership.status} membership for user ${userId}`);
+        await CustomerMembership.deleteOne({ _id: anyExistingMembership._id });
+      }
+      
       const membership = new CustomerMembership({
         customer: userId,
         tier: tierId,
@@ -264,6 +282,33 @@ class MembershipController {
 
       await membership.save();
 
+      // 🚀 AUTO-ACTIVATE IN DEVELOPMENT/DEMO MODE
+      const isDemoMode = recurringBilling.id?.startsWith('demo_') || 
+                        recurringBilling.id?.startsWith('fallback_') || 
+                        planId?.startsWith('demo_') ||
+                        hitpayPlan.demo ||
+                        recurringBilling.demo;
+                        // Temporarily disable NODE_ENV check to test HitPay redirect
+                        // || process.env.NODE_ENV === 'development';
+
+      if (isDemoMode) {
+        console.log('🎯 DEVELOPMENT/DEMO MODE: Auto-activating membership immediately');
+        
+        // Calculate next billing date
+        const now = new Date();
+        membership.status = 'ACTIVE';
+        membership.startDate = now;
+        
+        if (membership.billingCycle === 'YEARLY') {
+          membership.nextBillingDate = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+        } else {
+          membership.nextBillingDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        }
+        
+        await membership.save();
+        console.log('✅ Membership auto-activated for development/demo mode');
+      }
+
       console.log('✅ Membership created and billing ID saved');
       console.log('📊 Membership Details:', {
         membershipId: membership._id,
@@ -279,22 +324,27 @@ class MembershipController {
       // Return the HitPay checkout URL for frontend redirect
       res.status(201).json({
         success: true,
-        message: hitpayPlan.demo || recurringBilling.demo ? 
-          'Demo mode: Subscription plan created. Use the demo checkout URL.' : 
-          'Subscription plan created. Redirecting to HitPay checkout.',
+        message: isDemoMode && membership.status === 'ACTIVE' ? 
+          'Demo mode: Subscription activated immediately. No payment required.' :
+          hitpayPlan.demo || recurringBilling.demo ? 
+            'Demo mode: Subscription plan created. Use the demo checkout URL.' : 
+            'Subscription plan created. Redirecting to HitPay checkout.',
         membership: {
           id: membership._id,
           tier: selectedTier,
           billingCycle,
           amount,
-          status: 'PENDING'
+          status: membership.status // Will be 'ACTIVE' in demo mode, 'PENDING' in production
         },
-        checkoutUrl: recurringBilling.url, // HitPay checkout URL (real or demo)
+        checkoutUrl: isDemoMode && membership.status === 'ACTIVE' ? 
+          `${process.env.FRONTEND_URL}/membership/dashboard?activated=true` : 
+          recurringBilling.url, // HitPay checkout URL (real or demo)
         hitpayData: {
           planId: hitpayPlan.id,
           recurringBillingId: recurringBilling.id
         },
-        demo: hitpayPlan.demo || recurringBilling.demo || false
+        demo: hitpayPlan.demo || recurringBilling.demo || isDemoMode,
+        autoActivated: isDemoMode && membership.status === 'ACTIVE'
       });
 
     } catch (error) {
@@ -302,6 +352,133 @@ class MembershipController {
       res.status(400).json({
         success: false,
         message: 'Failed to create membership subscription',
+        error: error.message
+      });
+    }
+  }
+
+  // Retry payment for pending membership
+  async retryPayment(req, res) {
+    try {
+      const userId = req.user._id;
+      
+      console.log('Retrying payment for pending membership:', userId);
+
+      // Find pending membership for this user
+      const pendingMembership = await CustomerMembership.findOne({ 
+        customer: userId, 
+        status: 'PENDING' 
+      }).populate('tier');
+
+      if (!pendingMembership) {
+        return res.status(404).json({
+          success: false,
+          message: 'No pending membership found for this user'
+        });
+      }
+
+      console.log('Found pending membership:', {
+        id: pendingMembership._id,
+        tier: pendingMembership.tier.name,
+        billingCycle: pendingMembership.billingCycle,
+        hitpayPlanId: pendingMembership.hitpayPlanId,
+        hitpayRecurringBillingId: pendingMembership.hitpayRecurringBillingId
+      });
+
+      // Calculate amount based on billing cycle
+      const amount = pendingMembership.billingCycle === 'YEARLY' 
+        ? pendingMembership.tier.yearlyPrice 
+        : pendingMembership.tier.monthlyPrice;
+
+      // Create a new recurring billing to retry payment
+      const billingData = {
+        planId: pendingMembership.hitpayPlanId,
+        customerEmail: req.user.email,
+        customerName: req.user.fullName || `${req.user.firstName} ${req.user.lastName}`,
+        startDate: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
+        redirectUrl: `${process.env.FRONTEND_URL}/membership/success`,
+        reference: `membership_retry_${pendingMembership._id}_${Date.now()}`,
+        paymentMethods: ['card']
+      };
+
+      console.log('Creating HitPay recurring billing for retry:', billingData);
+      
+      const recurringBilling = await hitpayService.createRecurringBilling(billingData);
+
+      if (!recurringBilling || (!recurringBilling.id && !recurringBilling.success)) {
+        throw new Error(`HitPay recurring billing creation failed: ${recurringBilling?.message || 'Unknown error'}`);
+      }
+
+      // Update the membership with new billing ID
+      const billingId = recurringBilling.id || (recurringBilling.success ? recurringBilling.data?.id : null);
+      pendingMembership.hitpayRecurringBillingId = billingId;
+      pendingMembership.paymentReference = `membership_retry_${pendingMembership._id}_${Date.now()}`;
+      pendingMembership.updatedAt = new Date();
+
+      // 🚀 AUTO-ACTIVATE IN DEVELOPMENT/DEMO MODE FOR RETRY PAYMENT
+      const isDemoMode = billingId?.startsWith('demo_') || 
+                        billingId?.startsWith('fallback_') || 
+                        recurringBilling.demo;
+                        // Temporarily disable NODE_ENV check to test HitPay redirect
+                        // || process.env.NODE_ENV === 'development';
+
+      if (isDemoMode) {
+        console.log('🎯 DEVELOPMENT/DEMO MODE: Auto-activating membership on retry');
+        
+        // Calculate next billing date
+        const now = new Date();
+        pendingMembership.status = 'ACTIVE';
+        pendingMembership.startDate = now;
+        
+        if (pendingMembership.billingCycle === 'YEARLY') {
+          pendingMembership.nextBillingDate = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+        } else {
+          pendingMembership.nextBillingDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        }
+        
+        console.log('✅ Membership auto-activated on retry for development/demo mode');
+      }
+      
+      await pendingMembership.save();
+
+      console.log('✅ Retry payment setup complete');
+      console.log('📊 Retry Details:', {
+        membershipId: pendingMembership._id,
+        newBillingId: billingId,
+        checkoutUrl: recurringBilling.url,
+        amount: amount
+      });
+
+      // Return the new HitPay checkout URL
+      res.json({
+        success: true,
+        message: isDemoMode && pendingMembership.status === 'ACTIVE' ? 
+          'Demo mode: Payment completed automatically. Membership activated!' :
+          recurringBilling.demo || billingId?.startsWith('demo_') ? 
+            'Demo mode: Retry payment link created. Use the demo checkout URL.' : 
+            'Retry payment link created. Redirecting to HitPay checkout.',
+        membership: {
+          id: pendingMembership._id,
+          tier: pendingMembership.tier,
+          billingCycle: pendingMembership.billingCycle,
+          amount: amount,
+          status: pendingMembership.status // Will be 'ACTIVE' in demo mode
+        },
+        checkoutUrl: isDemoMode && pendingMembership.status === 'ACTIVE' ? 
+          `${process.env.FRONTEND_URL}/membership/dashboard?payment_completed=true` : 
+          recurringBilling.url, // HitPay checkout URL (real or demo)
+        paymentUrl: isDemoMode && pendingMembership.status === 'ACTIVE' ? 
+          `${process.env.FRONTEND_URL}/membership/dashboard?payment_completed=true` : 
+          recurringBilling.url, // Alternative name for frontend compatibility
+        demo: recurringBilling.demo || billingId?.startsWith('demo_') || isDemoMode,
+        autoActivated: isDemoMode && pendingMembership.status === 'ACTIVE'
+      });
+
+    } catch (error) {
+      console.error('Retry payment error:', error);
+      res.status(400).json({
+        success: false,
+        message: 'Failed to retry payment',
         error: error.message
       });
     }
@@ -364,12 +541,13 @@ class MembershipController {
       });
       
       // Create HitPay one-time payment request
+      const tempReference = `membership_${userId}_${tierId}_${Date.now()}`;
       const paymentData = {
         amount: amount,
         currency: 'SGD',
         email: req.user.email,
-        redirect_url: `${process.env.FRONTEND_URL}/membership/success`,
-        reference_number: `membership_${userId}_${tierId}_${Date.now()}`,
+        redirect_url: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/membership/success?userId=${userId}&source=hitpay&reference=${tempReference}`,
+        reference_number: tempReference,
         webhook: process.env.WEBHOOK_URL || 'https://swiftfixpay.com',
         name: req.user.fullName || `${req.user.firstName} ${req.user.lastName}`,
         purpose: `${selectedTier.displayName} Membership - ${billingCycle}`,
@@ -393,6 +571,23 @@ class MembershipController {
       const nextBillingDate = billingCycle === 'YEARLY' ? 
         new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000) : // 1 year
         new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);   // 1 month
+      
+      // ENHANCED CHECK: Prevent duplicate memberships 
+      const anyExistingMembership = await CustomerMembership.findOne({ customer: userId });
+      if (anyExistingMembership && !['CANCELLED', 'EXPIRED'].includes(anyExistingMembership.status)) {
+        console.log(`⚠️  User ${userId} already has ${anyExistingMembership.status} membership - preventing duplicate creation`);
+        return res.status(400).json({
+          success: false,
+          message: `You already have a ${anyExistingMembership.status.toLowerCase()} membership. Please cancel it first or use the upgrade option.`,
+          existingMembershipStatus: anyExistingMembership.status
+        });
+      }
+      
+      // If there's an old cancelled/expired membership, clean it up
+      if (anyExistingMembership && ['CANCELLED', 'EXPIRED'].includes(anyExistingMembership.status)) {
+        console.log(`🗑️  Removing old ${anyExistingMembership.status} membership for user ${userId}`);
+        await CustomerMembership.deleteOne({ _id: anyExistingMembership._id });
+      }
       
       const membership = new CustomerMembership({
         customer: userId,
@@ -697,6 +892,127 @@ class MembershipController {
     }
   }
 
+  // Change membership plan with payment flow (redirect to HitPay)
+  async changePlanWithPayment(req, res) {
+    try {
+      const userId = req.user._id;
+      const { newTierId, billingCycle = 'MONTHLY', immediate = true } = req.body;
+
+      console.log('🔄 Plan change with payment initiated:', { userId, newTierId, billingCycle, immediate });
+
+      // Validate input
+      if (!newTierId) {
+        return res.status(400).json({
+          success: false,
+          message: 'New tier ID is required'
+        });
+      }
+
+      // Get new tier details
+      const newTier = await membershipService.getMembershipTierById(newTierId);
+      if (!newTier) {
+        return res.status(404).json({
+          success: false,
+          message: 'Membership tier not found'
+        });
+      }
+
+      // Get current membership
+      const currentMembership = await membershipService.getCustomerMembershipAnyStatus(userId);
+      if (!currentMembership) {
+        return res.status(404).json({
+          success: false,
+          message: 'No current membership found'
+        });
+      }
+
+      // Check if trying to change to the same plan
+      if (currentMembership.tier._id.toString() === newTierId.toString()) {
+        return res.status(400).json({
+          success: false,
+          message: 'You are already subscribed to this plan'
+        });
+      }
+
+      // Calculate pricing
+      const baseAmount = billingCycle === 'YEARLY' ? newTier.yearlyPrice : newTier.monthlyPrice;
+
+      // Create HitPay payment request
+      const paymentReference = `plan_change_${userId}_${Date.now()}`;
+      
+      // Use a development-friendly webhook URL
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const webhookUrl = isDevelopment 
+        ? 'https://httpbin.org/post' // Valid URL that HitPay can reach for development
+        : `${process.env.BACKEND_URL}/api/membership/hitpay-webhook`;
+      
+      const paymentData = {
+        amount: baseAmount,
+        currency: 'SGD',
+        purpose: `Plan Change to ${newTier.displayName}`,
+        reference_number: paymentReference,
+        redirect_url: `${process.env.FRONTEND_URL}/membership/success?type=plan_change&reference=${paymentReference}`,
+        webhook: webhookUrl,
+        customer_name: req.user.fullName || `${req.user.firstName} ${req.user.lastName}`,
+        customer_email: req.user.email
+      };
+
+      console.log('Creating HitPay payment for plan change:', paymentData);
+
+      let hitpayPayment;
+      try {
+        hitpayPayment = await hitpayService.createPayment(paymentData);
+        console.log('HitPay payment created for plan change:', hitpayPayment);
+      } catch (paymentError) {
+        console.error('Failed to create HitPay payment for plan change:', paymentError);
+        throw new Error('Payment gateway error: ' + paymentError.message);
+      }
+
+      // Create a pending plan change record (we'll use this to track the change)
+      const planChangeData = {
+        customer: userId,
+        currentMembershipId: currentMembership._id,
+        newTierId: newTierId,
+        billingCycle: billingCycle,
+        amount: baseAmount,
+        paymentReference: paymentReference,
+        hitpayPaymentId: hitpayPayment.payment_request_id || hitpayPayment.id,
+        status: 'PENDING_PAYMENT',
+        createdAt: new Date()
+      };
+
+      // Store the plan change request in the database (you might want to create a separate collection for this)
+      // For now, we'll store it as metadata in the current membership
+      currentMembership.pendingPlanChange = planChangeData;
+      await currentMembership.save();
+
+      console.log('✅ Plan change payment request created successfully');
+
+      // Return the HitPay payment URL for frontend redirect
+      return res.status(200).json({
+        success: true,
+        message: 'Payment request created successfully. Redirecting to payment gateway.',
+        paymentUrl: hitpayPayment.url,
+        paymentRequestId: hitpayPayment.payment_request_id || hitpayPayment.id,
+        reference: paymentReference,
+        amount: baseAmount,
+        newPlan: {
+          name: newTier.displayName,
+          price: baseAmount,
+          billingCycle: billingCycle
+        }
+      });
+
+    } catch (error) {
+      console.error('Plan change with payment error:', error);
+      res.status(400).json({
+        success: false,
+        message: 'Failed to initiate plan change payment',
+        error: error.message
+      });
+    }
+  }
+
   // Preview plan change costs (no actual changes made)
   async previewPlanChange(req, res) {
     try {
@@ -794,6 +1110,8 @@ class MembershipController {
       const userId = req.user._id;
       const { immediate = false } = req.body;
 
+      console.log('🔍 Cancel request received for user:', userId, 'immediate:', immediate);
+
       const membership = await membershipService.cancelMembership(userId, immediate);
 
       res.json({
@@ -802,9 +1120,23 @@ class MembershipController {
         membership
       });
     } catch (error) {
-      res.status(400).json({
+      console.log('❌ Cancellation error:', error.message);
+      
+      // Provide specific error messages based on the error
+      let statusCode = 400;
+      let message = 'Failed to cancel membership';
+      
+      if (error.message.includes('already cancelled or inactive')) {
+        statusCode = 409; // Conflict
+        message = error.message;
+      } else if (error.message.includes('No active membership found')) {
+        statusCode = 404; // Not Found
+        message = error.message;
+      }
+
+      res.status(statusCode).json({
         success: false,
-        message: 'Failed to cancel membership',
+        message: message,
         error: error.message
       });
     }
@@ -1129,6 +1461,12 @@ class MembershipController {
         fullPaymentData: paymentData
       });
 
+      // Check if this is a plan change payment
+      if (reference_number && reference_number.startsWith('plan_change_')) {
+        await this.handlePlanChangePaymentCompleted(paymentData);
+        return;
+      }
+
       // 🚀 CAPTURE REAL BILLING ID FROM HITPAY WEBHOOK
       if (recurring_billing_id && !recurring_billing_id.startsWith('demo_')) {
         console.log('🎯 REAL BILLING ID DETECTED IN WEBHOOK:', recurring_billing_id);
@@ -1220,6 +1558,89 @@ class MembershipController {
       
     } catch (error) {
       console.error('Error handling HitPay payment completion:', error);
+    }
+  }
+
+  async handlePlanChangePaymentCompleted(paymentData) {
+    try {
+      const { payment_request_id, reference_number, amount } = paymentData;
+      
+      console.log('🔄 Processing plan change payment completion:', { payment_request_id, reference_number, amount });
+
+      // Find membership with pending plan change
+      const membership = await CustomerMembership.findOne({
+        'pendingPlanChange.paymentReference': reference_number,
+        'pendingPlanChange.status': 'PENDING_PAYMENT'
+      }).populate('tier');
+
+      if (!membership) {
+        console.error('❌ Membership with pending plan change not found for payment:', reference_number);
+        return;
+      }
+
+      const planChangeData = membership.pendingPlanChange;
+      console.log('✅ Found membership with pending plan change:', membership._id);
+
+      // Get the new tier
+      const newTier = await membershipService.getMembershipTierById(planChangeData.newTierId);
+      if (!newTier) {
+        console.error('❌ New tier not found:', planChangeData.newTierId);
+        return;
+      }
+
+      // Cancel current plan first (if active)
+      if (membership.status === 'ACTIVE') {
+        console.log('🗑️ Cancelling current plan before switching');
+        
+        // Cancel current HitPay subscription if exists
+        if (membership.hitpayRecurringBillingId && !membership.hitpayRecurringBillingId.startsWith('demo_')) {
+          try {
+            await hitpayService.cancelRecurringBilling(membership.hitpayRecurringBillingId);
+            console.log('✅ Cancelled current HitPay recurring billing');
+          } catch (error) {
+            console.error('⚠️ Failed to cancel current HitPay billing (continuing anyway):', error.message);
+          }
+        }
+      }
+
+      // Update membership to new plan
+      membership.tier = planChangeData.newTierId;
+      membership.billingCycle = planChangeData.billingCycle;
+      membership.monthlyPrice = newTier.monthlyPrice;
+      membership.yearlyPrice = newTier.yearlyPrice;
+      membership.currentPrice = planChangeData.amount;
+      membership.status = 'ACTIVE';
+      membership.paymentMethod = 'HITPAY';
+      membership.hitpayPlanId = payment_request_id;
+      membership.hitpayPaymentId = payment_request_id;
+      membership.startDate = new Date();
+
+      // Calculate next billing date
+      const now = new Date();
+      if (planChangeData.billingCycle === 'YEARLY') {
+        membership.nextBillingDate = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+      } else {
+        membership.nextBillingDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }
+
+      // Clear pending plan change data
+      membership.pendingPlanChange = undefined;
+
+      await membership.save();
+
+      console.log('✅ Plan change completed successfully:', {
+        membershipId: membership._id,
+        oldTier: 'Previous plan',
+        newTier: newTier.displayName,
+        billingCycle: planChangeData.billingCycle,
+        amount: planChangeData.amount,
+        nextBilling: membership.nextBillingDate
+      });
+
+      // TODO: Send plan change confirmation email
+      
+    } catch (error) {
+      console.error('Error handling plan change payment completion:', error);
     }
   }
 
@@ -1348,6 +1769,247 @@ class MembershipController {
         message: 'Failed to activate membership',
         error: error.message 
       });
+    }
+  }
+
+  // Handle successful HitPay payment redirect
+  async handleHitPaySuccess(req, res) {
+    try {
+      const result = await this.handleHitPaySuccessInternal(req.body);
+      res.json(result);
+    } catch (error) {
+      console.error('Error handling HitPay payment success:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to process payment success',
+        error: error.message 
+      });
+    }
+  }
+
+  // Internal method for processing HitPay success (can be called from routes)
+  async handleHitPaySuccessInternal(data) {
+    const { userId, reference, hitpay_payment_id, status: reqStatus, hitpayRecurringBillingId } = data;
+    
+    console.log('🎉 Processing HitPay payment success (internal):', { 
+      userId, 
+      reference, 
+      hitpay_payment_id, 
+      hitpayRecurringBillingId,
+      status: reqStatus 
+    });
+    
+    if (!userId) {
+      return { 
+        success: false, 
+        message: 'User ID is required' 
+      };
+    }
+
+    // Find the membership by user ID and reference
+    // Try multiple approaches to find the right membership
+    let membership = null;
+    const billingIdToSearch = hitpayRecurringBillingId || hitpay_payment_id || reference;
+    
+    // Approach 1: Look for PENDING membership for this user (highest priority for activation)
+    membership = await CustomerMembership.findOne({
+      customer: userId,
+      status: 'PENDING'
+    }).populate('tier').sort({ createdAt: -1 }); // Get most recent pending
+    console.log('🔍 Search by PENDING status:', membership ? 'Found' : 'Not found');
+    
+    // Approach 2: Search by hitpayRecurringBillingId (exact match)
+    if (!membership && billingIdToSearch) {
+      membership = await CustomerMembership.findOne({
+        customer: userId,
+        hitpayRecurringBillingId: billingIdToSearch
+      }).populate('tier');
+      console.log('🔍 Search by hitpayRecurringBillingId:', billingIdToSearch, membership ? 'Found' : 'Not found');
+    }
+    
+    // Approach 3: Match by hitpayPlanId (reference) and user
+    if (!membership && reference) {
+      membership = await CustomerMembership.findOne({
+        customer: userId,
+        hitpayPlanId: reference
+      }).populate('tier');
+      console.log('🔍 Search by hitpayPlanId:', reference, membership ? 'Found' : 'Not found');
+    }
+    
+    // Approach 4: If still not found, get the most recent membership for this user
+    if (!membership) {
+      membership = await CustomerMembership.findOne({
+        customer: userId
+      }).populate('tier').sort({ createdAt: -1 });
+      console.log('🔍 Search by user (any status):', membership ? 'Found' : 'Not found');
+    }
+
+    if (!membership) {
+      console.error('❌ No membership found for user:', userId);
+      return { 
+        success: false, 
+        message: 'No membership found for this user' 
+      };
+    }
+
+    console.log('✅ Found membership to process:', {
+      membershipId: membership._id,
+      currentStatus: membership.status,
+      hitpayPlanId: membership.hitpayPlanId,
+      reference: reference
+    });
+
+    // Check if membership is already active
+    if (membership.status === 'ACTIVE') {
+      console.log('ℹ️ Membership is already ACTIVE - payment success confirmation');
+      return { 
+        success: true, 
+        message: 'Payment confirmed! Membership is already active.',
+        membership: {
+          id: membership._id,
+          status: membership.status,
+          tier: membership.tier.displayName,
+          nextBillingDate: membership.nextBillingDate
+        }
+      };
+    }
+
+    // Update payment reference if provided
+    if (hitpayRecurringBillingId || hitpay_payment_id) {
+      const newBillingId = hitpayRecurringBillingId || hitpay_payment_id;
+      membership.hitpayRecurringBillingId = newBillingId;
+      console.log('🔄 Updated billing ID from success callback:', newBillingId);
+    }
+
+    // Always activate if status=active is present in the request, or if membership is PENDING
+    if (reqStatus === 'active' || membership.status === 'PENDING') {
+      membership.status = 'ACTIVE';
+      membership.startDate = new Date();
+      // Calculate next billing date
+      const now = new Date();
+      if (membership.billingCycle === 'YEARLY') {
+        membership.nextBillingDate = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+      } else {
+        membership.nextBillingDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }
+      await membership.save();
+      console.log('🎉 Membership activated from HitPay success (forced or pending):', {
+        membershipId: membership._id,
+        customer: membership.customer,
+        tier: membership.tier.displayName,
+        nextBillingDate: membership.nextBillingDate
+      });
+      return { 
+        success: true, 
+        message: 'Payment successful! Membership activated.',
+        membership: {
+          id: membership._id,
+          status: membership.status,
+          tier: membership.tier.displayName,
+          nextBillingDate: membership.nextBillingDate
+        }
+      };
+    } else {
+      // Just save the payment reference update if membership was already processed
+      await membership.save();
+      console.log('ℹ️ Payment reference updated for existing membership:', {
+        membershipId: membership._id,
+        status: membership.status
+      });
+      return { 
+        success: true, 
+        message: 'Payment confirmed! Membership status updated.',
+        membership: {
+          id: membership._id,
+          status: membership.status,
+          tier: membership.tier.displayName,
+          nextBillingDate: membership.nextBillingDate
+        }
+      };
+    }
+  }
+
+  // Activate membership by hitpayRecurringBillingId (used for automatic activation)
+  async activateByRecurringBillingId(hitpayRecurringBillingId) {
+    try {
+      console.log('🔍 Searching for membership with hitpayRecurringBillingId:', hitpayRecurringBillingId);
+      
+      // Find membership by exact billing ID match
+      const membership = await CustomerMembership.findOne({
+        hitpayRecurringBillingId: hitpayRecurringBillingId
+      }).populate('tier');
+
+      if (!membership) {
+        console.error('❌ No membership found with billing ID:', hitpayRecurringBillingId);
+        return { 
+          success: false, 
+          message: 'No membership found with this billing ID' 
+        };
+      }
+
+      console.log('✅ Found membership:', {
+        membershipId: membership._id,
+        customer: membership.customer,
+        currentStatus: membership.status,
+        tier: membership.tier?.displayName
+      });
+
+      // Check if already active
+      if (membership.status === 'ACTIVE') {
+        console.log('ℹ️ Membership is already ACTIVE');
+        return { 
+          success: true, 
+          message: 'Membership is already active',
+          membership: {
+            id: membership._id,
+            status: membership.status,
+            tier: membership.tier?.displayName,
+            nextBillingDate: membership.nextBillingDate
+          }
+        };
+      }
+
+      // Activate the membership
+      membership.status = 'ACTIVE';
+      membership.startDate = new Date();
+      
+      // Calculate next billing date
+      const now = new Date();
+      if (membership.billingCycle === 'YEARLY') {
+        membership.nextBillingDate = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+      } else {
+        membership.nextBillingDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }
+
+      await membership.save();
+
+      console.log('🎉 Membership activated successfully:', {
+        membershipId: membership._id,
+        customer: membership.customer,
+        status: membership.status,
+        tier: membership.tier?.displayName,
+        startDate: membership.startDate,
+        nextBillingDate: membership.nextBillingDate
+      });
+
+      return { 
+        success: true, 
+        message: 'Membership activated successfully',
+        membership: {
+          id: membership._id,
+          status: membership.status,
+          tier: membership.tier?.displayName,
+          nextBillingDate: membership.nextBillingDate
+        }
+      };
+
+    } catch (error) {
+      console.error('Error activating membership by billing ID:', error);
+      return { 
+        success: false, 
+        message: 'Failed to activate membership',
+        error: error.message 
+      };
     }
   }
 }
