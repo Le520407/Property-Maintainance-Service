@@ -232,7 +232,7 @@ const ReferralDashboardPage = () => {
   const { currentTier, nextTier, statistics, referredUsers, recentCommissions } = dashboardData;
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24">
+    <div className="min-h-screen bg-gray-50 pt-8">
       {/* Agent Dashboard Header */}
       <div className="bg-orange-600 text-white py-16 mb-12">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
@@ -431,16 +431,16 @@ const ReferralDashboardPage = () => {
               <h3 className="text-2xl font-bold text-gray-900">Recent Commissions</h3>
             </div>
             <div className="p-8">
-              {recentCommissions && recentCommissions.length > 0 ? (
+              {recentCommissions && recentCommissions.filter(commission => commission.referredUser && commission.referredUser.firstName).length > 0 ? (
                 <div className="space-y-6">
-                  {recentCommissions.map((commission, index) => (
+                  {recentCommissions.filter(commission => commission.referredUser && commission.referredUser.firstName).map((commission, index) => (
                     <div key={index} className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0">
                       <div>
                         <p className="text-xl font-bold text-gray-900">
                           ${commission.commissionAmount.toFixed(2)}
                         </p>
                         <p className="text-lg text-gray-600">
-                          From {commission.referredUser.firstName} {commission.referredUser.lastName}
+                          From {commission.referredUser?.firstName || 'Unknown'} {commission.referredUser?.lastName || 'User'}
                         </p>
                       </div>
                       <div className="text-right">
@@ -471,13 +471,13 @@ const ReferralDashboardPage = () => {
               <h3 className="text-2xl font-bold text-gray-900">Your Referrals</h3>
             </div>
             <div className="p-8">
-              {referredUsers && referredUsers.length > 0 ? (
+              {referredUsers && referredUsers.filter(referral => referral.user && referral.user.firstName).length > 0 ? (
                 <div className="space-y-6">
-                  {referredUsers.slice(0, 5).map((referral, index) => (
+                  {referredUsers.filter(referral => referral.user && referral.user.firstName).slice(0, 5).map((referral, index) => (
                     <div key={index} className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0">
                       <div>
                         <p className="text-xl font-bold text-gray-900">
-                          {referral.user.firstName} {referral.user.lastName}
+                          {referral.user?.firstName || 'Unknown'} {referral.user?.lastName || 'User'}
                         </p>
                         <p className="text-lg text-gray-600">
                           Joined {new Date(referral.joinedAt).toLocaleDateString()}
@@ -493,9 +493,9 @@ const ReferralDashboardPage = () => {
                       </div>
                     </div>
                   ))}
-                  {referredUsers.length > 5 && (
+                  {referredUsers.filter(referral => referral.user && referral.user.firstName).length > 5 && (
                     <p className="text-lg text-gray-500 text-center pt-4">
-                      And {referredUsers.length - 5} more...
+                      And {referredUsers.filter(referral => referral.user && referral.user.firstName).length - 5} more...
                     </p>
                   )}
                 </div>
@@ -568,9 +568,9 @@ const ReferralDashboardPage = () => {
                 <h3 className="text-2xl font-bold text-gray-900">Recent Transactions</h3>
               </div>
               <div className="p-8">
-                {walletData.recentTransactions?.length > 0 ? (
+                {walletData.recentTransactions?.filter(transaction => transaction.referredUser && transaction.referredUser.firstName).length > 0 ? (
                   <div className="space-y-4">
-                    {walletData.recentTransactions.map((transaction, index) => (
+                    {walletData.recentTransactions.filter(transaction => transaction.referredUser && transaction.referredUser.firstName).map((transaction, index) => (
                       <div key={index} className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0">
                         <div>
                           <p className="text-lg font-bold text-gray-900">
@@ -610,9 +610,9 @@ const ReferralDashboardPage = () => {
               <h2 className="text-3xl font-bold text-gray-900">Commission History</h2>
             </div>
             <div className="p-8">
-              {commissionHistory.length > 0 ? (
+              {commissionHistory.filter(commission => commission.referredUser && commission.referredUser.firstName).length > 0 ? (
                 <div className="space-y-4">
-                  {commissionHistory.map((commission, index) => (
+                  {commissionHistory.filter(commission => commission.referredUser && commission.referredUser.firstName).map((commission, index) => (
                     <div key={index} className="bg-gray-50 rounded-lg p-6">
                       <div className="flex items-center justify-between">
                         <div>
@@ -620,7 +620,7 @@ const ReferralDashboardPage = () => {
                             ${commission.commissionAmount.toFixed(2)}
                           </p>
                           <p className="text-sm text-gray-600">
-                            Commission from {commission.referredUser?.firstName} {commission.referredUser?.lastName}
+                            Commission from {commission.referredUser?.firstName || 'Unknown'} {commission.referredUser?.lastName || 'User'}
                           </p>
                           <p className="text-sm text-gray-500">
                             Order Value: ${commission.orderAmount.toFixed(2)} • Rate: {commission.commissionRate}%

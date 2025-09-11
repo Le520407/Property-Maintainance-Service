@@ -1907,7 +1907,7 @@ const VendorJobAssignments = ({ status }) => {
     try {
       setLoading(true);
       console.log('🔄 Loading jobs with status:', status); // Debug log
-      const response = await api.vendor.getJobs(status);
+      const response = await api.vendor.getJobs({ status });
       console.log('📋 Jobs API response:', response); // Debug log
       const jobsArray = response.jobs || [];
       console.log('💼 Jobs loaded:', jobsArray.length, 'jobs'); // Debug log
