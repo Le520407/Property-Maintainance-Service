@@ -326,6 +326,16 @@ router.patch('/jobs/:jobId/status', authenticateToken, requireRole(['vendor']), 
       return res.status(404).json({ message: 'Job not found' });
     }
 
+    // Validate payment before allowing work to start
+    if (status === 'IN_PROGRESS') {
+      if (job.status !== 'PAID') {
+        return res.status(400).json({ 
+          message: 'Cannot start work until payment is completed by the customer',
+          currentStatus: job.status 
+        });
+      }
+    }
+
     // Update totalAmount if provided (for quote updates)
     if (totalAmount !== undefined && totalAmount !== null) {
       console.log('🔄 BEFORE UPDATE - Job totalAmount:', job.totalAmount);

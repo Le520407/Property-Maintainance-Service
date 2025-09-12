@@ -268,7 +268,7 @@ router.patch('/:id/quote', auth, async (req, res) => {
       return res.status(403).json({ message: 'You are not assigned to this job' });
     }
 
-    if (!['ASSIGNED', 'IN_DISCUSSION'].includes(job.status)) {
+    if (!['ASSIGNED', 'IN_DISCUSSION', 'QUOTE_REJECTED'].includes(job.status)) {
       return res.status(400).json({ message: 'Cannot submit quote at this stage' });
     }
 
