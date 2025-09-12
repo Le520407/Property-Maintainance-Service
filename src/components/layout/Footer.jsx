@@ -36,6 +36,8 @@ const Footer = () => {
     legal: [
       { name: 'Terms of Service', href: '/terms' },
       { name: 'Privacy Policy', href: '/privacy' },
+      { name: 'Service Level Agreement', href: '/sla' },
+      { name: 'Compliance & Certifications', href: '/compliance' },
       { name: 'Vendor Agreement', href: '/vendor-agreement' },
       { name: 'Agent Agreement', href: '/agent-agreement' },
     ],
@@ -131,10 +133,10 @@ Sunday and Public Holidays: Closed (Emergency services available)
             </ul>
           </div>
 
-          {/* Support & Newsletter */}
+          {/* Support */}
           <div>
             <h4 className="text-lg font-semibold mb-4">Get Started</h4>
-            <ul className="space-y-2 mb-6">
+            <ul className="space-y-2">
               {footerLinks.support.map((link) => (
                 <li key={link.name}>
                   <Link
@@ -147,21 +149,6 @@ Sunday and Public Holidays: Closed (Emergency services available)
                 </li>
               ))}
             </ul>
-
-            {/* Newsletter */}
-            <div>
-              <h5 className="text-sm font-semibold mb-3">Subscribe to our newsletter</h5>
-              <div className="flex">
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-l-lg text-sm focus:outline-none focus:border-orange-500"
-                />
-                <button className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-r-lg transition-colors">
-                  Subscribe
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Legal */}
@@ -181,6 +168,26 @@ Sunday and Public Holidays: Closed (Emergency services available)
                 </li>
               ))}
             </ul>
+          </div>
+        </div>
+
+        {/* Newsletter Section - Bottom of main content */}
+        <div className="mt-8 pt-8 border-t border-gray-800">
+          <div className="max-w-md mx-auto text-center">
+            <h4 className="text-lg font-semibold mb-2">Subscribe to our newsletter</h4>
+            <p className="text-gray-400 text-sm mb-4">
+              Get maintenance tips, special offers, and service updates.
+            </p>
+            <div className="flex">
+              <input
+                type="email"
+                placeholder="Enter your email"
+                className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-l-lg text-sm focus:outline-none focus:border-orange-500"
+              />
+              <button className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-r-lg transition-colors">
+                Subscribe
+              </button>
+            </div>
           </div>
         </div>
       </div>

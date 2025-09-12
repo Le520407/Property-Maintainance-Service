@@ -1,19 +1,20 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  ArrowRight, 
-  Star, 
-  Users, 
-  Award, 
+import {
+  ArrowRight,
+  Award,
   Clock,
-  Phone,
+  Heart,
   Mail,
   MapPin,
+  Phone,
   Shield,
-  Zap,
-  Heart
+  Star,
+  Users,
+  Zap
 } from 'lucide-react';
+
+import { Link } from 'react-router-dom';
+import React from 'react';
+import { motion } from 'framer-motion';
 
 const HomePage = () => {
   const stats = [
