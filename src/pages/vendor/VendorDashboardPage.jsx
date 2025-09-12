@@ -35,6 +35,7 @@ import VendorCalendar from '../../components/vendor/VendorCalendar';
 import { api } from '../../services/api';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import VendorTACSettings from '../../components/vendor/VendorTACSettings';
 
 // Helper function to construct proper image URLs
 const getImageUrl = (relativeUrl) => {
@@ -1749,9 +1750,9 @@ const VendorDashboardPage = () => {
         </div>
       );
       if (activeTab === 'settings') return (
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Account Settings</h3>
-          <p className="text-gray-600">Settings and preferences coming soon...</p>
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-6">Account Settings</h3>
+          <VendorTACSettings />
         </div>
       );
     }
