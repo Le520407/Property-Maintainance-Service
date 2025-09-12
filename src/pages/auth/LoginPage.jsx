@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { Eye, EyeOff, Mail, Lock, User, Phone } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import TACLogin from '../../components/auth/TACLogin';
 import toast from 'react-hot-toast';
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [useTAC, setUseTAC] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -26,13 +28,23 @@ const LoginPage = () => {
         toast.success('Login successful!');
         navigate('/');
       } else {
-        toast.error(result.error || 'Login failed, please check your email and password');
+        // Check if TAC is required for this user
+        if (result.error && result.error.includes('Two-Factor Authentication is required')) {
+          toast.error('This account requires Two-Factor Authentication. Please use the TAC login option below.');
+          setUseTAC(true); // Automatically switch to TAC mode
+        } else {
+          toast.error(result.error || 'Login failed, please check your email and password');
+        }
       }
     } catch (error) {
       toast.error('An error occurred during login, please try again later');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleTACSuccess = (user) => {
+    navigate('/');
   };
 
   return (
@@ -43,20 +55,27 @@ const LoginPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          {/* Header */}
-          <div className="text-center">
-            <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 bg-orange-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-2xl">S</span>
+          {useTAC ? (
+            <TACLogin 
+              onBackToRegular={() => setUseTAC(false)}
+              onSuccess={handleTACSuccess}
+            />
+          ) : (
+            <>
+              {/* Header */}
+              <div className="text-center">
+                <div className="flex justify-center mb-6">
+                  <div className="w-16 h-16 bg-orange-600 rounded-xl flex items-center justify-center">
+                    <span className="text-white font-bold text-2xl">S</span>
+                  </div>
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+                <p className="text-gray-600">Sign in to your account to continue</p>
               </div>
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-            <p className="text-gray-600">Sign in to your account to continue</p>
-          </div>
 
-          {/* Login Form */}
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* Login Form */}
+              <div className="bg-white rounded-xl shadow-lg p-8">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Email Field */}
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -175,6 +194,19 @@ const LoginPage = () => {
             </div>
           </div>
 
+          {/* TAC Login Option */}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setUseTAC(true)}
+              className="text-orange-600 hover:text-orange-700 font-medium flex items-center justify-center mx-auto"
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              Use Secure Login (TAC)
+            </button>
+            <p className="text-sm text-gray-500 mt-1">Enhanced security with email verification</p>
+          </div>
+
           {/* Sign Up Link */}
           <div className="text-center mt-6">
             <p className="text-gray-600">
@@ -202,6 +234,8 @@ const LoginPage = () => {
               </Link>
             </div>
           </div>
+            </>
+          )}
         </motion.div>
       </div>
     </div>

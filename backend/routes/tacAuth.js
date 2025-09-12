@@ -22,6 +22,13 @@ router.post('/auth/tac/request', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
 
+    // Check if user has TAC enabled
+    if (!user.tacEnabled) {
+      return res.status(400).json({ 
+        message: 'TAC is not enabled for this account. Please enable it in your profile settings first.' 
+      });
+    }
+
     const code = makeCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     await TwoFactorLogin.create({ user: user._id, email: user.email, code, expiresAt });

@@ -338,6 +338,15 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // Check if user has TAC enabled - if so, require TAC login
+    if (user.tacEnabled) {
+      return res.status(403).json({ 
+        message: 'Two-Factor Authentication is required for this account. Please use the TAC login option.',
+        requiresTAC: true,
+        email: user.email
+      });
+    }
+
     // Update last login
     await user.updateLastLogin();
 
@@ -350,7 +359,8 @@ router.post('/login', async (req, res) => {
     res.json({
       message: 'Login successful',
       token,
-      user
+      user,
+      tacAvailable: user.tacEnabled || false // Include TAC availability
     });
 
   } catch (error) {
@@ -365,6 +375,34 @@ router.get('/me', authenticateToken, async (req, res) => {
     res.json({ user: req.user });
   } catch (error) {
     console.error('Get current user error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Update TAC preference
+router.put('/tac-preference', authenticateToken, async (req, res) => {
+  try {
+    const { tacEnabled } = req.body;
+    
+    if (typeof tacEnabled !== 'boolean') {
+      return res.status(400).json({ message: 'tacEnabled must be a boolean value' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.tacEnabled = tacEnabled;
+    await user.save();
+
+    res.json({ 
+      message: `TAC ${tacEnabled ? 'enabled' : 'disabled'} successfully`,
+      tacEnabled: user.tacEnabled
+    });
+
+  } catch (error) {
+    console.error('Update TAC preference error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

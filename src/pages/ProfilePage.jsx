@@ -17,6 +17,7 @@ import {
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
+import TACSettings from '../components/profile/TACSettings';
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
@@ -400,6 +401,9 @@ const ProfilePage = () => {
                 </button>
               </div>
             </div>
+
+            {/* Two-Factor Authentication Settings */}
+            <TACSettings />
 
             {/* Security Information */}
             <div className="bg-white rounded-xl shadow-xl p-10">
