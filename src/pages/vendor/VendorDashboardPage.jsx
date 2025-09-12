@@ -16,6 +16,7 @@ import {
   Info,
   MapPin,
   MessageSquare,
+  Phone,
   Plus,
   Save,
   Settings,
@@ -1388,6 +1389,7 @@ const VendorDashboardPage = () => {
       tabs: [
         { name: 'Pending Assignments', tab: 'pending' },
         { name: 'Active Jobs', tab: 'active' },
+        { name: 'Rejected Quotes', tab: 'rejected' },
         { name: 'Job History', tab: 'history' },
         { name: 'Completed Jobs', tab: 'completed' }
       ]
@@ -1701,6 +1703,7 @@ const VendorDashboardPage = () => {
     if (activeSection === 'assignments') {
       if (activeTab === 'pending') return <VendorJobAssignments status="ASSIGNED" />;
       if (activeTab === 'active') return <VendorJobAssignments status="IN_DISCUSSION,QUOTE_SENT,QUOTE_ACCEPTED,PAID,IN_PROGRESS" />;
+      if (activeTab === 'rejected') return <VendorJobAssignments status="QUOTE_REJECTED" />;
       if (activeTab === 'history') return <VendorJobAssignments status="COMPLETED,CANCELLED,REJECTED" />;
       if (activeTab === 'completed') return <VendorJobAssignments status="COMPLETED" />;
     }
@@ -1903,17 +1906,63 @@ const VendorJobAssignments = ({ status }) => {
   const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, job: null });
   const navigate = useNavigate();
 
+  // Utility function to get status color
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'ASSIGNED':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'ACCEPTED':
+      case 'IN_DISCUSSION':
+        return 'bg-blue-100 text-blue-800';
+      case 'QUOTE_SENT':
+        return 'bg-purple-100 text-purple-800';
+      case 'QUOTE_ACCEPTED':
+      case 'PAID':
+        return 'bg-green-100 text-green-800';
+      case 'QUOTE_REJECTED':
+        return 'bg-red-100 text-red-800';
+      case 'IN_PROGRESS':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'COMPLETED':
+        return 'bg-green-100 text-green-800';
+      case 'CANCELLED':
+      case 'REJECTED':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   const loadJobs = useCallback(async () => {
     try {
       setLoading(true);
       console.log('🔄 Loading jobs with status:', status); // Debug log
+      console.log('🔍 Status type:', typeof status, 'Value:', JSON.stringify(status)); // Debug log
+      
       const response = await api.vendor.getJobs({ status });
       console.log('📋 Jobs API response:', response); // Debug log
       const jobsArray = response.jobs || [];
       console.log('💼 Jobs loaded:', jobsArray.length, 'jobs'); // Debug log
       
+      // Log each job's status for debugging
+      console.log('📝 Job statuses:', jobsArray.map(job => ({ 
+        jobNumber: job.jobNumber, 
+        status: job.status 
+      })));
+      
+      // Client-side filtering as additional safety measure
+      const filteredJobs = jobsArray.filter(job => {
+        if (!status) return true; // No filter, show all
+        
+        const statusArray = status.includes(',') ? status.split(',') : [status];
+        console.log(`🎯 Checking job ${job.jobNumber} status "${job.status}" against filter:`, statusArray);
+        return statusArray.includes(job.status);
+      });
+      
+      console.log('💼 Jobs after filtering:', filteredJobs.length, 'jobs'); // Debug log
+      
       // Log job prices for debugging  
-      jobsArray.forEach(job => {
+      filteredJobs.forEach(job => {
         if (job.status === 'QUOTE_SENT' || job.totalAmount) {
           console.log(`💰 JOB DEBUG:`, {
             jobNumber: job.jobNumber,
@@ -1927,7 +1976,7 @@ const VendorJobAssignments = ({ status }) => {
       });
       
       // Apply local price overrides to jobs (frontend-only fix)
-      const jobsWithOverrides = jobsArray.map(job => {
+      const jobsWithOverrides = filteredJobs.map(job => {
         if (localPriceOverrides[job._id]) {
           return { ...job, totalAmount: localPriceOverrides[job._id] };
         }
@@ -2004,11 +2053,14 @@ const VendorJobAssignments = ({ status }) => {
           <h3 className="text-lg font-medium text-gray-900">
             {status === 'ASSIGNED' ? 'Pending Job Assignments' : 
              status.includes('IN_DISCUSSION') ? 'Active Jobs' :
+             status === 'QUOTE_REJECTED' ? 'Rejected Quotes - Action Required' :
              status.includes('COMPLETED,CANCELLED,REJECTED') ? 'Job History' :
              status === 'COMPLETED' ? 'Completed Jobs' : 'Jobs'}
           </h3>
           <p className="text-sm text-gray-500 mt-1">
-            Status filter: {status} | Found: {jobs.length} jobs
+            {status === 'QUOTE_REJECTED' ? 
+              'These jobs have rejected quotes. You can submit revised quotes or withdraw.' :
+              `Status filter: ${status} | Found: ${jobs.length} jobs`}
           </p>
         </div>
         <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded">
@@ -2023,6 +2075,7 @@ const VendorJobAssignments = ({ status }) => {
           <p className="text-gray-600">
             {status === 'ASSIGNED' ? 'No pending assignments at the moment.' :
              status.includes('IN_DISCUSSION') ? 'No active jobs currently.' :
+             status === 'QUOTE_REJECTED' ? 'No rejected quotes at the moment. Great job!' :
              status.includes('COMPLETED,CANCELLED,REJECTED') ? 'No job history available yet.' :
              status === 'COMPLETED' ? 'No completed jobs yet.' : 'No jobs available.'}
           </p>
@@ -2034,7 +2087,11 @@ const VendorJobAssignments = ({ status }) => {
               key={job._id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
+                job.status === 'QUOTE_REJECTED' 
+                  ? 'border-red-200 bg-red-50' 
+                  : 'border-gray-200'
+              }`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -2078,6 +2135,13 @@ const VendorJobAssignments = ({ status }) => {
                   {job.status === 'ASSIGNED' && (
                     <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
                       <button
+                        onClick={() => setShowJobDetails(job)}
+                        className="flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        View Details
+                      </button>
+                      <button
                         onClick={() => navigate('/messages')}
                         className="flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
                       >
@@ -2101,8 +2165,37 @@ const VendorJobAssignments = ({ status }) => {
                     </div>
                   )}
 
-                  {(job.status === 'ACCEPTED' || job.status === 'QUOTED' || job.status === 'IN_PROGRESS' || job.status === 'PAID' || job.status === 'IN_DISCUSSION' || job.status === 'QUOTE_SENT' || job.status === 'QUOTE_ACCEPTED') && (
+                  {(job.status === 'ACCEPTED' || job.status === 'QUOTED' || job.status === 'IN_PROGRESS' || job.status === 'PAID' || job.status === 'IN_DISCUSSION' || job.status === 'QUOTE_SENT' || job.status === 'QUOTE_ACCEPTED' || job.status === 'QUOTE_REJECTED') && (
                     <div className="space-y-3">
+                      {/* Special Alert for Rejected Quotes */}
+                      {job.status === 'QUOTE_REJECTED' && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                          <div className="flex items-center">
+                            <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
+                            <span className="text-sm font-medium text-red-800">Quote Rejected by Customer</span>
+                          </div>
+                          <p className="text-sm text-red-700 mt-1">
+                            Customer has rejected your quote. You can submit a revised quote or withdraw from this job.
+                          </p>
+                          <div className="flex items-center space-x-3 mt-3">
+                            <button
+                              onClick={() => setStatusUpdateModal({ isOpen: true, job })}
+                              className="flex items-center px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors"
+                            >
+                              <DollarSign className="h-4 w-4 mr-2" />
+                              Submit New Quote
+                            </button>
+                            <button
+                              onClick={() => setShowJobDetails(job)}
+                              className="flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              View Details
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
                       {/* Price Display */}
                       <div className={`border rounded-lg p-3 ${
                         job.totalAmount ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
@@ -2126,24 +2219,36 @@ const VendorJobAssignments = ({ status }) => {
                         )}
                       </div>
                       
-                      <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
-                        <button
-                          onClick={() => navigate('/messages')}
-                          className="flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
-                        >
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Chat
-                        </button>
-                        
-                        {/* Update Job Status Button */}
-                        <button
-                          onClick={() => setStatusUpdateModal({ isOpen: true, job })}
-                          className="flex items-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          <Settings className="h-4 w-4 mr-2" />
-                          Update Job
-                        </button>
-                      </div>
+                      {/* Action Buttons for Non-Rejected Quotes */}
+                      {job.status !== 'QUOTE_REJECTED' && (
+                        <div className="flex items-center space-x-3 pt-4 border-t border-gray-200">
+                          <button
+                            onClick={() => navigate('/messages')}
+                            className="flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
+                          >
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Chat
+                          </button>
+                          
+                          {/* View Details Button */}
+                          <button
+                            onClick={() => setShowJobDetails(job)}
+                            className="flex items-center px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            View Details
+                          </button>
+                          
+                          {/* Update Job Status Button */}
+                          <button
+                            onClick={() => setStatusUpdateModal({ isOpen: true, job })}
+                            className="flex items-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            <Settings className="h-4 w-4 mr-2" />
+                            Update Job
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -2155,113 +2260,345 @@ const VendorJobAssignments = ({ status }) => {
       )}
 
 
-      {/* Job Details Modal */}
+      {/* Enhanced Job Details Modal */}
       {showJobDetails && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-2xl max-h-5/6 overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">
-                Job #{showJobDetails.jobNumber} - Details
-              </h3>
-              <button
-                onClick={() => setShowJobDetails(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="p-6 space-y-6">
-              {/* Job Information */}
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Job Title</h4>
-                <p className="text-gray-700">{showJobDetails.title}</p>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Description</h4>
-                <p className="text-gray-700">{showJobDetails.description}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Category</h4>
-                  <p className="text-gray-700 capitalize">{showJobDetails.category}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Priority</h4>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Job #{showJobDetails.jobNumber} - Detailed View
+                </h3>
+                <div className="flex items-center space-x-3 mt-2">
+                  <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+                    showJobDetails.status === 'ASSIGNED' ? 'bg-yellow-100 text-yellow-800' :
+                    showJobDetails.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                    showJobDetails.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                    showJobDetails.status === 'QUOTE_SENT' ? 'bg-purple-100 text-purple-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {showJobDetails.status.replace('_', ' ')}
+                  </span>
+                  <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
                     showJobDetails.priority === 'HIGH' ? 'bg-red-100 text-red-800' :
                     showJobDetails.priority === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
                     'bg-green-100 text-green-800'
                   }`}>
-                    {showJobDetails.priority}
+                    {showJobDetails.priority} Priority
                   </span>
                 </div>
               </div>
-
-              {/* Customer Information */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Customer</h4>
-                <p className="text-gray-700">
-                  {showJobDetails.customerId?.firstName} {showJobDetails.customerId?.lastName}
-                </p>
-                <p className="text-gray-600 text-sm">{showJobDetails.customerId?.email}</p>
+              <button
+                onClick={() => setShowJobDetails(null)}
+                className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-8">
+              {/* Job Overview Section */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <FileText className="h-5 w-5 mr-2 text-blue-600" />
+                  Job Overview
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">Job Title</h5>
+                    <p className="text-gray-900 font-medium">{showJobDetails.title}</p>
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">Category</h5>
+                    <p className="text-gray-900 capitalize">{showJobDetails.category}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">Description</h5>
+                    <p className="text-gray-900 leading-relaxed">{showJobDetails.description}</p>
+                  </div>
+                  {showJobDetails.specialInstructions && (
+                    <div className="md:col-span-2">
+                      <h5 className="text-sm font-medium text-gray-700 mb-2">Special Instructions</h5>
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <p className="text-amber-800">{showJobDetails.specialInstructions}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Location */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Location</h4>
-                <p className="text-gray-700">
-                  {showJobDetails.location?.address}, {showJobDetails.location?.city}
-                </p>
-                {showJobDetails.location?.zipCode && (
-                  <p className="text-gray-600 text-sm">{showJobDetails.location.zipCode}</p>
+              {/* Customer Information Section */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <User className="h-5 w-5 mr-2 text-green-600" />
+                  Customer Information
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">Name</h5>
+                    <p className="text-gray-900 font-medium">
+                      {showJobDetails.customerId?.firstName} {showJobDetails.customerId?.lastName}
+                    </p>
+                  </div>
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">Email</h5>
+                    <p className="text-gray-900">{showJobDetails.customerId?.email}</p>
+                  </div>
+                  {showJobDetails.customerId?.phone && (
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-700 mb-2">Phone</h5>
+                      <div className="flex items-center">
+                        <Phone className="h-4 w-4 mr-2 text-gray-500" />
+                        <a 
+                          href={`tel:${showJobDetails.customerId.phone}`}
+                          className="text-blue-600 hover:text-blue-800 hover:underline"
+                        >
+                          {showJobDetails.customerId.phone}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Location & Timing Section */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6 border border-purple-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <MapPin className="h-5 w-5 mr-2 text-purple-600" />
+                  Location & Scheduling
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-700 mb-2">Service Address</h5>
+                    <p className="text-gray-900">
+                      {showJobDetails.location?.address}
+                      {showJobDetails.location?.city && (
+                        <>
+                          <br />
+                          <span className="text-gray-600">
+                            {showJobDetails.location.city}
+                            {showJobDetails.location.state && `, ${showJobDetails.location.state}`}
+                            {showJobDetails.location.zipCode && ` ${showJobDetails.location.zipCode}`}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  {showJobDetails.requestedTimeSlot && (
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-700 mb-2">Requested Schedule</h5>
+                      <div className="flex items-center text-gray-900">
+                        <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                        <span>
+                          {new Date(showJobDetails.requestedTimeSlot.date).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                      {showJobDetails.requestedTimeSlot.startTime && (
+                        <div className="flex items-center text-gray-600 mt-1">
+                          <Clock className="h-4 w-4 mr-2 text-gray-500" />
+                          <span>
+                            {showJobDetails.requestedTimeSlot.startTime} - {showJobDetails.requestedTimeSlot.endTime}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {showJobDetails.preferredTimeSlots && showJobDetails.preferredTimeSlots.length > 0 && (
+                    <div className="md:col-span-2">
+                      <h5 className="text-sm font-medium text-gray-700 mb-2">Alternative Time Slots</h5>
+                      <div className="space-y-2">
+                        {showJobDetails.preferredTimeSlots.slice(1).map((slot, index) => (
+                          <div key={index} className="flex items-center text-sm text-gray-600">
+                            <Calendar className="h-4 w-4 mr-2" />
+                            <span>
+                              {new Date(slot.date).toLocaleDateString()} 
+                              {slot.startTime && ` - ${slot.startTime} to ${slot.endTime}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Pricing & Quote Section */}
+              <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-6 border border-orange-200">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <DollarSign className="h-5 w-5 mr-2 text-orange-600" />
+                  Pricing & Quote Information
+                </h4>
+                
+                {showJobDetails.vendorQuote && showJobDetails.vendorQuote.amount ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-700 mb-2">Your Quote Amount</h5>
+                        <p className="text-2xl font-bold text-green-600">
+                          ${Number(showJobDetails.vendorQuote.amount).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-700 mb-2">Quote Status</h5>
+                        <span className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${
+                          showJobDetails.status === 'QUOTE_ACCEPTED' ? 'bg-green-100 text-green-800' :
+                          showJobDetails.status === 'QUOTE_SENT' ? 'bg-blue-100 text-blue-800' :
+                          showJobDetails.status === 'QUOTE_REJECTED' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {showJobDetails.status === 'QUOTE_ACCEPTED' ? 'Quote Accepted' :
+                           showJobDetails.status === 'QUOTE_SENT' ? 'Awaiting Customer Response' :
+                           showJobDetails.status === 'QUOTE_REJECTED' ? 'Quote Rejected' :
+                           'Quote Pending'}
+                        </span>
+                        {showJobDetails.status === 'QUOTE_ACCEPTED' && (
+                          <div className="mt-2">
+                            <span className="inline-flex items-center px-3 py-1 text-sm font-medium bg-amber-100 text-amber-800 rounded-full">
+                              💳 Waiting for Customer Payment
+                            </span>
+                            <p className="text-xs text-amber-600 mt-1">
+                              You can start work once payment is completed
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {showJobDetails.vendorQuote.description && (
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-700 mb-2">Quote Description</h5>
+                        <p className="text-gray-900 bg-white rounded-lg p-3 border border-gray-200">
+                          {showJobDetails.vendorQuote.description}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {showJobDetails.vendorQuote.breakdown && (
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-700 mb-2">Cost Breakdown</h5>
+                        <div className="bg-white rounded-lg p-3 border border-gray-200 space-y-2">
+                          {Object.entries(showJobDetails.vendorQuote.breakdown).map(([key, value]) => (
+                            <div key={key} className="flex justify-between text-sm">
+                              <span className="text-gray-600 capitalize">{key.replace('_', ' ')}:</span>
+                              <span className="font-medium">${Number(value).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-600 mb-4">No quote submitted yet</p>
+                    {(showJobDetails.status === 'ASSIGNED' || showJobDetails.status === 'ACCEPTED' || showJobDetails.status === 'IN_DISCUSSION') && (
+                      <button
+                        onClick={() => {
+                          setShowJobDetails(null);
+                          setStatusUpdateModal({ isOpen: true, job: showJobDetails });
+                        }}
+                        className="inline-flex items-center px-4 py-2 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-colors"
+                      >
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Submit Quote
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {/* Timing */}
-              {showJobDetails.requestedTimeSlot && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Requested Time</h4>
-                  <p className="text-gray-700">
-                    {new Date(showJobDetails.requestedTimeSlot.date).toLocaleDateString()}
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    {showJobDetails.requestedTimeSlot.startTime} - {showJobDetails.requestedTimeSlot.endTime}
-                  </p>
+              {/* Work Progress Section */}
+              {showJobDetails.workProgress && showJobDetails.workProgress.percentage > 0 && (
+                <div className="bg-gradient-to-r from-teal-50 to-cyan-50 rounded-lg p-6 border border-teal-200">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <Activity className="h-5 w-5 mr-2 text-teal-600" />
+                    Work Progress
+                  </h4>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-sm font-medium text-gray-700 mb-2">
+                        <span>Completion Progress</span>
+                        <span>{showJobDetails.workProgress.percentage}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div 
+                          className="bg-gradient-to-r from-teal-500 to-teal-600 h-3 rounded-full transition-all duration-300" 
+                          style={{ width: `${showJobDetails.workProgress.percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    {showJobDetails.workProgress.notes && (
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-700 mb-2">Progress Notes</h5>
+                        <p className="text-gray-900 bg-white rounded-lg p-3 border border-gray-200">
+                          {showJobDetails.workProgress.notes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* Pricing */}
-              {showJobDetails.vendorQuote && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Your Quote</h4>
-                  <p className="text-gray-700 text-lg font-semibold">
-                    ${showJobDetails.vendorQuote.amount}
-                  </p>
-                  {showJobDetails.vendorQuote.description && (
-                    <p className="text-gray-600 text-sm mt-1">
-                      {showJobDetails.vendorQuote.description}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Special Instructions */}
-              {showJobDetails.specialInstructions && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Special Instructions</h4>
-                  <p className="text-gray-700">{showJobDetails.specialInstructions}</p>
-                </div>
-              )}
-            </div>
-            <div className="p-4 border-t border-gray-200">
-              <button
-                onClick={() => setShowJobDetails(null)}
-                className="w-full flex items-center justify-center px-4 py-2 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                Close
-              </button>
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3 pt-6 border-t border-gray-200">
+                {showJobDetails.status === 'ASSIGNED' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowJobDetails(null);
+                        handleJobResponse(showJobDetails._id, 'ACCEPTED');
+                      }}
+                      className="flex items-center px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <CheckCircle className="h-5 w-5 mr-2" />
+                      Accept Job
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowJobDetails(null);
+                        handleJobResponse(showJobDetails._id, 'REJECTED');
+                      }}
+                      className="flex items-center px-6 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+                    >
+                      <X className="h-5 w-5 mr-2" />
+                      Reject Job
+                    </button>
+                  </>
+                )}
+                
+                {(['ACCEPTED', 'IN_DISCUSSION', 'QUOTE_SENT', 'QUOTE_REJECTED', 'QUOTE_ACCEPTED', 'PAID', 'IN_PROGRESS'].includes(showJobDetails.status)) && (
+                  <button
+                    onClick={() => {
+                      setShowJobDetails(null);
+                      setStatusUpdateModal({ isOpen: true, job: showJobDetails });
+                    }}
+                    className="flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Settings className="h-5 w-5 mr-2" />
+                    Update Job Status
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => navigate('/messages')}
+                  className="flex items-center px-6 py-3 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  <MessageSquare className="h-5 w-5 mr-2" />
+                  Message Customer
+                </button>
+                
+                <button
+                  onClick={() => setShowJobDetails(null)}
+                  className="flex items-center px-6 py-3 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Close Details
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2300,7 +2637,13 @@ const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
         return [{ value: 'QUOTE_SENT', label: 'Send Quote & Price', description: 'Send pricing quote to customer' }];
       case 'QUOTE_SENT':
         return [{ value: 'QUOTE_SENT', label: 'Update Quote Price', description: 'Update the quote amount' }];
+      case 'QUOTE_REJECTED':
+        return [
+          { value: 'QUOTE_SENT', label: 'Submit New Quote', description: 'Submit a revised quote with new pricing' },
+          { value: 'CANCELLED', label: 'Withdraw from Job', description: 'Withdraw from this job opportunity' }
+        ];
       case 'QUOTE_ACCEPTED':
+        return []; // No actions needed - automatically waiting for payment
       case 'PAID':
         return [{ value: 'IN_PROGRESS', label: 'Start Work', description: 'Begin working on the job' }];
       case 'IN_PROGRESS':
@@ -2326,13 +2669,31 @@ const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
           return;
         }
         
-        await api.vendor.updateJobStatus(job._id, {
+        const quoteData = {
           status: selectedStatus,
           totalAmount: parseFloat(priceAmount),
-          notes: workDetails || `Quote ${job.status === 'QUOTE_SENT' ? 'updated' : 'sent'}: $${priceAmount}`
+          notes: workDetails || `Quote ${job.status === 'QUOTE_SENT' ? 'updated' : job.status === 'QUOTE_REJECTED' ? 'resubmitted' : 'sent'}: $${priceAmount}`
+        };
+        
+        // Add quote description if provided
+        if (workDetails.trim()) {
+          quoteData.quoteDescription = workDetails;
+        }
+        
+        await api.vendor.updateJobStatus(job._id, quoteData);
+        
+        const action = job.status === 'QUOTE_SENT' ? 'updated' : 
+                      job.status === 'QUOTE_REJECTED' ? 'resubmitted' : 'sent';
+        toast.success(`Quote ${action} successfully! Customer will be notified.`);
+        
+      } else if (selectedStatus === 'CANCELLED') {
+        // Handle vendor withdrawal from job
+        await api.vendor.updateJobStatus(job._id, {
+          status: selectedStatus,
+          notes: workDetails || 'Vendor withdrew from this job opportunity'
         });
         
-        toast.success(`Quote ${job.status === 'QUOTE_SENT' ? 'updated' : 'sent'} successfully!`);
+        toast.success('Successfully withdrawn from job');
         
       } else if (selectedStatus === 'IN_PROGRESS' && job.status === 'IN_PROGRESS') {
         // Handle progress updates
@@ -2403,7 +2764,37 @@ const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
         <div className="mb-6">
           <h3 className="text-lg font-medium text-gray-900">Job: {job.jobNumber}</h3>
           <p className="text-gray-600">{job.title}</p>
-          <p className="text-sm text-gray-500">Current Status: <span className="font-medium">{job.status.replace('_', ' ')}</span></p>
+          <div className="flex items-center space-x-4 mt-2">
+            <span className="text-sm text-gray-500">
+              Current Status: <span className={`font-medium ${
+                job.status === 'QUOTE_REJECTED' ? 'text-red-600' :
+                job.status === 'QUOTE_SENT' ? 'text-blue-600' :
+                job.status === 'QUOTE_ACCEPTED' ? 'text-green-600' :
+                'text-gray-700'
+              }`}>
+                {job.status.replace('_', ' ')}
+              </span>
+            </span>
+            {job.vendorQuote?.amount && (
+              <span className="text-sm text-gray-500">
+                Current Quote: <span className="font-medium text-green-600">
+                  ${Number(job.vendorQuote.amount).toLocaleString()}
+                </span>
+              </span>
+            )}
+          </div>
+          
+          {job.status === 'QUOTE_REJECTED' && (
+            <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
+              <div className="flex items-center">
+                <AlertTriangle className="h-4 w-4 text-red-600 mr-2" />
+                <span className="text-sm font-medium text-red-800">Quote Rejected by Customer</span>
+              </div>
+              <p className="text-sm text-red-700 mt-1">
+                You can submit a revised quote or withdraw from this job opportunity.
+              </p>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -2433,20 +2824,78 @@ const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
             </div>
           </div>
 
-          {/* Quote Amount (for quote-related statuses) */}
+          {/* Enhanced Quote Amount Section (for quote-related statuses) */}
           {selectedStatus === 'QUOTE_SENT' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Quote Amount ($)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={priceAmount}
-                onChange={(e) => setPriceAmount(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter quote amount"
-                required
-              />
+            <div className="space-y-4 bg-orange-50 rounded-lg p-4 border border-orange-200">
+              <h4 className="text-lg font-medium text-gray-900 flex items-center">
+                <DollarSign className="h-5 w-5 mr-2 text-orange-600" />
+                {job.status === 'QUOTE_REJECTED' ? 'Submit Revised Quote' : 
+                 job.status === 'QUOTE_SENT' ? 'Update Current Quote' : 'Submit Quote'}
+              </h4>
+              
+              {job.status === 'QUOTE_REJECTED' && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-center">
+                    <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
+                    <span className="text-sm font-medium text-red-800">Previous Quote Rejected</span>
+                  </div>
+                  <p className="text-sm text-red-700 mt-1">
+                    Consider revising your pricing or approach based on customer feedback.
+                  </p>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Total Quote Amount ($) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={priceAmount}
+                    onChange={(e) => setPriceAmount(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    placeholder="Enter total quote amount"
+                    required
+                  />
+                </div>
+                
+                {job.vendorQuote?.amount && job.status === 'QUOTE_REJECTED' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Previous Quote</label>
+                    <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-600">
+                      ${Number(job.vendorQuote.amount).toLocaleString()}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quote Description & Details
+                </label>
+                <textarea
+                  value={workDetails}
+                  onChange={(e) => setWorkDetails(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  placeholder="Describe what's included in this quote, materials, labor, timeline, etc..."
+                />
+              </div>
+              
+              {priceAmount && (
+                <div className="bg-white rounded-lg p-3 border border-gray-200">
+                  <h5 className="text-sm font-medium text-gray-700 mb-2">Quote Summary</h5>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">Total Amount:</span>
+                    <span className="text-xl font-bold text-orange-600">
+                      ${Number(priceAmount).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -2797,6 +3246,11 @@ const TransactionHistory = () => {
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(job.status)}`}>
                       {job.status.replace('_', ' ')}
                     </span>
+                    {job.status === 'QUOTE_ACCEPTED' && (
+                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
+                        💳 Awaiting Payment
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-gray-600 mb-1">{job.description}</p>
                   <div className="flex items-center space-x-4 text-xs text-gray-500">

@@ -104,6 +104,18 @@ customerMembershipSchema.index({ customer: 1, status: 1 });
 customerMembershipSchema.index({ nextBillingDate: 1 });
 customerMembershipSchema.index({ 'currentUsage.month': 1 });
 
+// DUPLICATE PREVENTION: Ensure one active/pending membership per customer
+// This allows only one membership per customer that is not CANCELLED or EXPIRED
+customerMembershipSchema.index(
+  { customer: 1 }, 
+  { 
+    unique: true, 
+    partialFilterExpression: { 
+      status: { $in: ['ACTIVE', 'PENDING', 'SUSPENDED'] } 
+    } 
+  }
+);
+
 // Instance methods
 customerMembershipSchema.methods.hasActiveAccess = function() {
   const now = new Date();

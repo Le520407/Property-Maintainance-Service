@@ -30,7 +30,7 @@ import { LanguageProvider } from './contexts/LanguageContext.js';
 import LoginPage from './pages/auth/LoginPage.jsx';
 import MembershipDashboard from './components/customer/MembershipDashboard.jsx';
 import MembershipPlans from './components/customer/MembershipPlans.jsx';
-import MembershipSuccessSimple from './pages/MembershipSuccessSimple.jsx';
+import MembershipSuccess from './pages/MembershipSuccess.jsx';
 import { MessagesProvider } from './contexts/MessagesContext';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import OrderManagement from './pages/admin/OrderManagement.jsx';
@@ -280,7 +280,7 @@ function App() {
                           <MembershipDashboard />
                         </ProtectedRoute>
                       } />
-                      <Route path="/membership/success" element={<MembershipSuccessSimple />} />
+                      <Route path="/membership/success" element={<MembershipSuccess />} />
                       
                       {/* Vendor Membership Routes */}
                       <Route path="/vendor/membership" element={

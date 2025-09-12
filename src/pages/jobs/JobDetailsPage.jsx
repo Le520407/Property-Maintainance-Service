@@ -104,7 +104,7 @@ const JobDetailsPage = () => {
       setJob(prev => ({ ...prev, status: response }));
       
       if (response === 'QUOTE_ACCEPTED') {
-        toast.success('Quote accepted! The vendor can now start work.');
+        toast.success('Quote accepted! Payment is required before the vendor can start work.');
       } else {
         toast.success('Quote rejected. You can discuss with the vendor for a new quote.');
       }
@@ -184,7 +184,7 @@ const JobDetailsPage = () => {
       case 'ASSIGNED': return 'Assigned to vendor';
       case 'IN_DISCUSSION': return 'Discussing details with vendor';
       case 'QUOTE_SENT': return 'Quote sent for approval';
-      case 'QUOTE_ACCEPTED': return 'Quote accepted, vendor can start work';
+      case 'QUOTE_ACCEPTED': return 'Quote accepted, payment required before work begins';
       case 'QUOTE_REJECTED': return 'Quote rejected, discuss new quote with vendor';
       case 'PAID': return 'Payment completed, work scheduled';
       case 'IN_PROGRESS': return 'Work in progress';
@@ -496,11 +496,100 @@ const JobDetailsPage = () => {
                 </h3>
                 
                 {job.totalAmount ? (
-                  <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-6">
+                  <div className="space-y-6">
+                    {/* Quote Header */}
                     <div className="flex items-center justify-between mb-4">
-                      <span className="text-orange-800 font-medium">Vendor Quote:</span>
-                      <span className="text-3xl font-bold text-orange-600">${job.totalAmount.toLocaleString()}</span>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 block mb-2">Vendor Quote</label>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <p className="text-gray-900">
+                            Quote submitted by {job.vendorId?.firstName} {job.vendorId?.lastName}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-3xl font-bold text-orange-600">${job.totalAmount.toLocaleString()}</p>
+                        <p className="text-sm text-gray-500">Quote Amount</p>
+                      </div>
                     </div>
+
+                    {/* Quote Details Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 block mb-2">Quote Amount</label>
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-lg font-semibold text-gray-900">${job.totalAmount.toLocaleString()}</p>
+                        </div>
+                      </div>
+                      {job.estimatedBudget && (
+                        <div>
+                          <label className="text-sm font-medium text-gray-600 block mb-2">Your Budget</label>
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-lg font-semibold text-gray-900">${job.estimatedBudget.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 block mb-2">Quote Status</label>
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            job.status === 'QUOTE_ACCEPTED' ? 'text-green-800' :
+                            job.status === 'QUOTE_SENT' ? 'text-blue-800' :
+                            job.status === 'QUOTE_REJECTED' ? 'text-red-800' :
+                            job.status === 'PAID' ? 'text-green-800' :
+                            job.status === 'IN_PROGRESS' ? 'text-blue-800' :
+                            job.status === 'COMPLETED' ? 'text-green-800' :
+                            'text-gray-800'
+                          }`}>
+                            {job.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Budget Comparison */}
+                    {job.estimatedBudget && job.totalAmount && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 block mb-2">Budget Comparison</label>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-900">Difference from your budget:</span>
+                            <span className={`font-semibold ${
+                              job.totalAmount <= job.estimatedBudget ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {job.totalAmount <= job.estimatedBudget ? '-' : '+'}$
+                              {Math.abs(job.totalAmount - job.estimatedBudget).toLocaleString()}
+                              {job.totalAmount <= job.estimatedBudget ? ' (Under budget)' : ' (Over budget)'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quote Timeline */}
+                    {job.statusHistory && job.statusHistory.some(status => ['QUOTE_SENT', 'QUOTE_ACCEPTED', 'QUOTE_REJECTED'].includes(status.status)) && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600 block mb-2">Quote Timeline</label>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="space-y-2">
+                            {job.statusHistory
+                              .filter(status => ['QUOTE_SENT', 'QUOTE_ACCEPTED', 'QUOTE_REJECTED'].includes(status.status))
+                              .map((status, index) => (
+                                <div key={index} className="flex items-center justify-between text-sm">
+                                  <span className="text-gray-900">
+                                    {status.status === 'QUOTE_SENT' ? 'Quote submitted' :
+                                     status.status === 'QUOTE_ACCEPTED' ? 'Quote accepted' :
+                                     'Quote rejected'}
+                                  </span>
+                                  <span className="text-gray-500">
+                                    {new Date(status.timestamp).toLocaleDateString()} at {new Date(status.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                  </span>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     
                     {job.status === 'QUOTE_SENT' && (
                       <div className="mt-4">
@@ -527,38 +616,11 @@ const JobDetailsPage = () => {
                     {job.status === 'QUOTE_ACCEPTED' && (
                       <div className="mt-4 space-y-3">
                         <p className="text-sm text-green-600">
-                          ✅ Quote accepted - Ready for payment
+                          ✅ Quote accepted - Payment required before work can begin
                         </p>
                         
-                        <div className="bg-white rounded-lg p-4 border border-orange-300">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-orange-800 font-medium">Total Amount:</span>
-                            <span className="text-xl font-bold text-orange-600">${job.totalAmount?.toLocaleString() || '0'}</span>
-                          </div>
-                          <button
-                            onClick={handlePayment}
-                            disabled={loading}
-                            className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-lg hover:from-orange-600 hover:to-red-600 transition-all duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                          >
-                            {loading ? (
-                              <>
-                                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-                                Processing...
-                              </>
-                            ) : (
-                              <>
-                                <DollarSign className="w-5 h-5 mr-2" />
-                                Pay Now with HitPay
-                              </>
-                            )}
-                          </button>
-                          <p className="text-xs text-orange-600 mt-2 text-center">
-                            Secure payment powered by HitPay
-                          </p>
-                        </div>
-                        
                         {job.payment && job.payment.status === 'PAID' && (
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                          <div className="border border-gray-200 rounded-lg p-4">
                             <p className="text-green-700 font-medium flex items-center">
                               ✅ Payment Completed
                             </p>
@@ -590,8 +652,8 @@ const JobDetailsPage = () => {
               </div>
             )}
 
-            {/* Payment Section */}
-            {job.totalAmount && job.totalAmount > 0 && (
+            {/* Payment Section - Only show after quote is accepted */}
+            {job.totalAmount && job.totalAmount > 0 && job.status === 'QUOTE_ACCEPTED' && (
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
                   <DollarSign className="w-5 h-5 mr-2 text-orange-600" />
@@ -600,7 +662,7 @@ const JobDetailsPage = () => {
                 
                 <div className="bg-white rounded-lg p-4 border border-orange-300">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-orange-800 font-medium">Total Amount:</span>
+                    <span className="text-orange-800 font-medium">Quote Amount:</span>
                     <span className="text-2xl font-bold text-orange-600">${job.totalAmount.toLocaleString()}</span>
                   </div>
                   
@@ -628,7 +690,7 @@ const JobDetailsPage = () => {
                       </p>
                     </>
                   ) : (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="border border-gray-200 rounded-lg p-4">
                       <p className="text-green-700 font-medium flex items-center">
                         ✅ Payment Completed
                       </p>
@@ -641,43 +703,197 @@ const JobDetailsPage = () => {
               </div>
             )}
 
-            {/* Payment Information */}
-            {job.payment && (
+            {/* Payment Information - Only show after payment is completed */}
+            {job.payment && (job.payment.status === 'PAID' || job.status === 'PAID') && (
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
                   <DollarSign className="w-5 h-5 mr-2 text-orange-600" />
                   Payment Information
                 </h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-700 font-medium">Status</span>
-                    <span className={`font-medium px-3 py-1 rounded-full text-sm ${
-                      job.payment.status === 'PAID' ? 'bg-green-100 text-green-800' : 
-                      job.payment.status === 'FAILED' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
-                    }`}>
-                      {job.payment.status}
-                    </span>
+                
+                {/* Payment Summary */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-600 block mb-2">Payment Status</label>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex items-center space-x-3">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                            job.payment.status === 'PAID' ? 'text-green-800' : 
+                            job.payment.status === 'FAILED' ? 'text-red-800' : 
+                            job.payment.status === 'PENDING' ? 'text-yellow-800' :
+                            'text-blue-800'
+                          }`}>
+                            {job.payment.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-bold text-orange-600">
+                        ${Number(job.payment.paidAmount || job.totalAmount || 0).toLocaleString()}
+                      </p>
+                      <p className="text-sm text-gray-500">Amount Paid</p>
+                    </div>
                   </div>
-                  {job.payment.method && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700 font-medium">Method</span>
-                      <span className="text-gray-900">{job.payment.method}</span>
+                </div>
+
+                {/* Payment Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  {/* Transaction Details */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 block mb-2">Transaction Details</label>
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      {/* Generated Reference Number */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 text-sm">Reference Number</span>
+                        <span className="text-gray-900 text-sm font-mono bg-white px-2 py-1 rounded border">
+                          {job.payment.reference || `REF-${job.jobNumber || job._id?.slice(-6).toUpperCase()}-${new Date(job.payment.paidAt || job.payment.createdAt || Date.now()).getFullYear()}`}
+                        </span>
+                      </div>
+                      
+                      {/* Transaction ID */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 text-sm">Transaction ID</span>
+                        <span className="text-gray-900 text-sm font-mono bg-white px-2 py-1 rounded border">
+                          {job.payment.transactionId || job.payment.paymentId || `TXN-${Date.now().toString().slice(-8)}`}
+                        </span>
+                      </div>
+
+                      {/* Payment Gateway */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 text-sm">Payment Gateway</span>
+                        <span className="text-gray-900 text-sm">
+                          {job.payment.gateway || 'HitPay'}
+                        </span>
+                      </div>
+
+                      {/* Payment Method */}
+                      {job.payment.method && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 text-sm">Payment Method</span>
+                          <span className="text-gray-900 text-sm capitalize">
+                            {job.payment.method}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Currency */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 text-sm">Currency</span>
+                        <span className="text-gray-900 text-sm">
+                          {job.payment.currency || 'SGD'}
+                        </span>
+                      </div>
+
+                      {/* Processing Fee */}
+                      {job.payment.processingFee && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 text-sm">Processing Fee</span>
+                          <span className="text-gray-900 text-sm">
+                            ${Number(job.payment.processingFee).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Net Amount */}
+                      <div className="flex justify-between items-center border-t pt-2">
+                        <span className="text-gray-600 text-sm font-medium">Net Amount</span>
+                        <span className="text-gray-900 text-sm font-semibold">
+                          ${Number(job.payment.paidAmount || job.totalAmount || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      
+                      {/* Show message if minimal data */}
+                      {!job.payment.paymentId && !job.payment.reference && !job.payment.transactionId && !job.payment.method && (
+                        <div className="text-sm text-gray-500 italic border-t pt-2">
+                          Limited transaction details available - showing generated reference
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {job.payment.paidAt && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700 font-medium">Paid On</span>
-                      <span className="text-gray-900">
-                        {new Date(job.payment.paidAt).toLocaleDateString()}
-                      </span>
+                  </div>
+
+                  {/* Payment Timeline */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 block mb-2">Payment Timeline</label>
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      {/* Payment Request Created */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 text-sm">Payment Request</span>
+                        <span className="text-gray-900 text-sm">
+                          {job.payment.createdAt ? 
+                            `${new Date(job.payment.createdAt).toLocaleDateString()} at ${new Date(job.payment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` :
+                            'Generated automatically'
+                          }
+                        </span>
+                      </div>
+
+                      {/* Payment Completed */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 text-sm">Payment Completed</span>
+                        <span className="text-gray-900 text-sm">
+                          {job.payment.paidAt ? 
+                            `${new Date(job.payment.paidAt).toLocaleDateString()} at ${new Date(job.payment.paidAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` :
+                            new Date().toLocaleDateString() + ' at ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                          }
+                        </span>
+                      </div>
+
+                      {/* Processing Time */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 text-sm">Processing Time</span>
+                        <span className="text-gray-900 text-sm">
+                          {job.payment.createdAt && job.payment.paidAt ? 
+                            `${Math.round((new Date(job.payment.paidAt) - new Date(job.payment.createdAt)) / 1000 / 60)} minutes` :
+                            'Instant'
+                          }
+                        </span>
+                      </div>
+
+                      {/* Payment Status */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600 text-sm">Status</span>
+                        <span className={`text-sm font-medium ${
+                          job.payment.status === 'PAID' ? 'text-green-600' : 
+                          job.payment.status === 'FAILED' ? 'text-red-600' : 
+                          'text-yellow-600'
+                        }`}>
+                          {job.payment.status || 'COMPLETED'}
+                        </span>
+                      </div>
+
+                      {/* Amount Breakdown */}
+                      <div className="border-t pt-2 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 text-sm">Service Amount</span>
+                          <span className="text-gray-900 text-sm">
+                            ${Number(job.totalAmount || 0).toFixed(2)}
+                          </span>
+                        </div>
+                        {job.payment.processingFee && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 text-sm">Processing Fee</span>
+                            <span className="text-gray-900 text-sm">
+                              ${Number(job.payment.processingFee).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center font-medium">
+                          <span className="text-gray-700 text-sm">Total Paid</span>
+                          <span className="text-gray-900 text-sm">
+                            ${Number(job.payment.paidAmount || job.totalAmount || 0).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Show message if no timeline details */}
+                      {!job.payment.createdAt && !job.payment.paidAt && !job.payment.paidAmount && (
+                        <div className="text-sm text-gray-500 italic border-t pt-2">
+                          Payment timeline showing estimated information
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {job.payment.paidAmount && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-700 font-medium">Amount</span>
-                      <span className="text-gray-900 font-semibold">${job.payment.paidAmount}</span>
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
             )}

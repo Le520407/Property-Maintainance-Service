@@ -138,10 +138,8 @@ class HitPayService {
       formData.append('redirect_url', billingData.redirectUrl || `${process.env.FRONTEND_URL}/membership/success`);
       formData.append('reference', billingData.reference || `billing_${Date.now()}`);
       
-      // Add webhook URL for payment notifications
-      const webhookUrl = `${process.env.WEBHOOK_URL}/api/membership/hitpay-webhook`;
-      formData.append('webhook', webhookUrl);
-      console.log('🔔 Setting webhook URL for recurring billing:', webhookUrl);
+      // Note: Using redirect URL approach instead of webhooks for better development experience
+      console.log('� Using redirect URL for payment success:', billingData.redirectUrl);
       
       if (billingData.paymentMethods && billingData.paymentMethods.length > 0) {
         billingData.paymentMethods.forEach(method => {

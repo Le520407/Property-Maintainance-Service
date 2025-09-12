@@ -247,15 +247,6 @@ const CustomerDashboard = () => {
             </Link>
 
             <Link
-              to="/feedback"
-              className="flex flex-col items-center p-4 rounded-xl border-2 border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-md group"
-              style={{ backgroundColor: '#EC5C0D', color: 'white' }}
-            >
-              <MessageSquare className="h-8 w-8 mb-2" />
-              <span className="text-sm font-medium text-center">Rate & Feedback</span>
-            </Link>
-
-            <Link
               to="/referrals"
               className="flex flex-col items-center p-4 rounded-xl border-2 border-gray-200 hover:border-orange-300 transition-all duration-200 hover:shadow-md group"
               style={{ backgroundColor: '#EC5C0D', color: 'white' }}

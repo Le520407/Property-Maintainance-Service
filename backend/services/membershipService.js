@@ -28,23 +28,11 @@ class MembershipService {
       return membership;
     }
     
-    // If no active, find the most recent cancelled membership that still has access
-    const cancelledMemberships = await CustomerMembership.find({ 
-      customer: customerId,
-      status: 'CANCELLED'
-    }).populate('tier').sort({ createdAt: -1 });
-    
-    // Find the first cancelled membership that still has active access
-    for (const cancelledMembership of cancelledMemberships) {
-      if (cancelledMembership.hasActiveAccess()) {
-        return cancelledMembership;
-      }
-    }
-    
-    // If none have access, return the most recent membership
+    // If no active, return the most recent membership regardless of status
+    // This ensures we get EXPIRED, CANCELLED, or any other status
     membership = await CustomerMembership.findOne({ 
       customer: customerId 
-    }).populate('tier').sort({ createdAt: -1 });
+    }).populate('tier').sort({ updatedAt: -1 });
     
     return membership;
   }
@@ -54,12 +42,9 @@ class MembershipService {
     return await MembershipTier.find({ isActive: true }).sort({ monthlyPrice: 1 });
   }
 
-  // Get customer's current membership (ACTIVE only)
-  async getCustomerMembership(customerId) {
-    return await CustomerMembership.findOne({ 
-      customer: customerId, 
-      status: 'ACTIVE' 
-    }).populate('tier');
+  // Get membership tier by ID
+  async getMembershipTierById(tierId) {
+    return await MembershipTier.findById(tierId);
   }
 
   // Create new membership subscription
@@ -68,9 +53,30 @@ class MembershipService {
     if (!tier) throw new Error('Invalid membership tier');
 
     // Check if customer already has active membership
-    const existingMembership = await this.getCustomerMembership(customerId);
-    if (existingMembership) {
+    const existingActiveMembership = await this.getCustomerMembership(customerId);
+    if (existingActiveMembership) {
       throw new Error('Customer already has an active membership');
+    }
+
+    // ENHANCED CHECK: Ensure customer doesn't have ANY existing membership
+    // This prevents duplicate memberships from being created
+    const anyExistingMembership = await CustomerMembership.findOne({ customer: customerId });
+    if (anyExistingMembership) {
+      console.log(`⚠️  Preventing duplicate membership creation for customer ${customerId}`);
+      console.log(`   Existing membership status: ${anyExistingMembership.status}`);
+      
+      // If there's a non-active membership, we should either:
+      // 1. Update the existing one, or 
+      // 2. Delete it and create new one, or
+      // 3. Reject with clear message
+      
+      if (['PENDING', 'CANCELLED', 'EXPIRED'].includes(anyExistingMembership.status)) {
+        // Delete the old membership and continue with creating new one
+        console.log(`🗑️  Removing old ${anyExistingMembership.status} membership to create new one`);
+        await CustomerMembership.deleteOne({ _id: anyExistingMembership._id });
+      } else {
+        throw new Error(`Customer already has a ${anyExistingMembership.status} membership`);
+      }
     }
 
     // Check if we're in demo mode (using fake Stripe keys)
@@ -214,11 +220,21 @@ class MembershipService {
 
   // Cancel membership
   async cancelMembership(customerId, immediate = false) {
-    const membership = await this.getCustomerMembership(customerId);
-    if (!membership) throw new Error('No active membership found');
+    // Use getCustomerMembershipAnyStatus to handle both ACTIVE and CANCELLED memberships
+    const membership = await this.getCustomerMembershipAnyStatus(customerId);
+    if (!membership) throw new Error('No membership found');
 
-    if (!['ACTIVE', 'PENDING'].includes(membership.status)) {
-      throw new Error('Membership is already cancelled or inactive');
+    // Allow immediate cancellation for CANCELLED memberships that still have access
+    if (membership.status === 'CANCELLED' && !immediate) {
+      throw new Error('Membership is already cancelled. Use immediate cancellation to end access now.');
+    }
+    
+    if (membership.status === 'EXPIRED') {
+      throw new Error('Membership is already expired');
+    }
+    
+    if (!['ACTIVE', 'PENDING', 'CANCELLED'].includes(membership.status)) {
+      throw new Error('Membership cannot be cancelled in its current state');
     }
 
     // Check if we're in demo mode for Stripe
@@ -228,8 +244,8 @@ class MembershipService {
     console.log('Plan cancel - Stripe Demo mode:', isStripeDemo, 'HitPay Demo mode:', isHitPayDemo);
 
     try {
-      // Handle HitPay subscription cancellation - Use saved billing ID
-      if (membership.paymentMethod === 'HITPAY') {
+      // Handle HitPay subscription cancellation - Skip if already cancelled and doing immediate
+      if (membership.paymentMethod === 'HITPAY' && membership.status !== 'CANCELLED') {
         console.log('🛑 Cancelling HitPay subscription...');
         console.log('🔍 Frontend→Backend: PUT /api/membership/cancel (internal API)');
         console.log('🔍 Backend→HitPay: Will use DELETE methods (external APIs)');
@@ -315,8 +331,8 @@ class MembershipService {
         }
       }
 
-      // Handle Stripe subscription cancellation
-      if (membership.stripeSubscriptionId && !isStripeDemo) {
+      // Handle Stripe subscription cancellation - Skip if already cancelled
+      if (membership.stripeSubscriptionId && !isStripeDemo && membership.status !== 'CANCELLED') {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         await stripe.subscriptions.update(membership.stripeSubscriptionId, {
           cancel_at_period_end: !immediate
