@@ -297,24 +297,62 @@ class ReferralService {
       // Calculate commission with enhanced rates for referral agents
       const commissionData = await this.calculateEnhancedCommission(referral, orderAmount);
       
-      // Create commission record
-      const commission = new Commission({
-        referral: referral._id,
-        referrer: referral.referrer,
-        referredUser: customerId,
-        orderId,
-        orderAmount,
-        commissionRate: commissionData.rate,
-        commissionAmount: commissionData.amount,
-        tier: commissionData.tier,
-        status: 'PENDING'
-      });
+      // Handle rewards based on type
+      let commission = null;
+      if (commissionData.rewardType === 'money' && commissionData.amount > 0) {
+        // Create Commission records for money rewards (property agents)
+        commission = new Commission({
+          referral: referral._id,
+          referrer: referral.referrer,
+          referredUser: customerId,
+          orderId,
+          orderAmount,
+          commissionRate: commissionData.rate,
+          commissionAmount: commissionData.amount,
+          tier: commissionData.tier,
+          status: 'PENDING'
+        });
 
-      await commission.save();
+        await commission.save();
 
-      // Update referral earnings
-      referral.totalCommissionEarned += commissionData.amount;
-      referral.pendingCommission += commissionData.amount;
+        // Update referral earnings
+        referral.totalCommissionEarned += commissionData.amount;
+        referral.pendingCommission += commissionData.amount;
+      } else if (commissionData.rewardType === 'points' && commissionData.pointsAmount > 0) {
+        // Award points to customer referrers - BUT ONLY FOR FIRST ORDER
+        const referrerUser = await User.findById(referral.referrer._id);
+        const referredUserData = await User.findById(customerId);
+        
+        if (referrerUser && referredUserData) {
+          // Check if this is the referred user's first completed order
+          if (!referredUserData.hasCompletedFirstOrder) {
+            // Award points only for first order
+            await referrerUser.addPoints(
+              commissionData.pointsAmount,
+              `Referral bonus: ${referredUserData.firstName} ${referredUserData.lastName} completed first order`,
+              {
+                type: 'EARNED_REFERRAL',
+                relatedId: orderId,
+                relatedModel: 'Order',
+                metadata: {
+                  referralLevel: commissionData.tier,
+                  referredUser: customerId,
+                  orderAmount: orderAmount
+                }
+              }
+            );
+            
+            // Mark the referred user as having completed their first order
+            referredUserData.hasCompletedFirstOrder = true;
+            referredUserData.firstOrderCompletedAt = new Date();
+            await referredUserData.save();
+            
+            console.log(`✅ Awarded ${commissionData.pointsAmount} points to customer referrer: ${referrerUser.firstName} ${referrerUser.lastName} (first order by ${referredUserData.firstName})`);
+          } else {
+            console.log(`⏭️ Skipped points award: ${referredUserData.firstName} ${referredUserData.lastName} has already completed their first order`);
+          }
+        }
+      }
 
       // Update agent earnings if this is an agent commission
       if (commissionData.isAgentCommission && referral.referrer) {
@@ -324,8 +362,7 @@ class ReferralService {
           agent.pendingCommission += commissionData.amount;
           await agent.save();
           
-          // Check for tier upgrade
-          await this.updateAgentTier(agent._id);
+          // Note: No tier system for agents, so no tier upgrade needed
         }
       }
 
@@ -345,10 +382,12 @@ class ReferralService {
 
       return {
         success: true,
-        commissionId: commission._id,
+        commissionId: commission ? commission._id : null,
         commissionAmount: commissionData.amount,
         commissionRate: commissionData.rate,
-        tier: commissionData.tier
+        tier: commissionData.tier,
+        rewardType: commissionData.rewardType,
+        pointsAmount: commissionData.pointsAmount || 0
       };
 
     } catch (error) {
@@ -632,30 +671,51 @@ class ReferralService {
     }
   }
 
-  // Calculate enhanced commission for referral agents
+  // Calculate enhanced commission using fixed reward amounts
   async calculateEnhancedCommission(referral, orderAmount) {
+    const { REFERRAL_REWARDS } = require('../models/Referral');
     const referrer = referral.referrer;
     
-    // Check if referrer is a referral agent
-    if (referrer.role === 'referral' && referrer.isAgentActive) {
-      // Use agent's custom commission rate
-      const agentRate = referrer.commissionRate || 15.0;
-      
-      // No tier system for agents - use base commission rate
-      const finalRate = agentRate;
-      const commissionAmount = (orderAmount * finalRate) / 100;
-      
+    // Determine referrer type and get appropriate reward
+    let referrerType = 'customer'; // default
+    let rewardConfig = null;
+    
+    if (referrer.role === 'referral' || referrer.referralUserType === 'property_agent') {
+      referrerType = 'property_agent';
+      rewardConfig = REFERRAL_REWARDS.property_agent.tier1; // Direct referral = tier1
+    } else {
+      referrerType = 'customer';
+      rewardConfig = REFERRAL_REWARDS.customer.tier1; // Direct referral = tier1
+    }
+    
+    if (!rewardConfig) {
+      throw new Error(`No reward configuration found for referrer type: ${referrerType}`);
+    }
+    
+    // For property agents: use fixed money amounts ($5 for direct referrals)
+    // For customers: they get points, not commissions
+    if (rewardConfig.type === 'money') {
       return {
-        rate: finalRate,
-        amount: commissionAmount,
-        tier: referral.referralTier,
-        tierName: 'Agent',
-        isAgentCommission: true,
-        baseRate: agentRate
+        rate: 0, // Fixed amount, not percentage
+        amount: rewardConfig.amount, // Fixed $5 for direct referrals
+        tier: 1, // Direct referral tier
+        tierName: 'Direct Referral',
+        isAgentCommission: referrerType === 'property_agent',
+        rewardType: 'money',
+        description: rewardConfig.description
       };
     } else {
-      // Use standard referral commission calculation
-      return referral.calculateCommission(orderAmount);
+      // Customers get points, not money commissions
+      return {
+        rate: 0,
+        amount: 0, // No money commission for customers
+        tier: 1,
+        tierName: 'Direct Referral',
+        isAgentCommission: false,
+        rewardType: 'points',
+        pointsAmount: rewardConfig.amount,
+        description: rewardConfig.description
+      };
     }
   }
 

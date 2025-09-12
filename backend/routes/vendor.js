@@ -347,6 +347,25 @@ router.patch('/jobs/:jobId/status', authenticateToken, requireRole(['vendor']), 
       const vendor = await Vendor.findOne({ userId: req.user._id });
       await vendor.completeJob();
       await vendor.addEarnings(job.totalAmount);
+      
+      // **FIXED: Trigger referral commission tracking when job is completed**
+      try {
+        const referralService = require('../services/referralService');
+        const commissionResult = await referralService.trackPurchaseConversion(
+          job._id, 
+          job.totalAmount, 
+          job.customerId
+        );
+        
+        if (commissionResult.success) {
+          console.log(`💰 Referral commission tracked for job ${job.jobNumber}:`, commissionResult);
+        } else {
+          console.log(`ℹ️ No referral commission for job ${job.jobNumber}: ${commissionResult.message}`);
+        }
+      } catch (commissionError) {
+        console.error('Error tracking referral commission for job:', commissionError);
+        // Don't fail job completion if commission tracking fails
+      }
     }
 
     res.json({ message: 'Job status updated successfully', job });

@@ -59,7 +59,8 @@
       "Bash(npm ls:*)",
       "Bash(npm start)",
       "Bash(move CustomerDashboard-clean.jsx CustomerDashboard.jsx)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": [],

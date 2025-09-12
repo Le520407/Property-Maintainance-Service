@@ -237,9 +237,12 @@ const ReferralDashboardPage = () => {
       <div className="bg-orange-600 text-white py-16 mb-12">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
           <div className="text-center">
-            <h1 className="text-6xl font-bold mb-6">Referral Dashboard</h1>
+            <h1 className="text-6xl font-bold mb-6">Your Referral Dashboard</h1>
             <p className="text-2xl text-orange-100 mb-8 max-w-4xl mx-auto">
-              Manage your referrals and track your commission earnings with our comprehensive agent tools
+              {dashboardData.userType === 'property_agent' 
+                ? 'Manage your referrals and track your commission earnings with our comprehensive agent tools'
+                : 'Earn points by referring friends to Swift Fix Pro and unlock amazing rewards'
+              }
             </p>
             
             {/* Tab Navigation */}
@@ -364,10 +367,21 @@ const ReferralDashboardPage = () => {
             className="bg-white rounded-xl shadow-lg p-8"
           >
             <div className="flex items-center">
-              <DollarSign className="h-12 w-12 text-yellow-600" />
+              {statistics.rewardType === 'points' ? (
+                <Award className="h-12 w-12 text-yellow-600" />
+              ) : (
+                <DollarSign className="h-12 w-12 text-yellow-600" />
+              )}
               <div className="ml-6">
-                <p className="text-lg font-bold text-gray-600">Total Earned</p>
-                <p className="text-4xl font-bold text-gray-900">${statistics.totalEarned.toFixed(2)}</p>
+                <p className="text-lg font-bold text-gray-600">
+                  {statistics.rewardType === 'points' ? 'Points Earned' : 'Total Earned'}
+                </p>
+                <p className="text-4xl font-bold text-gray-900">
+                  {statistics.rewardType === 'points' 
+                    ? `${statistics.totalEarned} pts`
+                    : `$${statistics.totalEarned.toFixed(2)}`
+                  }
+                </p>
               </div>
             </div>
           </motion.div>
@@ -379,10 +393,21 @@ const ReferralDashboardPage = () => {
             className="bg-white rounded-xl shadow-lg p-8"
           >
             <div className="flex items-center">
-              <Clock className="h-12 w-12 text-orange-600" />
+              {statistics.rewardType === 'points' ? (
+                <Wallet className="h-12 w-12 text-orange-600" />
+              ) : (
+                <Clock className="h-12 w-12 text-orange-600" />
+              )}
               <div className="ml-6">
-                <p className="text-lg font-bold text-gray-600">Pending</p>
-                <p className="text-4xl font-bold text-gray-900">${statistics.pendingEarnings.toFixed(2)}</p>
+                <p className="text-lg font-bold text-gray-600">
+                  {statistics.rewardType === 'points' ? 'Points Balance' : 'Pending'}
+                </p>
+                <p className="text-4xl font-bold text-gray-900">
+                  {statistics.rewardType === 'points' 
+                    ? `${statistics.pointsBalance || 0} pts`
+                    : `$${statistics.pendingEarnings.toFixed(2)}`
+                  }
+                </p>
               </div>
             </div>
           </motion.div>

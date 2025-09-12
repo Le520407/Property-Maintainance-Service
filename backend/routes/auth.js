@@ -78,7 +78,11 @@ router.post('/register', async (req, res) => {
         await referralData.updateTier();
         await referralData.save();
         
-        // **NEW: Build referral chain for the new user**
+        // **FIXED: Properly track signup conversion for dashboard earnings**
+        const referralService = require('../services/referralService');
+        await referralService.trackSignupConversion(referralCode.toUpperCase(), user._id);
+        
+        // **LEGACY: Build referral chain for points/rewards system**
         const referralRewardService = require('../services/referralRewardService');
         await referralRewardService.buildReferralChain(user, referralCode.toUpperCase());
         

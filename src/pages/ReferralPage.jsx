@@ -77,7 +77,23 @@ const ReferralPage = () => {
       
       if (response.ok) {
         const data = await response.json();
-        setReferralData(data);
+        
+        // Map the new API response structure to the expected frontend structure
+        const mappedData = {
+          ...data,
+          stats: {
+            totalReferrals: data.statistics?.totalReferrals || 0,
+            totalPoints: data.statistics?.totalEarned || 0, // Map totalEarned to totalPoints
+            pendingPoints: data.statistics?.pendingEarnings || 0, // Map pendingEarnings to pendingPoints
+            pointsBalance: data.statistics?.pointsBalance || 0, // Add pointsBalance
+            tier: data.currentTier?.name || 'Bronze'
+          }
+        };
+        
+        setReferralData(mappedData);
+        
+        // Set recent activity from referral transactions
+        setRecentActivity(data.recentTransactions || []);
         
         // If user has referral code, get share link
         if (data.hasReferralCode) {
@@ -113,7 +129,6 @@ const ReferralPage = () => {
       if (response.ok) {
         const data = await response.json();
         setWalletData(data);
-        setRecentActivity(data.recentTransactions || []);
       }
     } catch (error) {
       console.error('Failed to load wallet data:', error);
@@ -379,27 +394,43 @@ const ReferralPage = () => {
                       <h3 className="text-2xl font-bold text-gray-900 mb-6">Recent Activity</h3>
                       {recentActivity.length > 0 ? (
                         <div className="space-y-4">
-                          {recentActivity.slice(0, 5).map((activity, index) => (
-                            <div key={index} className="flex items-center justify-between py-3 border-b last:border-b-0">
-                              <div className="flex items-center">
-                                <div className={`w-3 h-3 rounded-full mr-3 ${
-                                  activity.status === 'PAID' ? 'bg-green-500' : 
-                                  activity.status === 'APPROVED' ? 'bg-blue-500' : 'bg-yellow-500'
-                                }`}></div>
-                                <div>
-                                  <div className="text-sm font-medium text-gray-900">
-                                    Points from {activity.referredUser?.firstName} {activity.referredUser?.lastName}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    {new Date(activity.createdAt).toLocaleDateString()}
+                          {recentActivity.slice(0, 5).map((activity, index) => {
+                            // Handle different activity types - points transactions vs commissions
+                            const isPointsTransaction = activity.type === 'EARNED_REFERRAL' || activity.points;
+                            const referredUserName = isPointsTransaction 
+                              ? activity.metadata?.referredUser
+                              : activity.referredUser;
+                            
+                            return (
+                              <div key={index} className="flex items-center justify-between py-3 border-b last:border-b-0">
+                                <div className="flex items-center">
+                                  <div className={`w-3 h-3 rounded-full mr-3 ${
+                                    isPointsTransaction 
+                                      ? (activity.status === 'COMPLETED' ? 'bg-green-500' : 'bg-yellow-500')
+                                      : (activity.status === 'PAID' ? 'bg-green-500' : 
+                                         activity.status === 'APPROVED' ? 'bg-blue-500' : 'bg-yellow-500')
+                                  }`}></div>
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {isPointsTransaction 
+                                        ? `🎉 Earned ${activity.points} points from ${referredUserName?.firstName || 'Unknown'} ${referredUserName?.lastName || 'User'}`
+                                        : `Points from ${activity.referredUser?.firstName} ${activity.referredUser?.lastName}`
+                                      }
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {isPointsTransaction && activity.description 
+                                        ? activity.description 
+                                        : new Date(activity.createdAt).toLocaleDateString()
+                                      }
+                                    </div>
                                   </div>
                                 </div>
+                                <div className="text-sm font-semibold text-green-600">
+                                  +{isPointsTransaction ? activity.points : activity.commissionAmount} pts
+                                </div>
                               </div>
-                              <div className="text-sm font-semibold text-green-600">
-                                +{activity.commissionAmount} pts
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="text-center py-8">
@@ -431,7 +462,7 @@ const ReferralPage = () => {
                         <div className="flex justify-between">
                           <span className="text-lg text-gray-600">Available Points</span>
                           <span className="font-bold text-green-600 text-lg">
-                            {((referralData.stats?.totalPoints || 0) - (referralData.stats?.pendingPoints || 0))} pts
+                            {referralData.stats?.pointsBalance || 0} pts
                           </span>
                         </div>
                       </div>
@@ -866,10 +897,10 @@ const ReferralPage = () => {
                   <Wallet className="w-12 h-12 text-orange-600 mx-auto mb-4" />
                   <div className="text-sm text-orange-600 font-bold">Available Points</div>
                   <div className="text-3xl font-bold text-orange-900 mb-2">
-                    {((referralData.stats?.totalPoints || 0) - (referralData.stats?.pendingPoints || 0))} pts
+                    {referralData.stats?.pointsBalance || 0} pts
                   </div>
                   <div className="text-sm text-orange-600">
-                    ≈ ${(((referralData.stats?.totalPoints || 0) - (referralData.stats?.pendingPoints || 0)) / 10).toFixed(2)} value
+                    ≈ ${((referralData.stats?.pointsBalance || 0) / 10).toFixed(2)} value
                   </div>
                 </div>
                 

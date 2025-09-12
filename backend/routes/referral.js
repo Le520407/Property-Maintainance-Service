@@ -129,21 +129,64 @@ router.get('/dashboard', auth, async (req, res) => {
         message: 'No referral code generated yet'
       });
     }
+
+    // Get current user to check type
+    const currentUser = await User.findById(req.user._id);
+    const isPropertyAgent = currentUser.referralUserType === 'property_agent' || currentUser.role === 'referral';
     
-    // Get commission statistics
-    const commissions = await Commission.find({ referrer: req.user._id });
-    const totalEarned = commissions.reduce((sum, comm) => sum + comm.commissionAmount, 0);
-    const pendingEarnings = commissions
-      .filter(comm => comm.status === 'PENDING' || comm.status === 'APPROVED')
-      .reduce((sum, comm) => sum + comm.commissionAmount, 0);
+    let statistics, recentTransactions;
     
-    // Get recent commissions
-    const recentCommissions = await Commission.find({ referrer: req.user._id })
-      .populate('referredUser', 'firstName lastName')
-      .sort({ createdAt: -1 })
-      .limit(10);
+    if (isPropertyAgent) {
+      // For property agents: show money commissions
+      const commissions = await Commission.find({ referrer: req.user._id });
+      const totalEarned = commissions.reduce((sum, comm) => sum + comm.commissionAmount, 0);
+      const pendingEarnings = commissions
+        .filter(comm => comm.status === 'PENDING' || comm.status === 'APPROVED')
+        .reduce((sum, comm) => sum + comm.commissionAmount, 0);
+      
+      // Get recent commissions
+      recentTransactions = await Commission.find({ referrer: req.user._id })
+        .populate('referredUser', 'firstName lastName')
+        .sort({ createdAt: -1 })
+        .limit(10);
+      
+      statistics = {
+        totalReferrals: referral.totalReferrals,
+        activeReferrals: referral.activeReferrals,
+        totalEarned,
+        pendingEarnings,
+        totalPaid: referral.totalCommissionPaid,
+        rewardType: 'money'
+      };
+    } else {
+      // For customers: show points
+      const PointsTransaction = require('../models/PointsTransaction');
+      
+      // Get recent points transactions
+      recentTransactions = await PointsTransaction.find({ 
+        user: req.user._id,
+        type: 'EARNED_REFERRAL'
+      })
+        .populate('metadata.referredUser', 'firstName lastName')
+        .sort({ createdAt: -1 })
+        .limit(10);
+      
+      // Calculate points earned from referrals
+      const referralPoints = recentTransactions.reduce((sum, txn) => sum + txn.points, 0);
+      
+      statistics = {
+        totalReferrals: referral.totalReferrals,
+        activeReferrals: referral.activeReferrals,
+        totalEarned: referralPoints, // Total points earned from referrals
+        pendingEarnings: 0, // No pending concept for points
+        totalPaid: 0, // Not applicable for points
+        pointsBalance: currentUser.pointsBalance,
+        totalPointsEarned: currentUser.totalPointsEarned,
+        rewardType: 'points'
+      };
+    }
     
-    // Calculate tier progress
+    // Calculate tier progress (same for both types)
     const currentTier = referral.referralTier;
     const nextTier = currentTier < 3 ? currentTier + 1 : null;
     const nextTierRequirement = nextTier ? COMMISSION_RATES[nextTier].minReferrals : null;
@@ -154,6 +197,7 @@ router.get('/dashboard', auth, async (req, res) => {
     res.json({
       hasReferralCode: true,
       referralCode: referral.referralCode,
+      userType: isPropertyAgent ? 'property_agent' : 'customer',
       currentTier: {
         level: currentTier,
         name: COMMISSION_RATES[currentTier].name,
@@ -167,15 +211,10 @@ router.get('/dashboard', auth, async (req, res) => {
         requirement: nextTierRequirement,
         progress: Math.min(progress, 100)
       } : null,
-      statistics: {
-        totalReferrals: referral.totalReferrals,
-        activeReferrals: referral.activeReferrals,
-        totalEarned,
-        pendingEarnings,
-        totalPaid: referral.totalCommissionPaid
-      },
+      statistics,
       referredUsers: referral.referredUsers,
-      recentCommissions
+      recentCommissions: isPropertyAgent ? recentTransactions : [], // For backward compatibility
+      recentTransactions // New field for both types
     });
     
   } catch (error) {
