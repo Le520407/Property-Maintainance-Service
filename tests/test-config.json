@@ -1,0 +1,31 @@
+{
+  "testUser": {
+    "email": "test@admin.com",
+    "password": "test123",
+    "role": "admin"
+  },
+  "testVendor": {
+    "email": "vendor@test.com",
+    "password": "vendor123",
+    "role": "vendor",
+    "skills": [
+      "Plumbing",
+      "Electrical",
+      "Carpentry"
+    ]
+  },
+  "testCustomer": {
+    "email": "customer@test.com",
+    "password": "customer123",
+    "role": "customer"
+  },
+  "baseUrls": {
+    "backend": "http://localhost:5000",
+    "frontend": "http://localhost:3000"
+  },
+  "testTimeouts": {
+    "api": 10000,
+    "page": 30000,
+    "element": 5000
+  }
+}

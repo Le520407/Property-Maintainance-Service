@@ -189,9 +189,16 @@ router.get('/dashboard', authenticateToken, requireRole(['vendor']), async (req,
       return res.status(404).json({ message: 'Vendor profile not found' });
     }
 
-    // Get job statistics
+    // Get job statistics - check both vendorId and assignedVendor fields
     const jobStats = await Job.aggregate([
-      { $match: { vendorId: req.user._id } },
+      { 
+        $match: { 
+          $or: [
+            { vendorId: req.user._id },
+            { assignedVendor: req.user._id }
+          ]
+        } 
+      },
       {
         $group: {
           _id: '$status',
@@ -201,15 +208,73 @@ router.get('/dashboard', authenticateToken, requireRole(['vendor']), async (req,
       }
     ]);
 
+    console.log('📊 Dashboard job stats for vendor:', req.user._id, jobStats);
+
+    // Calculate active jobs count (jobs in progress)
+    const activeStatuses = ['IN_DISCUSSION', 'QUOTE_SENT', 'QUOTE_ACCEPTED', 'PAID', 'IN_PROGRESS'];
+    const activeJobsCount = jobStats
+      .filter(stat => activeStatuses.includes(stat._id))
+      .reduce((total, stat) => total + stat.count, 0);
+
+    // Calculate total earnings from completed jobs
+    // First try Payment records, fallback to Job records if no payments exist
+    const Payment = require('../models/Payment');
+    let earnings = 0;
+    
+    try {
+      const paymentEarnings = await Payment.aggregate([
+        { 
+          $match: { 
+            vendorId: req.user._id,
+            status: 'COMPLETED' 
+          } 
+        },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: '$vendorAmount' }
+          }
+        }
+      ]);
+      
+      earnings = paymentEarnings.length > 0 ? paymentEarnings[0].totalAmount : 0;
+      console.log('💳 Earnings from payments:', earnings);
+      
+      // If no payment earnings, calculate from completed jobs
+      if (earnings === 0) {
+        const completedJobs = jobStats.find(stat => stat._id === 'COMPLETED');
+        if (completedJobs) {
+          // Calculate vendor's portion (assume 90% after 10% platform commission)
+          earnings = completedJobs.totalAmount * 0.9;
+          console.log('💰 Earnings calculated from completed jobs:', completedJobs.totalAmount, '* 0.9 =', earnings);
+        }
+      }
+    } catch (error) {
+      console.error('Error calculating earnings from payments:', error);
+      // Fallback to completed jobs calculation
+      const completedJobs = jobStats.find(stat => stat._id === 'COMPLETED');
+      if (completedJobs) {
+        earnings = completedJobs.totalAmount * 0.9;
+        console.log('💰 Fallback earnings from completed jobs:', earnings);
+      }
+    }
+
+    console.log('💰 Final total earnings for vendor:', req.user._id, earnings);
+
     // Get recent jobs
-    const recentJobs = await Job.find({ vendorId: req.user._id })
+    const recentJobs = await Job.find({ 
+      $or: [
+        { vendorId: req.user._id },
+        { assignedVendor: req.user._id }
+      ]
+    })
       .populate('customerId', 'firstName lastName')
       .sort({ createdAt: -1 })
       .limit(10);
 
-    // Get monthly earnings
+    // Get monthly earnings from payments
     const currentYear = new Date().getFullYear();
-    const monthlyEarnings = await Job.aggregate([
+    const monthlyEarnings = await Payment.aggregate([
       {
         $match: {
           vendorId: req.user._id,
@@ -223,7 +288,7 @@ router.get('/dashboard', authenticateToken, requireRole(['vendor']), async (req,
       {
         $group: {
           _id: { $month: '$createdAt' },
-          earnings: { $sum: '$totalAmount' },
+          earnings: { $sum: '$vendorAmount' },
           jobCount: { $sum: 1 }
         }
       },
@@ -240,14 +305,23 @@ router.get('/dashboard', authenticateToken, requireRole(['vendor']), async (req,
           acc[stat._id.toLowerCase()] = stat.count;
           return acc;
         }, {}),
+        activeJobs: activeJobsCount,
+        totalEarnings: earnings,
         earnings: {
-          total: vendor.totalEarnings,
+          total: earnings,
           monthly: monthlyEarnings
         },
         ratings: ratingStats
       },
       recentJobs
     };
+
+    console.log('✅ Dashboard data calculated:', {
+      totalJobs: jobStats.length,
+      activeJobs: activeJobsCount,
+      totalEarnings: earnings,
+      avgRating: ratingStats?.averageRating || 0
+    });
 
     res.json(dashboardData);
   } catch (error) {
@@ -261,17 +335,29 @@ router.get('/jobs', authenticateToken, requireRole(['vendor']), async (req, res)
   try {
     const { status, page = 1, limit = 10 } = req.query;
     
-    // Debug log removed
+    console.log('🔍 Vendor jobs request:', {
+      vendorId: req.user._id,
+      status,
+      page,
+      limit
+    });
     
     const filter = { vendorId: req.user._id };
     if (status) {
       // Handle multiple statuses separated by comma
       if (status.includes(',')) {
-        filter.status = { $in: status.split(',') };
+        const statusArray = status.split(',').map(s => s.trim());
+        filter.status = { $in: statusArray };
+        console.log('📋 Multiple status filter:', statusArray);
       } else {
         filter.status = status;
+        console.log('📋 Single status filter:', status);
       }
+    } else {
+      console.log('📋 No status filter applied');
     }
+
+    console.log('🔍 Final MongoDB filter:', filter);
 
     const jobs = await Job.find(filter)
       .populate('customerId', 'firstName lastName phone')
@@ -281,7 +367,8 @@ router.get('/jobs', authenticateToken, requireRole(['vendor']), async (req, res)
 
     const total = await Job.countDocuments(filter);
     
-    console.log('Found', jobs.length, 'jobs for vendor', req.user._id); // Debug log
+    console.log('📊 Found', jobs.length, 'jobs for vendor', req.user._id);
+    console.log('📊 Job statuses found:', jobs.map(j => j.status));
     
     // Log job amounts for debugging
     jobs.forEach(job => {

@@ -174,6 +174,12 @@ export const api = {
       body: JSON.stringify(userData),
     }),
     
+    // Update user
+    updateUser: (userId, userData) => request(`/admin/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    }),
+    
     // Update user status
     updateUserStatus: (userId, status) => request(`/admin/users/${userId}/status`, {
       method: 'PATCH',

@@ -1,0 +1,44 @@
+{
+  "name": "property-maintenance-tests",
+  "version": "1.0.0",
+  "description": "Test suite for Property Maintenance Service",
+  "scripts": {
+    "test": "node run-all-tests.js",
+    "test:setup": "node test-setup.js",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:backend": "jest tests/backend",
+    "test:frontend": "jest tests/frontend",
+    "test:integration": "jest tests/integration",
+    "test:api": "node tests/integration/api-tests.js",
+    "test:website": "node tests/integration/website-tests.js",
+    "test:unit": "jest",
+    "pretest": "echo 'Running comprehensive Property Maintenance Service tests...'",
+    "posttest": "echo 'Test execution completed. Check results above.'"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "supertest": "^6.3.0",
+    "puppeteer": "^21.0.0",
+    "axios": "^1.5.0",
+    "@testing-library/jest-dom": "^6.0.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^14.4.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "roots": ["<rootDir>"],
+    "testMatch": [
+      "**/backend/**/*.test.js",
+      "**/frontend/**/*.test.js",
+      "**/integration/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "../backend/**/*.js",
+      "../src/**/*.{js,jsx}",
+      "!**/node_modules/**",
+      "!**/coverage/**"
+    ],
+    "setupFilesAfterEnv": ["<rootDir>/setup.js"]
+  }
+}

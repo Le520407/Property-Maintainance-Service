@@ -209,8 +209,34 @@ router.get('/users', auth, async (req, res) => {
 
     const total = await User.countDocuments(query);
 
+    // For vendors, fetch accurate ratings
+    const usersWithRatings = await Promise.all(users.map(async (user) => {
+      const userObj = user.toObject();
+      
+      if (user.role === 'vendor') {
+        try {
+          // Get accurate rating statistics for vendor
+          const ratingStats = await Rating.getVendorStats(user._id);
+          userObj.accurateRating = {
+            averageRating: ratingStats.averageRating || 0,
+            totalRatings: ratingStats.totalRatings || 0,
+            ratingDistribution: ratingStats.ratingDistribution || {}
+          };
+        } catch (error) {
+          console.error(`Error fetching rating for vendor ${user._id}:`, error);
+          userObj.accurateRating = {
+            averageRating: 0,
+            totalRatings: 0,
+            ratingDistribution: {}
+          };
+        }
+      }
+      
+      return userObj;
+    }));
+
     res.json({
-      users,
+      users: usersWithRatings,
       totalPages: Math.ceil(total / limit),
       currentPage: parseInt(page),
       total
@@ -289,6 +315,132 @@ router.patch('/users/:id/role', auth, async (req, res) => {
   } catch (error) {
     console.error('Update user role error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update user details (Admin permission required)
+router.put('/users/:id', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      password,
+      phone, 
+      city, 
+      country,
+      role,
+      status,
+      skills,
+      experience,
+      hourlyRate,
+      permissions,
+      isSuper
+    } = req.body;
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Prevent non-super admins from modifying admin users
+    if (user.role === 'admin' && !req.user.isSuper) {
+      return res.status(403).json({ message: 'Cannot modify admin user' });
+    }
+
+    // Prevent modifying own account through this endpoint (except super admin)
+    if (user._id.toString() === req.user.userId && !req.user.isSuper) {
+      return res.status(400).json({ message: 'Cannot modify your own account through this endpoint' });
+    }
+
+    // Check if email is being changed and if it already exists
+    if (email && email !== user.email) {
+      const existingUser = await User.findOne({ email, _id: { $ne: req.params.id } });
+      if (existingUser) {
+        return res.status(400).json({ message: 'Email already exists' });
+      }
+    }
+
+    // Update basic fields
+    if (firstName) user.firstName = firstName;
+    if (lastName) user.lastName = lastName;
+    if (firstName || lastName) {
+      user.fullName = `${firstName || user.firstName} ${lastName || user.lastName}`;
+    }
+    if (email) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+    if (city) user.city = city;
+    if (country) user.country = country;
+
+    // Update password only if provided (for security)
+    if (password && password.trim() !== '') {
+      user.password = password;
+    }
+
+    // Role-specific updates
+    if (role && ['customer', 'vendor', 'admin'].includes(role)) {
+      const oldRole = user.role;
+      user.role = role;
+
+      // Handle role change
+      if (oldRole !== role) {
+        if (role === 'admin') {
+          // When changing to admin, set default permissions
+          user.permissions = permissions || ['manage_content', 'view_analytics'];
+          user.isSuper = isSuper && req.user.isSuper; // Only super admin can create other super admins
+        } else {
+          // When changing from admin to other roles, clear admin-specific fields
+          user.permissions = [];
+          user.isSuper = false;
+        }
+
+        // Clear vendor-specific fields when changing from vendor
+        if (oldRole === 'vendor' && role !== 'vendor') {
+          user.skills = [];
+          user.experience = 0;
+          user.hourlyRate = 0;
+        }
+      }
+    }
+
+    // Vendor-specific fields
+    if (user.role === 'vendor' || role === 'vendor') {
+      if (skills !== undefined) user.skills = Array.isArray(skills) ? skills : [];
+      if (experience !== undefined) user.experience = experience;
+      if (hourlyRate !== undefined) user.hourlyRate = hourlyRate;
+    }
+
+    // Admin-specific fields (only super admin can modify these)
+    if ((user.role === 'admin' || role === 'admin') && req.user.isSuper) {
+      if (permissions !== undefined) {
+        user.permissions = permissions.filter(p => 
+          ['manage_users', 'manage_content', 'manage_services', 'manage_payments', 'view_analytics', 'manage_system'].includes(p)
+        );
+      }
+      if (isSuper !== undefined) user.isSuper = isSuper;
+    }
+
+    // Status update
+    if (status && ['ACTIVE', 'INACTIVE', 'PENDING', 'SUSPENDED'].includes(status)) {
+      user.status = status;
+    }
+
+    await user.save();
+
+    // Return user info (excluding password)
+    const userResponse = user.toJSON();
+    res.json({
+      message: 'User updated successfully',
+      user: userResponse
+    });
+
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
