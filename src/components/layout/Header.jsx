@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCart } from '../../contexts/CartContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { ShoppingCart, User, Menu, X, Gift, MessageCircle } from 'lucide-react';
+import { ShoppingCart, User, Menu, X, MessageCircle } from 'lucide-react';
 import { cachedApi } from '../../utils/globalCache';
 
 // Global function to clear messages visited flag (can be called from anywhere)
@@ -383,14 +383,7 @@ const Header = () => {
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => setIsUserMenuOpen(false)}
                         >
-                          ⚙️ Manage Subscription
-                        </Link>
-                        <Link
-                          to="/membership/plans"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          👑 Membership Plans
+                          Manage Subscription
                         </Link>
                       </>
                     )}
@@ -405,7 +398,6 @@ const Header = () => {
                             setIsUserMenuOpen(false);
                           }}
                         >
-                          <User className="w-4 h-4 inline mr-2" />
                           {t('profile')}
                         </Link>
                         <Link
@@ -416,7 +408,6 @@ const Header = () => {
                             setIsUserMenuOpen(false);
                           }}
                         >
-                          <Gift className="w-4 h-4 inline mr-2" />
                           Referrals
                         </Link>
                       </>
@@ -432,7 +423,6 @@ const Header = () => {
                             setIsUserMenuOpen(false);
                           }}
                         >
-                          <User className="w-4 h-4 inline mr-2" />
                           {t('profile')}
                         </Link>
                         <Link
@@ -440,7 +430,6 @@ const Header = () => {
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => setIsUserMenuOpen(false)}
                         >
-                          <Gift className="w-4 h-4 inline mr-2" />
                           {user.role === 'referral' ? 'Referral Dashboard' : 'Referrals'}
                         </Link>
                       </>

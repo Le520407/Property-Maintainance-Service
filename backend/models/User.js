@@ -271,6 +271,16 @@ const userSchema = new mongoose.Schema({
   tacEnabled: {
     type: Boolean,
     default: false // Disabled by default, users can enable in profile
+  },
+  
+  // Session management
+  refreshToken: {
+    type: String,
+    default: null
+  },
+  refreshTokenExpiresAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

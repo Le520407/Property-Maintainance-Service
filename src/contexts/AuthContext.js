@@ -99,8 +99,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await api.auth.login({ email, password });
       
-      // 保存token
+      // Save tokens
       apiUtils.setToken(response.token);
+      if (response.refreshToken) {
+        apiUtils.setRefreshToken(response.refreshToken);
+      }
       
       // 转换用户数据格式以匹配前端期望
       const userData = {

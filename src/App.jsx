@@ -1,5 +1,6 @@
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Route, Routes } from 'react-router-dom';
+import SessionManager from './components/auth/SessionManager';
 
 import AboutPage from './pages/AboutPage.jsx';
 import AgentAgreementPage from './pages/legal/AgentAgreementPage.jsx';
@@ -121,6 +122,7 @@ function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
+        <SessionManager />
         <MessagesProvider>
           <CartProvider>
           <AnimatePresence mode="wait">
