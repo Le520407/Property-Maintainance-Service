@@ -1,45 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Users, 
-  Search, 
-  Filter, 
-  Plus, 
-  Edit2, 
-  Trash2, 
+import {
+  AlertCircle,
+  Award,
+  Briefcase,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Copy,
+  Crown,
+  DollarSign,
+  Download,
+  Edit2,
   Eye,
   EyeOff,
-  Shield,
-  UserCheck,
-  UserX,
-  Clock,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  Crown,
+  Filter,
+  Gift,
   Grid,
   List,
-  Download,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Star,
-  Award,
-  DollarSign,
-  Briefcase,
+  Mail,
+  MapPin,
   MoreHorizontal,
-  Gift,
-  Copy,
+  Phone,
+  Plus,
+  RefreshCw,
+  Search,
+  Settings,
+  Shield,
+  Star,
   ToggleLeft,
   ToggleRight,
+  Trash2,
   TrendingUp,
-  Settings
+  UserCheck,
+  UserX,
+  Users,
+  XCircle
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { AnimatePresence, motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const UserManagement = () => {
   const { user } = useAuth();
