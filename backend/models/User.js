@@ -265,7 +265,13 @@ const userSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
-  }]
+  }],
+  
+  // Security preferences
+  tacEnabled: {
+    type: Boolean,
+    default: false // Disabled by default, users can enable in profile
+  }
 }, {
   timestamps: true
 });

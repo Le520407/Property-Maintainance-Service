@@ -15,15 +15,79 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshUserData = async () => {
+    try {
+      const response = await api.get('/auth/me');
+      if (response.user) {
+        // Convert server user data to frontend format
+        const userData = {
+          id: response.user._id || response.user.id,
+          name: response.user.fullName,
+          firstName: response.user.firstName,
+          lastName: response.user.lastName,
+          email: response.user.email,
+          role: response.user.role,
+          status: response.user.status,
+          avatar: response.user.avatar,
+          phone: response.user.phone,
+          address: response.user.address || '',
+          city: response.user.city || '',
+          state: response.user.state || '',
+          zipCode: response.user.zipCode || '',
+          country: response.user.country || 'Malaysia',
+          tacEnabled: response.user.tacEnabled || false,
+          wallet: {
+            balance: response.user.totalSpent || 0,
+            currency: 'SGD'
+          },
+          referralCode: `SF${String(response.user._id || response.user.id).slice(0, 8).toUpperCase()}`,
+          referralCount: 0,
+          referralEarnings: 0,
+          // Admin specific data
+          ...(response.user.role === 'admin' && {
+            permissions: response.user.permissions || [],
+            isSuper: response.user.isSuper || false
+          }),
+          // Technician/vendor specific data
+          ...((['technician', 'vendor'].includes(response.user.role)) && {
+            skills: response.user.skills || [],
+            experience: response.user.experience || 0,
+            hourlyRate: response.user.hourlyRate || 0,
+            rating: response.user.rating || 0,
+            totalReviews: response.user.totalReviews || 0,
+            completedJobs: response.user.completedJobs || 0,
+            subscriptionPlan: response.user.subscriptionPlan || 'basic'
+          }),
+          // Customer specific data
+          ...(response.user.role === 'customer' && {
+            totalBookings: response.user.totalBookings || 0,
+            subscriptionPlan: response.user.subscriptionPlan || 'BASIC'
+          })
+        };
+        
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        return userData;
+      }
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
-    // 检查token和用户信息
+    // Check token and user info
     const token = apiUtils.getToken();
     const savedUser = localStorage.getItem('user');
     
-    if (token && apiUtils.isTokenValid(token) && savedUser) {
-      setUser(JSON.parse(savedUser));
+    if (token && apiUtils.isTokenValid(token)) {
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
+      }
+      // Refresh user data from server to get latest preferences
+      refreshUserData().catch(console.error);
     } else if (token && !apiUtils.isTokenValid(token)) {
-      // Token过期，清除本地数据
+      // Token expired, clear local data
       apiUtils.removeToken();
       localStorage.removeItem('user');
     }
@@ -54,6 +118,7 @@ export const AuthProvider = ({ children }) => {
         state: response.user.state || '',
         zipCode: response.user.zipCode || '',
         country: response.user.country || 'Malaysia',
+        tacEnabled: response.user.tacEnabled || false,
         wallet: {
           balance: response.user.totalSpent || 0,
           currency: 'SGD'
@@ -87,7 +152,12 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('user', JSON.stringify(userData));
       return { success: true, user: userData };
     } catch (error) {
-      return { success: false, error: apiUtils.handleError(error) };
+      // Check if it's a TAC requirement error
+      const errorMessage = apiUtils.handleError(error);
+      if (error.message && error.message.includes('Two-Factor Authentication is required')) {
+        return { success: false, error: errorMessage, requiresTAC: true };
+      }
+      return { success: false, error: errorMessage };
     }
   };
 
@@ -202,6 +272,60 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
+  // TAC methods
+  const requestTAC = async (email, password) => {
+    try {
+      const response = await api.post('/auth/tac/request', { email, password });
+      return { success: true, message: response.message };
+    } catch (error) {
+      return { success: false, error: apiUtils.handleError(error) };
+    }
+  };
+
+  const verifyTAC = async (email, code) => {
+    try {
+      const response = await api.post('/auth/tac/verify', { email, code });
+      
+      // Store token and user data
+      apiUtils.setToken(response.token);
+      
+      // Use similar user data transformation as login
+      const userData = {
+        id: response.user._id || response.user.id,
+        name: response.user.fullName,
+        firstName: response.user.firstName,
+        lastName: response.user.lastName,
+        email: response.user.email,
+        role: response.user.role,
+        status: response.user.status,
+        avatar: response.user.avatar,
+        phone: response.user.phone,
+        tacEnabled: response.user.tacEnabled || false,
+        // Add other fields as needed
+      };
+
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      return { success: true, user: userData };
+    } catch (error) {
+      return { success: false, error: apiUtils.handleError(error) };
+    }
+  };
+
+  const updateTACPreference = async (tacEnabled) => {
+    try {
+      const response = await api.put('/auth/tac-preference', { tacEnabled });
+      updateUser({ tacEnabled });
+      
+      // Also refresh user data from server to ensure consistency
+      await refreshUserData();
+      
+      return { success: true, message: response.message };
+    } catch (error) {
+      return { success: false, error: apiUtils.handleError(error) };
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -209,7 +333,11 @@ export const AuthProvider = ({ children }) => {
     register,
     vendorRegister,
     logout,
-    updateUser
+    updateUser,
+    refreshUserData,
+    requestTAC,
+    verifyTAC,
+    updateTACPreference
   };
 
   return (

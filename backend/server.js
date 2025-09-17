@@ -25,6 +25,7 @@ const membershipRoutes = require('./routes/membership');
 const hitpayRoutes = require('./routes/hitpay');
 const imageRoutes = require('./routes/images');
 const cartRoutes = require('./routes/cart');
+const tacRoutes = require('./routes/tacAuth');
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.get('/api/health', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api', tacRoutes);  // TAC routes (tac/request, tac/verify)
 app.use('/api/users', userRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/jobs', jobRoutes);
