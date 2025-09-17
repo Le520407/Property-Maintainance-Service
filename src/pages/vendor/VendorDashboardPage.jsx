@@ -1950,7 +1950,11 @@ const VendorJobAssignments = ({ status }) => {
     try {
       setLoading(true);
       console.log('🔄 Loading jobs with status:', status); // Debug log
-      const response = await api.vendor.getJobs(status);
+      
+      // Pass status as parameter object to API
+      const params = status ? { status } : {};
+      const response = await api.vendor.getJobs(params);
+      
       console.log('📋 Jobs API response:', response); // Debug log
       const jobsArray = response.jobs || [];
       console.log('💼 Jobs loaded:', jobsArray.length, 'jobs'); // Debug log
@@ -2069,7 +2073,11 @@ const VendorJobAssignments = ({ status }) => {
              status === 'COMPLETED' ? 'Completed Jobs' : 'Jobs'}
           </h3>
           <p className="text-sm text-gray-500 mt-1">
-            Status filter: {status} | Found: {jobs.length} jobs
+            {status === 'ASSIGNED' ? 'Jobs assigned to you that need your response' : 
+             status.includes('IN_DISCUSSION') ? 'Jobs you have accepted and are working on' :
+             status.includes('COMPLETED,CANCELLED,REJECTED') ? 'All completed, cancelled, and rejected jobs' :
+             status === 'COMPLETED' ? 'Successfully completed jobs only' : 
+             `Status filter: ${status} | Found: ${jobs.length} jobs`}
           </p>
         </div>
         <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded">
@@ -2082,10 +2090,10 @@ const VendorJobAssignments = ({ status }) => {
           <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
           <p className="text-gray-600">
-            {status === 'ASSIGNED' ? 'No pending assignments at the moment.' :
-             status.includes('IN_DISCUSSION') ? 'No active jobs currently.' :
-             status.includes('COMPLETED,CANCELLED,REJECTED') ? 'No job history available yet.' :
-             status === 'COMPLETED' ? 'No completed jobs yet.' : 'No jobs available.'}
+            {status === 'ASSIGNED' ? 'No jobs have been assigned to you yet. Check back later for new assignments.' :
+             status.includes('IN_DISCUSSION') ? 'No active jobs at the moment. Accepted jobs will appear here.' :
+             status.includes('COMPLETED,CANCELLED,REJECTED') ? 'No job history available yet. Completed and ended jobs will appear here.' :
+             status === 'COMPLETED' ? 'No completed jobs yet. Successfully finished jobs will appear here.' : 'No jobs available.'}
           </p>
         </div>
       ) : (
