@@ -1702,10 +1702,16 @@ const VendorDashboardPage = () => {
 
     // Job Assignments Section
     if (activeSection === 'assignments') {
+      // Pending assignments: Jobs assigned to vendor but not yet accepted
       if (activeTab === 'pending') return <VendorJobAssignments status="ASSIGNED" />;
+      
+      // Active jobs: Jobs that vendor has accepted and are in progress
       if (activeTab === 'active') return <VendorJobAssignments status="IN_DISCUSSION,QUOTE_SENT,QUOTE_ACCEPTED,PAID,IN_PROGRESS" />;
-      if (activeTab === 'rejected') return <VendorJobAssignments status="QUOTE_REJECTED" />;
+      
+      // History: All completed, cancelled, or rejected jobs
       if (activeTab === 'history') return <VendorJobAssignments status="COMPLETED,CANCELLED,REJECTED" />;
+      
+      // Completed: Only successfully completed jobs
       if (activeTab === 'completed') return <VendorJobAssignments status="COMPLETED" />;
     }
 
@@ -1807,7 +1813,9 @@ const VendorDashboardPage = () => {
             className="bg-white rounded-lg shadow-lg p-6 text-center"
           >
             <DollarSign className="h-12 w-12 text-green-500 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-gray-900">$8,450</h3>
+            <h3 className="text-2xl font-bold text-gray-900">
+              ${dashboardData?.stats?.totalEarnings ? dashboardData.stats.totalEarnings.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
+            </h3>
             <p className="text-gray-600">Total Earnings</p>
           </motion.div>
           
@@ -1818,7 +1826,9 @@ const VendorDashboardPage = () => {
             className="bg-white rounded-lg shadow-lg p-6 text-center"
           >
             <FileText className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-gray-900">28</h3>
+            <h3 className="text-2xl font-bold text-gray-900">
+              {dashboardData?.stats?.activeJobs || 0}
+            </h3>
             <p className="text-gray-600">Active Jobs</p>
           </motion.div>
           
@@ -1829,7 +1839,9 @@ const VendorDashboardPage = () => {
             className="bg-white rounded-lg shadow-lg p-6 text-center"
           >
             <Award className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-            <h3 className="text-2xl font-bold text-gray-900">4.8</h3>
+            <h3 className="text-2xl font-bold text-gray-900">
+              {dashboardData?.stats?.ratings?.averageRating ? dashboardData.stats.ratings.averageRating.toFixed(1) : '0.0'}
+            </h3>
             <p className="text-gray-600">Customer Rating</p>
           </motion.div>
         </div>
@@ -1938,9 +1950,7 @@ const VendorJobAssignments = ({ status }) => {
     try {
       setLoading(true);
       console.log('🔄 Loading jobs with status:', status); // Debug log
-      console.log('🔍 Status type:', typeof status, 'Value:', JSON.stringify(status)); // Debug log
-      
-      const response = await api.vendor.getJobs({ status });
+      const response = await api.vendor.getJobs(status);
       console.log('📋 Jobs API response:', response); // Debug log
       const jobsArray = response.jobs || [];
       console.log('💼 Jobs loaded:', jobsArray.length, 'jobs'); // Debug log
@@ -2052,16 +2062,14 @@ const VendorJobAssignments = ({ status }) => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-medium text-gray-900">
-            {status === 'ASSIGNED' ? 'Pending Job Assignments' : 
+            {status === 'ASSIGNED' ? 'Pending Assignments' : 
              status.includes('IN_DISCUSSION') ? 'Active Jobs' :
              status === 'QUOTE_REJECTED' ? 'Rejected Quotes - Action Required' :
              status.includes('COMPLETED,CANCELLED,REJECTED') ? 'Job History' :
              status === 'COMPLETED' ? 'Completed Jobs' : 'Jobs'}
           </h3>
           <p className="text-sm text-gray-500 mt-1">
-            {status === 'QUOTE_REJECTED' ? 
-              'These jobs have rejected quotes. You can submit revised quotes or withdraw.' :
-              `Status filter: ${status} | Found: ${jobs.length} jobs`}
+            Status filter: {status} | Found: {jobs.length} jobs
           </p>
         </div>
         <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded">
@@ -2076,7 +2084,6 @@ const VendorJobAssignments = ({ status }) => {
           <p className="text-gray-600">
             {status === 'ASSIGNED' ? 'No pending assignments at the moment.' :
              status.includes('IN_DISCUSSION') ? 'No active jobs currently.' :
-             status === 'QUOTE_REJECTED' ? 'No rejected quotes at the moment. Great job!' :
              status.includes('COMPLETED,CANCELLED,REJECTED') ? 'No job history available yet.' :
              status === 'COMPLETED' ? 'No completed jobs yet.' : 'No jobs available.'}
           </p>

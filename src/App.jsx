@@ -15,6 +15,7 @@ import BookingPage from './pages/BookingPage.jsx';
 import CartPage from './pages/CartPage.jsx';
 import { CartProvider } from './contexts/CartContext';
 import CheckoutPage from './pages/CheckoutPage.jsx';
+import CompliancePage from './pages/legal/CompliancePage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import CustomerDashboard from './pages/customer/CustomerDashboard.jsx';
 import CustomerFeedback from './pages/customer/CustomerFeedback.jsx';
@@ -49,6 +50,7 @@ import React from 'react';
 import ReferralDashboardPage from './pages/ReferralDashboardPage.jsx';
 import ReferralPage from './pages/ReferralPage.jsx';
 import RegisterSelectionPage from './pages/auth/RegisterSelectionPage.jsx';
+import SLAPage from './pages/legal/SLAPage.jsx';
 import ServiceDetailPage from './pages/ServiceDetailPage.jsx';
 import ServicesPage from './pages/ServicesPage.jsx';
 import SimpleDashboard from './pages/dashboard/SimpleDashboard.jsx';
@@ -204,6 +206,8 @@ function App() {
                       {/* Legal Pages */}
                       <Route path="/terms" element={<TermsPage />} />
                       <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                      <Route path="/sla" element={<SLAPage />} />
+                      <Route path="/compliance" element={<CompliancePage />} />
                       <Route path="/vendor-agreement" element={<VendorAgreementPage />} />
                       <Route path="/agent-agreement" element={<AgentAgreementPage />} />
                       

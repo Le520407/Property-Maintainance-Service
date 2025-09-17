@@ -1,45 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Users, 
-  Search, 
-  Filter, 
-  Plus, 
-  Edit2, 
-  Trash2, 
+import {
+  AlertCircle,
+  Award,
+  Briefcase,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Copy,
+  Crown,
+  DollarSign,
+  Download,
+  Edit2,
   Eye,
   EyeOff,
-  Shield,
-  UserCheck,
-  UserX,
-  Clock,
-  Mail,
-  Phone,
-  MapPin,
-  Calendar,
-  Crown,
+  Filter,
+  Gift,
   Grid,
   List,
-  Download,
-  RefreshCw,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Star,
-  Award,
-  DollarSign,
-  Briefcase,
+  Mail,
+  MapPin,
   MoreHorizontal,
-  Gift,
-  Copy,
+  Phone,
+  Plus,
+  RefreshCw,
+  Search,
+  Settings,
+  Shield,
+  Star,
   ToggleLeft,
   ToggleRight,
+  Trash2,
   TrendingUp,
-  Settings
+  UserCheck,
+  UserX,
+  Users,
+  XCircle
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { AnimatePresence, motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 const UserManagement = () => {
   const { user } = useAuth();
@@ -121,6 +122,26 @@ const UserManagement = () => {
     { value: 'manage_payments', label: 'Manage Payments' },
     { value: 'view_analytics', label: 'View Analytics' },
     { value: 'manage_system', label: 'Manage System' }
+  ];
+
+  // 技能选项 (Vendor Skills Options)
+  const skillsOptions = [
+    { value: 'plumbing', label: 'Plumbing' },
+    { value: 'electrical', label: 'Electrical' },
+    { value: 'carpentry', label: 'Carpentry' },
+    { value: 'painting', label: 'Painting' },
+    { value: 'hvac', label: 'HVAC (Heating & Cooling)' },
+    { value: 'appliance_repair', label: 'Appliance Repair' },
+    { value: 'flooring', label: 'Flooring Installation' },
+    { value: 'roofing', label: 'Roofing' },
+    { value: 'gardening', label: 'Gardening & Landscaping' },
+    { value: 'cleaning', label: 'Cleaning Services' },
+    { value: 'pest_control', label: 'Pest Control' },
+    { value: 'handyman', label: 'General Handyman' },
+    { value: 'locksmith', label: 'Locksmith' },
+    { value: 'masonry', label: 'Masonry & Brickwork' },
+    { value: 'drywall', label: 'Drywall & Insulation' },
+    { value: 'windows_doors', label: 'Windows & Doors' }
   ];
 
   // 获取用户列表
@@ -364,6 +385,62 @@ const UserManagement = () => {
     }
   };
 
+  // 编辑用户
+  const handleEditUser = async (e) => {
+    e.preventDefault();
+    try {
+      // Create a copy of formData and remove password if it's empty
+      const updateData = { ...formData };
+      if (!updateData.password || updateData.password.trim() === '') {
+        delete updateData.password;
+      }
+
+      const response = await fetch(`http://localhost:5000/api/admin/users/${editingUser._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      if (response.ok) {
+        await fetchUsers();
+        await fetchStats();
+        resetForm();
+        toast.success(`User updated successfully!`);
+      } else {
+        const error = await response.json();
+        toast.error(error.message);
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error('Error updating user');
+    }
+  };
+
+  // 开始编辑用户
+  const startEditUser = (userData) => {
+    setEditingUser(userData);
+    setFormData({
+      firstName: userData.firstName || '',
+      lastName: userData.lastName || '',
+      email: userData.email || '',
+      password: '', // Don't pre-fill password for security
+      phone: userData.phone || '',
+      city: userData.city || '',
+      country: userData.country || 'Singapore',
+      role: userData.role || 'customer',
+      skills: processSkillsArray(userData.skills || []),
+      experience: userData.experience || 0,
+      hourlyRate: userData.hourlyRate || 0,
+      permissions: userData.permissions || [],
+      isSuper: userData.isSuper || false,
+      status: userData.status || 'ACTIVE'
+    });
+    setShowCreateForm(true); // Reuse the same modal
+  };
+
   // 重置表单
   const resetForm = () => {
     setFormData({
@@ -403,6 +480,69 @@ const UserManagement = () => {
         ? prev.permissions.filter(p => p !== permission)
         : [...prev.permissions, permission]
     }));
+  };
+
+  // 处理技能变更
+  const handleSkillChange = (skill) => {
+    setFormData(prev => ({
+      ...prev,
+      skills: prev.skills.includes(skill)
+        ? prev.skills.filter(s => s !== skill)
+        : [...prev.skills, skill]
+    }));
+  };
+
+  // 获取技能标签
+  const getSkillLabel = (skillValue) => {
+    const skill = skillsOptions.find(s => s.value === skillValue);
+    return skill ? skill.label : skillValue;
+  };
+
+  // 映射旧技能到新技能值 (Migration helper)
+  const mapLegacySkillToValue = (skillText) => {
+    const skillLower = skillText.toLowerCase().trim();
+    const mapping = {
+      'plumbing': 'plumbing',
+      'electrical': 'electrical', 
+      'carpentry': 'carpentry',
+      'painting': 'painting',
+      'hvac': 'hvac',
+      'heating': 'hvac',
+      'cooling': 'hvac',
+      'appliance repair': 'appliance_repair',
+      'appliances': 'appliance_repair',
+      'flooring': 'flooring',
+      'roofing': 'roofing',
+      'gardening': 'gardening',
+      'landscaping': 'gardening',
+      'cleaning': 'cleaning',
+      'pest control': 'pest_control',
+      'handyman': 'handyman',
+      'general': 'handyman',
+      'locksmith': 'locksmith',
+      'masonry': 'masonry',
+      'brickwork': 'masonry',
+      'drywall': 'drywall',
+      'insulation': 'drywall',
+      'windows': 'windows_doors',
+      'doors': 'windows_doors'
+    };
+    
+    return mapping[skillLower] || skillLower;
+  };
+
+  // 处理技能数组，支持旧格式迁移
+  const processSkillsArray = (skills) => {
+    if (!Array.isArray(skills)) return [];
+    
+    return skills.map(skill => {
+      // If skill is already a valid value, keep it
+      if (skillsOptions.some(opt => opt.value === skill)) {
+        return skill;
+      }
+      // Otherwise, try to map it from legacy format
+      return mapLegacySkillToValue(skill);
+    }).filter(skill => skillsOptions.some(opt => opt.value === skill));
   };
 
   // 获取状态样式
@@ -512,7 +652,7 @@ const UserManagement = () => {
                   <div className="flex flex-wrap gap-1">
                     {userData.skills.slice(0, 2).map((skill, idx) => (
                       <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                        {skill}
+                        {getSkillLabel(skill)}
                       </span>
                     ))}
                     {userData.skills.length > 2 && (
@@ -537,7 +677,12 @@ const UserManagement = () => {
                 <p className="text-xs text-gray-500 mb-1">Rating</p>
                 <div className="flex items-center">
                   <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                  <span className="text-sm font-medium">{userData.rating || userData.vendorProfile?.averageRating || 0}/5</span>
+                  <span className="text-sm font-medium">
+                    {userData.accurateRating ? 
+                      `${userData.accurateRating.averageRating.toFixed(1)}/5 (${userData.accurateRating.totalRatings} reviews)` :
+                      `${userData.rating || userData.vendorProfile?.averageRating || 0}/5`
+                    }
+                  </span>
                 </div>
               </div>
             </div>
@@ -656,7 +801,7 @@ const UserManagement = () => {
         
         <div className="flex items-center space-x-2">
           <button 
-            onClick={() => setEditingUser(userData)}
+            onClick={() => startEditUser(userData)}
             className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
             title="Edit user"
           >
@@ -711,7 +856,7 @@ const UserManagement = () => {
               <h1 className="text-3xl font-bold text-white">User Management</h1>
               <p className="text-orange-100 mt-1">Manage users, approve vendors, and monitor system activity</p>
               {stats.pendingUsers > 0 && (
-                <div className="flex items-center mt-2 px-3 py-2 bg-orange-800 text-orange-100 rounded-lg inline-flex">
+                <div className="flex items-center mt-2 px-3 py-2 bg-orange-800 text-orange-100 rounded-lg">
                   <AlertCircle className="w-4 h-4 mr-2" />
                   {stats.pendingUsers} user{stats.pendingUsers > 1 ? 's' : ''} pending approval
                 </div>
@@ -1101,7 +1246,9 @@ const UserManagement = () => {
               >
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">Create New User</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      {editingUser ? 'Edit User' : 'Create New User'}
+                    </h2>
                     <button
                       onClick={resetForm}
                       className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
@@ -1110,7 +1257,7 @@ const UserManagement = () => {
                     </button>
                   </div>
 
-                  <form onSubmit={handleCreateUser} className="space-y-6">
+                  <form onSubmit={editingUser ? handleEditUser : handleCreateUser} className="space-y-6">
                     <div className="grid md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1202,14 +1349,19 @@ const UserManagement = () => {
 
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Password *
+                          Password {editingUser ? '' : '*'}
                         </label>
+                        {editingUser && (
+                          <p className="text-sm text-gray-500 mb-2">
+                            Leave blank to keep current password
+                          </p>
+                        )}
                         <input
                           type="password"
                           name="password"
                           value={formData.password}
                           onChange={handleInputChange}
-                          required
+                          required={!editingUser}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                       </div>
@@ -1219,21 +1371,35 @@ const UserManagement = () => {
                     {formData.role === 'vendor' && (
                       <div className="border-t pt-6">
                         <h3 className="text-lg font-medium text-gray-900 mb-4">Vendor Information</h3>
-                        <div className="grid md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Skills (comma-separated)
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="e.g. Plumbing, Electrical, Carpentry"
-                              onChange={(e) => {
-                                const skills = e.target.value.split(',').map(s => s.trim()).filter(s => s);
-                                setFormData({...formData, skills});
-                              }}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
+                        
+                        {/* Skills Section */}
+                        <div className="mb-6">
+                          <label className="block text-sm font-medium text-gray-700 mb-3">
+                            Skills & Services
+                          </label>
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-4">
+                            {skillsOptions.map(skill => (
+                              <div key={skill.value} className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  id={skill.value}
+                                  checked={formData.skills.includes(skill.value)}
+                                  onChange={() => handleSkillChange(skill.value)}
+                                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <label htmlFor={skill.value} className="ml-2 block text-sm text-gray-700 cursor-pointer">
+                                  {skill.label}
+                                </label>
+                              </div>
+                            ))}
                           </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Select all skills and services this vendor can provide
+                          </p>
+                        </div>
+
+                        {/* Experience and Rate */}
+                        <div className="grid md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Years of Experience
@@ -1244,6 +1410,20 @@ const UserManagement = () => {
                               value={formData.experience}
                               onChange={handleInputChange}
                               min="0"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Hourly Rate ($)
+                            </label>
+                            <input
+                              type="number"
+                              name="hourlyRate"
+                              value={formData.hourlyRate}
+                              onChange={handleInputChange}
+                              min="0"
+                              step="0.01"
                               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                           </div>
@@ -1296,7 +1476,7 @@ const UserManagement = () => {
                         type="submit"
                         className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                       >
-                        Create {formData.role.charAt(0).toUpperCase() + formData.role.slice(1)}
+                        {editingUser ? 'Update User' : `Create ${formData.role.charAt(0).toUpperCase() + formData.role.slice(1)}`}
                       </button>
                       <button
                         type="button"
