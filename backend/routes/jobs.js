@@ -525,7 +525,20 @@ router.get('/:id/recommended-vendors', auth, requireRole('admin'), async (req, r
 // Auto-assign job to best vendor (Admin only)
 router.post('/:id/auto-assign', auth, requireRole('admin'), async (req, res) => {
   try {
+    console.log(`🤖 Auto-assign request for job ID: ${req.params.id}`);
+    
+    // Check if job exists first
+    const job = await Job.findById(req.params.id);
+    if (!job) {
+      console.log(`❌ Job not found: ${req.params.id}`);
+      return res.status(404).json({ message: 'Job not found' });
+    }
+    
+    console.log(`📋 Job found: ${job.jobNumber}, Status: ${job.status}, Category: ${job.category}`);
+    
     const result = await VendorAssignmentService.autoAssignJob(req.params.id);
+    
+    console.log(`✅ Auto-assignment successful for job ${job.jobNumber}`);
     
     res.json({
       message: 'Job auto-assigned successfully',
@@ -536,7 +549,8 @@ router.post('/:id/auto-assign', auth, requireRole('admin'), async (req, res) => 
     });
 
   } catch (error) {
-    console.error('Error auto-assigning job:', error);
+    console.error('❌ Error auto-assigning job:', error);
+    console.error('Full error stack:', error.stack);
     res.status(500).json({ 
       message: 'Failed to auto-assign job',
       error: error.message 

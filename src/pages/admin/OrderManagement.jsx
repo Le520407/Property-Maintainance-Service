@@ -185,9 +185,6 @@ const OrderManagement = () => {
       // Check if response has the expected structure
       if (response?.assignedVendor?.userId) {
         toast.success(`Job auto-assigned to ${response.assignedVendor.userId?.firstName || 'Unknown'} ${response.assignedVendor.userId?.lastName || 'User'}!`);
-        if (response.recommendationReason) {
-          toast.success(`Reason: ${response.recommendationReason}`);
-        }
       } else {
         toast.success('Job auto-assigned successfully!');
         console.warn('Auto-assign response structure:', response);
@@ -668,7 +665,7 @@ const OrderManagement = () => {
             if (isMounted) {
               if (response.recommendedVendors?.length > 0) {
                 setModalVendors(response.recommendedVendors);
-                toast.success(`Found ${response.recommendedVendors.length} AI-recommended vendors!`);
+                toast.success(`Found ${response.recommendedVendors.length} recommended vendors!`);
               } else {
                 // Fallback to all verified vendors when no specific recommendations
                 console.log('No recommended vendors found, falling back to all vendors');
@@ -783,9 +780,9 @@ const OrderManagement = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-semibold text-lg mb-2 flex items-center">
-                  🤖 Smart Auto-Assignment
+                  Smart Auto-Assignment
                 </h4>
-                <p className="text-blue-100 mb-1">Let our AI find and assign the best vendor automatically</p>
+                <p className="text-blue-100 mb-1">Automatically find and assign the best vendor</p>
                 <p className="text-blue-200 text-sm">• Analyzes vendor ratings, experience & availability</p>
                 <p className="text-blue-200 text-sm">• Considers location proximity & service category</p>
               </div>
@@ -832,21 +829,21 @@ const OrderManagement = () => {
                 className="text-sm text-orange-600 hover:text-orange-800 flex items-center disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 mr-1 ${isLoadingVendors ? 'animate-spin' : ''}`} />
-                Get AI Recommendations
+                Get Recommendations
               </button>
             </div>
             {vendorItems.length > 0 ? (
               <div className="space-y-3 max-h-60 overflow-y-auto">
                 {vendorItems.map((vendor) => {
                   const vendorId = vendor.stableId;
-                  const hasAIScore = vendor.totalScore !== undefined;
+                  const hasScore = vendor.totalScore !== undefined;
                   
                   return (
                     <label
                       key={vendor._id}
                       className={`flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 ${
                         selectedVendor === vendorId ? 'border-orange-500 bg-orange-50' : 'border-gray-300'
-                      } ${hasAIScore ? 'border-l-4 border-l-blue-500' : ''}`}
+                      } ${hasScore ? 'border-l-4 border-l-blue-500' : ''}`}
                     >
                       <input
                         type="radio"
@@ -863,16 +860,16 @@ const OrderManagement = () => {
                               <div className="font-medium">
                                 {vendor.userId?.firstName || vendor.firstName || 'Unknown'} {vendor.userId?.lastName || vendor.lastName || 'User'}
                               </div>
-                              {hasAIScore && (
+                              {hasScore && (
                                 <div className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                  AI Score: {vendor.totalScore.toFixed(0)}/100
+                                  Score: {vendor.totalScore.toFixed(0)}/100
                                 </div>
                               )}
                             </div>
                             {vendor.companyName && (
                               <div className="text-sm text-gray-600">{vendor.companyName}</div>
                             )}
-                            {hasAIScore && vendor.recommendationReason && (
+                            {hasScore && vendor.recommendationReason && (
                               <div className="text-sm text-green-600 mt-1">
                                 💡 {vendor.recommendationReason}
                               </div>
@@ -888,7 +885,7 @@ const OrderManagement = () => {
                             <div className="text-sm text-gray-500">
                               {vendor.vendorStats?.totalJobs || vendor.totalJobsCompleted || 0} jobs completed
                             </div>
-                            {hasAIScore && (
+                            {hasScore && (
                               <div className="text-xs text-blue-600">
                                 {vendor.vendorStats?.experienceLevel || 'New'}
                               </div>
@@ -898,7 +895,7 @@ const OrderManagement = () => {
                         <div className="mt-2 text-sm text-gray-600">
                           <div>Categories: {vendor.serviceCategories?.join(', ')}</div>
                           <div>Service Area: {vendor.serviceArea}</div>
-                          {hasAIScore && vendor.scoreBreakdown && (
+                          {hasScore && vendor.scoreBreakdown && (
                             <div className="mt-2 text-xs">
                               <div className="grid grid-cols-3 gap-2">
                                 <div>Rating: {vendor.scoreBreakdown.rating?.score.toFixed(0)}</div>
@@ -1416,11 +1413,35 @@ const OrderManagement = () => {
                 {/* Quick Actions */}
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       const pendingJobs = jobs.filter(job => job.status === 'PENDING');
                       if (pendingJobs.length > 0) {
                         toast(`Auto-assigning ${pendingJobs.length} pending orders...`);
-                        // Bulk auto-assign logic would go here
+                        
+                        let successCount = 0;
+                        let failureCount = 0;
+                        
+                        // Process each pending job
+                        for (const job of pendingJobs) {
+                          try {
+                            await api.post(`/jobs/${job._id}/auto-assign`);
+                            successCount++;
+                          } catch (error) {
+                            console.error(`Failed to auto-assign job ${job.jobNumber}:`, error);
+                            failureCount++;
+                          }
+                        }
+                        
+                        // Show results
+                        if (successCount > 0) {
+                          toast.success(`${successCount} job${successCount > 1 ? 's' : ''} auto-assigned successfully!`);
+                        }
+                        if (failureCount > 0) {
+                          toast.error(`${failureCount} job${failureCount > 1 ? 's' : ''} failed to auto-assign`);
+                        }
+                        
+                        // Refresh the job list
+                        fetchJobs();
                       } else {
                         toast('No pending orders to assign');
                       }
@@ -1428,7 +1449,7 @@ const OrderManagement = () => {
                     className="px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
                     title="Auto-assign all pending orders"
                   >
-                    🤖 Auto-assign All
+                    Auto-assign All
                   </button>
                 </div>
                 
@@ -1694,7 +1715,7 @@ const OrderManagement = () => {
                         className="flex items-center justify-center px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
                         title="Auto-assign to best vendor"
                       >
-                        🤖
+                        ⚡
                       </button>
                       <button
                         onClick={() => {
@@ -1859,7 +1880,7 @@ const OrderManagement = () => {
                               className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50 transition-colors"
                               title="Auto-assign to best vendor"
                             >
-                              🤖
+                              ⚡
                             </button>
                             <button
                               onClick={() => {
@@ -1953,7 +1974,7 @@ const OrderManagement = () => {
                         className="flex items-center justify-center px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
                         title="Auto-assign"
                       >
-                        🤖
+                        ⚡
                       </button>
                       <button
                         onClick={() => {

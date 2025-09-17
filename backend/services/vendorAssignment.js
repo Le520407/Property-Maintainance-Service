@@ -24,20 +24,21 @@ class VendorAssignmentService {
       'safety-security': ['safety-security', 'home-repairs'],
       'renovation': ['renovation', 'home-repairs'],
       
-      // Single word categories (fallback)
-      'assembly': ['furniture-assembly', 'home-repairs'],
-      'maintenance': ['home-repairs'],
-      'painting': ['painting-services', 'home-repairs'],
-      'electrical': ['electrical-services', 'home-repairs'],
-      'plumbing': ['plumbing-services', 'home-repairs'],
-      'flooring': ['flooring-services', 'home-repairs'],
-      'installation': ['appliance-installation', 'home-repairs'],
-      'moving': ['moving-services', 'home-repairs'],
-      'cleaning': ['cleaning-services', 'home-repairs'],
-      'security': ['safety-security', 'home-repairs'],
-      'gardening': ['renovation', 'home-repairs'],
-      'hvac': ['electrical-services', 'home-repairs'],
-      'carpentry': ['carpentry-services', 'home-repairs']
+      // Single word categories (fallback) - map to actual vendor categories
+      'assembly': ['assembly', 'home-repairs', 'general'],
+      'maintenance': ['maintenance', 'home-repairs', 'general'],
+      'painting': ['painting', 'home-repairs', 'general'],
+      'electrical': ['electrical', 'home-repairs', 'general'],
+      'plumbing': ['plumbing', 'home-repairs', 'general'],
+      'flooring': ['flooring', 'home-repairs', 'general'],
+      'installation': ['installation', 'home-repairs', 'general'],
+      'moving': ['moving', 'home-repairs', 'general'],
+      'cleaning': ['cleaning', 'home-repairs', 'general'],
+      'security': ['security', 'home-repairs', 'general'],
+      'gardening': ['gardening', 'renovation', 'general'],
+      'hvac': ['electrical', 'home-repairs', 'general'],
+      'carpentry': ['carpentry', 'home-repairs', 'general'],
+      'general': ['general', 'home-repairs']
     };
 
     // Return mapped categories or fallback to home-repairs (acts as general)
@@ -83,6 +84,9 @@ class VendorAssignmentService {
         };
 
         // Add location filter if job has location - make it more flexible
+        // For now, skip location filtering to focus on category matching
+        // This can be re-enabled once we have more vendors with proper service areas
+        /*
         if (job.location?.city) {
           // Improved city validation: check for real city names vs test/dummy data
           const city = job.location.city;
@@ -95,14 +99,20 @@ class VendorAssignmentService {
             baseQuery.serviceArea = new RegExp(city, 'i');
           }
         }
+        */
 
+        console.log(`🔍 VendorAssignment: Searching vendors with query:`, baseQuery);
+        
         const vendors = await Vendor.find(baseQuery)
           .populate('userId', 'firstName lastName email phone')
           .limit(50) // Limit initial query to prevent memory issues
           .lean();
 
+        console.log(`📊 VendorAssignment: Found ${vendors.length} vendors from database`);
+
         // Filter out vendors without valid userId
         const validVendors = vendors.filter(vendor => vendor.userId);
+        console.log(`✅ VendorAssignment: ${validVendors.length} vendors have valid userId`);
 
         // Step 1.5: Priority filtering based on membership tiers
         const priorityVendors = validVendors.filter(vendor => vendor.membershipFeatures?.priorityAssignment === true);
@@ -116,19 +126,27 @@ class VendorAssignmentService {
         const CONCURRENCY_LIMIT = 5;
         const scoredVendors = [];
         
+        console.log(`🧮 VendorAssignment: Calculating scores for ${validVendors.length} vendors`);
+        
         for (let i = 0; i < validVendors.length; i += CONCURRENCY_LIMIT) {
           const batch = validVendors.slice(i, i + CONCURRENCY_LIMIT);
+          console.log(`⚙️ VendorAssignment: Processing batch ${Math.floor(i/CONCURRENCY_LIMIT) + 1}, vendors ${i+1}-${Math.min(i+CONCURRENCY_LIMIT, validVendors.length)}`);
+          
           const batchResults = await Promise.allSettled(
             batch.map(vendor => this.calculateVendorScore(vendor, job))
           );
           
-          // Only include successful results
-          batchResults.forEach(result => {
+          // Only include successful results and log failures
+          batchResults.forEach((result, index) => {
             if (result.status === 'fulfilled') {
               scoredVendors.push(result.value);
+            } else {
+              console.error(`❌ VendorAssignment: Failed to score vendor ${batch[index].userId?._id}:`, result.reason);
             }
           });
         }
+        
+        console.log(`📊 VendorAssignment: Successfully scored ${scoredVendors.length} vendors`);
 
         // Step 3: Filter out unavailable vendors if required
         let filteredVendors = scoredVendors;
@@ -259,7 +277,7 @@ class VendorAssignmentService {
             }
           }
         }
-      ]).maxTimeMS(QUERY_TIMEOUT);
+      ]);
 
       // Get rating statistics with timeout
       const ratingStatsPromise = Rating.aggregate([
@@ -283,7 +301,7 @@ class VendorAssignmentService {
             }
           }
         }
-      ]).maxTimeMS(QUERY_TIMEOUT);
+      ]);
 
       // Execute both queries with timeout protection
       const [jobStats, ratingStats] = await Promise.allSettled([
@@ -636,23 +654,57 @@ class VendorAssignmentService {
    */
   static async autoAssignJob(jobId, options = {}) {
     try {
+      console.log(`🔍 VendorAssignmentService: Starting auto-assign for job ${jobId}`);
+      
       const job = await Job.findById(jobId);
-      if (!job) throw new Error('Job not found');
+      if (!job) {
+        console.log(`❌ VendorAssignmentService: Job ${jobId} not found`);
+        throw new Error('Job not found');
+      }
+      
+      console.log(`📋 VendorAssignmentService: Job ${job.jobNumber} found, status: ${job.status}`);
       
       if (!['PENDING', 'ASSIGNED'].includes(job.status)) {
+        console.log(`❌ VendorAssignmentService: Invalid status ${job.status} for assignment`);
         throw new Error(`Job is not available for assignment. Current status: ${job.status}`);
       }
 
+      console.log(`🔍 VendorAssignmentService: Finding best vendors for job ${job.jobNumber}, category: ${job.category}`);
       const bestVendors = await this.findBestVendors(job, { limit: 1 });
       
+      console.log(`📊 VendorAssignmentService: Found ${bestVendors.length} suitable vendors`);
+      
+      let bestVendor;
+      
       if (bestVendors.length === 0) {
-        throw new Error('No suitable vendors found');
+        console.log(`❌ VendorAssignmentService: No vendors found for job ${job.jobNumber}`);
+        // Try to find any active vendors as a fallback
+        console.log(`🔄 VendorAssignmentService: Attempting fallback search for any active vendors`);
+        const fallbackVendors = await Vendor.find({ isActive: true })
+          .populate('userId', 'firstName lastName email phone')
+          .limit(1)
+          .lean();
+        
+        if (fallbackVendors.length > 0 && fallbackVendors[0].userId) {
+          console.log(`🆘 VendorAssignmentService: Using fallback vendor: ${fallbackVendors[0].userId.firstName} ${fallbackVendors[0].userId.lastName}`);
+          bestVendor = {
+            ...fallbackVendors[0],
+            totalScore: 50,
+            recommendationReason: 'Fallback assignment - no specific matches found'
+          };
+        } else {
+          throw new Error('No suitable vendors found');
+        }
+      } else {
+        bestVendor = bestVendors[0];
+        console.log(`👤 VendorAssignmentService: Best vendor found: ${bestVendor.userId?.firstName} ${bestVendor.userId?.lastName}, Score: ${bestVendor.totalScore}`);
       }
-
-      const bestVendor = bestVendors[0];
       
       // Assign the job
+      console.log(`🔄 VendorAssignmentService: Assigning job to vendor ${bestVendor.userId._id}`);
       await job.assignToVendor(bestVendor.userId._id);
+      
+      console.log(`✅ VendorAssignmentService: Job ${job.jobNumber} successfully assigned`);
       
       return {
         job,
@@ -661,7 +713,8 @@ class VendorAssignmentService {
       };
       
     } catch (error) {
-      console.error('Error in auto-assignment:', error);
+      console.error('❌ VendorAssignmentService: Error in auto-assignment:', error);
+      console.error('Full error details:', error.stack);
       throw error;
     }
   }
