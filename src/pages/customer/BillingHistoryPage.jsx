@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaFileInvoice, FaDownload, FaFilter, FaCreditCard, FaCalendarAlt, FaChartLine } from 'react-icons/fa';
+import { FaFileInvoice, FaDownload, FaFilter, FaCreditCard, FaCalendarAlt, FaChartLine, FaTools } from 'react-icons/fa';
 import { MdPayment, MdUndo, MdCancel, MdCheck, MdPending } from 'react-icons/md';
 import CustomerSubscriptionNav from '../../components/customer/CustomerSubscriptionNav';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const BillingHistoryPage = () => {
   const { subscriptionId } = useParams();
@@ -103,6 +105,8 @@ const BillingHistoryPage = () => {
       case 'SUBSCRIPTION':
       case 'RENEWAL':
         return <FaCreditCard className="text-blue-500" />;
+      case 'SERVICE':
+        return <FaTools className="text-green-500" />;
       case 'PRORATION':
         return <FaChartLine className="text-purple-500" />;
       case 'CANCELLATION':
@@ -146,9 +150,215 @@ const BillingHistoryPage = () => {
     }));
   };
 
-  const exportBillingHistory = () => {
-    // TODO: Implement CSV export
-    console.log('Export billing history');
+  const [exportLoading, setExportLoading] = useState(false);
+
+  const exportBillingHistory = async () => {
+    if (!billingData || !billingData.billingHistory || billingData.billingHistory.length === 0) {
+      alert('No billing data to export');
+      return;
+    }
+
+    setExportLoading(true);
+    
+    try {
+      // Prepare data for export
+      const exportData = billingData.billingHistory.map((entry, index) => {
+        const baseData = {
+          'No.': index + 1,
+          'Date': new Date(entry.createdAt).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit'
+          }),
+          'Type': entry.type,
+          'Description': entry.description || 'N/A',
+          'Amount (SGD)': entry.amount ? `$${entry.amount.toFixed(2)}` : '$0.00',
+          'Status': entry.status,
+          'Payment Method': entry.paymentMethod || 'N/A'
+        };
+
+        // Add specific details based on type
+        if (entry.type === 'SERVICE') {
+          if (entry.jobId) {
+            // Job-based service
+            baseData['Job/Order Number'] = entry.jobNumber || entry.jobId;
+            baseData['Category'] = entry.serviceDetails?.category || 'N/A';
+            baseData['Priority'] = entry.serviceDetails?.priority || 'N/A';
+            baseData['Emergency'] = entry.serviceDetails?.isEmergency ? 'Yes' : 'No';
+            baseData['Job Status'] = entry.jobStatus || 'N/A';
+          } else if (entry.orderId) {
+            // Order-based service
+            baseData['Job/Order Number'] = entry.orderNumber || entry.orderId;
+            baseData['Order Status'] = entry.orderStatus || 'N/A';
+            baseData['Items Count'] = entry.serviceDetails?.totalItems || 'N/A';
+          }
+        } else if (entry.type === 'SUBSCRIPTION') {
+          baseData['Subscription ID'] = entry.subscriptionId || 'N/A';
+          baseData['Property Type'] = entry.propertyType || 'N/A';
+          baseData['Billing Cycle'] = entry.billingCycle || 'N/A';
+          baseData['Subscription Status'] = entry.subscriptionStatus || 'N/A';
+        }
+
+        return baseData;
+      });
+
+      // Create workbook and worksheet
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+      // Set column widths for better readability
+      const columnWidths = [
+        { wch: 5 },   // No.
+        { wch: 12 },  // Date
+        { wch: 12 },  // Type
+        { wch: 30 },  // Description
+        { wch: 15 },  // Amount
+        { wch: 12 },  // Status
+        { wch: 15 },  // Payment Method
+        { wch: 20 },  // Job/Order Number
+        { wch: 15 },  // Category/Property Type
+        { wch: 12 },  // Priority/Billing Cycle
+        { wch: 10 },  // Emergency/Items Count
+        { wch: 15 }   // Job/Subscription Status
+      ];
+      worksheet['!cols'] = columnWidths;
+
+      // Style the header row
+      const headers = Object.keys(exportData[0] || {});
+      headers.forEach((header, colIndex) => {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: colIndex });
+        if (!worksheet[cellAddress]) worksheet[cellAddress] = { t: 's', v: header };
+        
+        // Add styling to header cells
+        worksheet[cellAddress].s = {
+          font: { bold: true, color: { rgb: 'FFFFFF' } },
+          fill: { fgColor: { rgb: '2563EB' } }, // Blue background
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin', color: { rgb: '000000' } },
+            bottom: { style: 'thin', color: { rgb: '000000' } },
+            left: { style: 'thin', color: { rgb: '000000' } },
+            right: { style: 'thin', color: { rgb: '000000' } }
+          }
+        };
+      });
+
+      // Style data rows with alternating colors and status-based formatting
+      exportData.forEach((row, rowIndex) => {
+        const actualRowIndex = rowIndex + 1; // +1 because headers are in row 0
+        
+        headers.forEach((header, colIndex) => {
+          const cellAddress = XLSX.utils.encode_cell({ r: actualRowIndex, c: colIndex });
+          if (!worksheet[cellAddress]) return;
+          
+          let fillColor = rowIndex % 2 === 0 ? 'F8FAFC' : 'FFFFFF'; // Alternating row colors
+          let fontColor = '1F2937'; // Dark gray text
+          
+          // Special formatting for status and amount columns
+          if (header === 'Status') {
+            switch (row[header]) {
+              case 'PAID':
+                fillColor = 'D1FAE5'; // Light green
+                fontColor = '065F46'; // Dark green
+                break;
+              case 'PENDING':
+                fillColor = 'FEF3C7'; // Light yellow
+                fontColor = '92400E'; // Dark yellow
+                break;
+              case 'FAILED':
+                fillColor = 'FEE2E2'; // Light red
+                fontColor = '991B1B'; // Dark red
+                break;
+              case 'CANCELLED':
+                fillColor = 'F3F4F6'; // Light gray
+                fontColor = '374151'; // Dark gray
+                break;
+              case 'REFUNDED':
+                fillColor = 'DBEAFE'; // Light blue
+                fontColor = '1E40AF'; // Dark blue
+                break;
+              default:
+                // Keep default colors for unknown statuses
+                break;
+            }
+          }
+          
+          if (header === 'Amount (SGD)') {
+            // Bold font for amounts
+            worksheet[cellAddress].s = {
+              font: { bold: true, color: { rgb: fontColor } },
+              fill: { fgColor: { rgb: fillColor } },
+              alignment: { horizontal: 'right', vertical: 'center' },
+              border: {
+                top: { style: 'thin', color: { rgb: 'E5E7EB' } },
+                bottom: { style: 'thin', color: { rgb: 'E5E7EB' } },
+                left: { style: 'thin', color: { rgb: 'E5E7EB' } },
+                right: { style: 'thin', color: { rgb: 'E5E7EB' } }
+              }
+            };
+          } else {
+            worksheet[cellAddress].s = {
+              font: { color: { rgb: fontColor } },
+              fill: { fgColor: { rgb: fillColor } },
+              alignment: { 
+                horizontal: header === 'No.' ? 'center' : 'left', 
+                vertical: 'center' 
+              },
+              border: {
+                top: { style: 'thin', color: { rgb: 'E5E7EB' } },
+                bottom: { style: 'thin', color: { rgb: 'E5E7EB' } },
+                left: { style: 'thin', color: { rgb: 'E5E7EB' } },
+                right: { style: 'thin', color: { rgb: 'E5E7EB' } }
+              }
+            };
+          }
+        });
+      });
+
+      // Add summary sheet
+      const summaryData = [
+        { 'Summary': 'Total Entries', 'Value': billingData.summary?.totalEntries || 0 },
+        { 'Summary': 'Total Paid Amount', 'Value': `$${(billingData.summary?.totalAmount || 0).toFixed(2)}` },
+        { 'Summary': '', 'Value': '' }, // Empty row
+        { 'Summary': 'Status Breakdown', 'Value': '' },
+        { 'Summary': 'Paid', 'Value': billingData.summary?.statusBreakdown?.PAID || 0 },
+        { 'Summary': 'Pending', 'Value': billingData.summary?.statusBreakdown?.PENDING || 0 },
+        { 'Summary': 'Failed', 'Value': billingData.summary?.statusBreakdown?.FAILED || 0 },
+        { 'Summary': 'Cancelled', 'Value': billingData.summary?.statusBreakdown?.CANCELLED || 0 },
+        { 'Summary': 'Refunded', 'Value': billingData.summary?.statusBreakdown?.REFUNDED || 0 },
+        { 'Summary': '', 'Value': '' }, // Empty row
+        { 'Summary': 'Type Breakdown', 'Value': '' },
+        { 'Summary': 'Service Payments', 'Value': billingData.summary?.typeBreakdown?.SERVICE || 0 },
+        { 'Summary': 'Subscription Payments', 'Value': billingData.summary?.typeBreakdown?.SUBSCRIPTION || 0 },
+        { 'Summary': '', 'Value': '' }, // Empty row
+        { 'Summary': 'Export Date', 'Value': new Date().toLocaleString() }
+      ];
+
+      const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+      summarySheet['!cols'] = [{ wch: 25 }, { wch: 20 }];
+
+      // Add sheets to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Billing History');
+      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+      // Generate filename with current date
+      const currentDate = new Date().toISOString().slice(0, 10);
+      const filename = `Billing_History_${currentDate}.xlsx`;
+
+      // Write and download the file
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(data, filename);
+
+      // Show success message
+      alert(`Billing history exported successfully as ${filename}`);
+      console.log('Billing history exported successfully');
+    } catch (error) {
+      console.error('Error exporting billing history:', error);
+      alert('Failed to export billing history. Please try again.');
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   if (loading) {
@@ -199,13 +409,35 @@ const BillingHistoryPage = () => {
                 {subscriptionId ? 'Subscription billing history' : 'Complete billing history across all subscriptions'}
               </p>
             </div>
-            <button
-              onClick={exportBillingHistory}
-              className="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <FaDownload className="mr-2" />
-              Export
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={exportBillingHistory}
+                disabled={!billingData?.billingHistory?.length || loading || exportLoading}
+                className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                  billingData?.billingHistory?.length && !loading && !exportLoading
+                    ? 'bg-green-600 text-white hover:bg-green-700 hover:shadow-lg transform hover:-translate-y-0.5'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                title={!billingData?.billingHistory?.length ? 'No data to export' : 'Export billing history to Excel'}
+              >
+                {exportLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <FaDownload className="mr-2" />
+                    Export to Excel
+                    {billingData?.summary?.totalEntries && (
+                      <span className="ml-2 bg-white bg-opacity-20 px-2 py-1 rounded text-xs">
+                        {billingData.summary.totalEntries} records
+                      </span>
+                    )}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </motion.div>
 
@@ -214,7 +446,7 @@ const BillingHistoryPage = () => {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
           >
             <div className="bg-white p-6 rounded-lg shadow-md">
               <div className="flex items-center">
@@ -233,12 +465,15 @@ const BillingHistoryPage = () => {
             <div className="bg-white p-6 rounded-lg shadow-md">
               <div className="flex items-center">
                 <div className="p-3 bg-blue-100 rounded-full">
-                  <MdUndo className="text-blue-600 text-xl" />
+                  <FaTools className="text-blue-600 text-xl" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Refunds</p>
+                  <p className="text-sm font-medium text-gray-600">Service Payments</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    SGD {billingData.summary.totalRefunds}
+                    SGD {billingData.summary.servicePayments?.total || '0.00'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {billingData.summary.servicePayments?.count || 0} transactions
                   </p>
                 </div>
               </div>
@@ -247,12 +482,29 @@ const BillingHistoryPage = () => {
             <div className="bg-white p-6 rounded-lg shadow-md">
               <div className="flex items-center">
                 <div className="p-3 bg-purple-100 rounded-full">
-                  <FaChartLine className="text-purple-600 text-xl" />
+                  <FaCreditCard className="text-purple-600 text-xl" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Net Amount</p>
+                  <p className="text-sm font-medium text-gray-600">Subscription Payments</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    SGD {billingData.summary.netAmount}
+                    SGD {billingData.summary.subscriptionPayments?.total || '0.00'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {billingData.summary.subscriptionPayments?.count || 0} transactions
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-md">
+              <div className="flex items-center">
+                <div className="p-3 bg-red-100 rounded-full">
+                  <MdUndo className="text-red-600 text-xl" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Refunds</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    SGD {billingData.summary.totalRefunds}
                   </p>
                 </div>
               </div>
@@ -297,6 +549,7 @@ const BillingHistoryPage = () => {
               >
                 <option value="">All Types</option>
                 <option value="SUBSCRIPTION">Subscription</option>
+                <option value="SERVICE">Service Payment</option>
                 <option value="RENEWAL">Renewal</option>
                 <option value="PRORATION">Proration</option>
                 <option value="CANCELLATION">Cancellation</option>
@@ -371,8 +624,27 @@ const BillingHistoryPage = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
-                        <div className="max-w-xs truncate" title={entry.description}>
-                          {entry.description || 'Subscription payment'}
+                        <div className="max-w-xs">
+                          <div className="font-medium truncate" title={entry.description}>
+                            {entry.description || 'Subscription payment'}
+                          </div>
+                          {entry.type === 'SERVICE' && entry.serviceDetails && (
+                            <div className="mt-1 text-xs text-gray-500">
+                              <div>
+                                {entry.serviceDetails.totalItems} item(s)
+                              </div>
+                              {entry.serviceDetails.serviceCategories && (
+                                <div className="truncate">
+                                  Categories: {entry.serviceDetails.serviceCategories.join(', ')}
+                                </div>
+                              )}
+                              {entry.orderNumber && (
+                                <div className="font-mono">
+                                  Order: {entry.orderNumber}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

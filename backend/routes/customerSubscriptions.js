@@ -567,6 +567,9 @@ router.get('/billing-history', authenticateToken, async (req, res) => {
     
     const { page = 1, limit = 20, status, type, startDate, endDate } = req.query;
     
+    console.log('User ID:', req.user._id);
+    console.log('User object:', req.user);
+    
     // Check CustomerMembership for current memberships (new system)
     const { CustomerMembership } = require('../models/CustomerMembership');
     const memberships = await CustomerMembership.find({
@@ -615,6 +618,115 @@ router.get('/billing-history', authenticateToken, async (req, res) => {
       });
     });
 
+    // Add service payments from orders - include ALL payment statuses
+    const Order = require('../models/Order');
+    const orders = await Order.find({
+      customer: req.user._id
+      // Remove payment status filter to include ALL orders
+    }).populate('items.productId', 'name category').sort({ createdAt: -1 });
+
+    orders.forEach(order => {
+      // Create billing entry for each order
+      const billingEntry = {
+        _id: order._id.toString() + '_service',
+        amount: order.paymentStatus === 'refunded' ? -(order.total || order.totalAmount) : (order.total || order.totalAmount),
+        status: order.paymentStatus.toUpperCase(),
+        type: 'SERVICE',
+        description: `Service Order #${order.orderNumber || order._id.toString().slice(-6)}`,
+        billingDate: order.createdAt,
+        createdAt: order.createdAt,
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        paymentMethod: order.paymentMethod,
+        orderStatus: order.status, // Include order status for reference
+        serviceDetails: {
+          items: order.items.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            subtotal: item.subtotal
+          })),
+          totalItems: order.items.reduce((sum, item) => sum + item.quantity, 0),
+          serviceCategories: [...new Set(order.items.map(item => 
+            item.productId?.category || 'General Service'
+          ))]
+        }
+      };
+      allBillingHistory.push(billingEntry);
+    });
+
+    console.log(`Found ${orders.length} orders for user ${req.user._id}`);
+    console.log('Sample order data:', orders.length > 0 ? {
+      id: orders[0]._id,
+      customer: orders[0].customer,
+      totalAmount: orders[0].totalAmount,
+      total: orders[0].total,
+      paymentStatus: orders[0].paymentStatus,
+      status: orders[0].status,
+      itemsCount: orders[0].items?.length
+    } : 'No orders found');
+
+    // Add service payments from jobs - include ALL job statuses
+    const Job = require('../models/Job');
+    const jobs = await Job.find({
+      customerId: req.user._id
+      // Include all jobs regardless of status
+    }).sort({ createdAt: -1 });
+
+    jobs.forEach(job => {
+      // Map job payment status to standard billing statuses
+      let billingStatus = 'PENDING';
+      if (job.payment?.status === 'PAID' || job.status === 'PAID') {
+        billingStatus = 'PAID';
+      } else if (job.status === 'COMPLETED' && job.payment?.status === 'PAID') {
+        billingStatus = 'PAID';
+      } else if (job.status === 'CANCELLED') {
+        billingStatus = 'CANCELLED';
+      } else if (job.payment?.status === 'FAILED') {
+        billingStatus = 'FAILED';
+      } else if (job.payment?.status === 'REFUNDED') {
+        billingStatus = 'REFUNDED';
+      }
+
+      // Create billing entry for each job
+      const billingEntry = {
+        _id: job._id.toString() + '_job',
+        amount: billingStatus === 'REFUNDED' ? -(job.totalAmount || 0) : (job.totalAmount || 0),
+        status: billingStatus,
+        type: 'SERVICE',
+        description: `Service Job #${job.jobNumber || job._id.toString().slice(-6)} - ${job.title}`,
+        billingDate: job.createdAt,
+        createdAt: job.createdAt,
+        jobId: job._id,
+        jobNumber: job.jobNumber,
+        paymentMethod: job.payment?.method || 'Unknown',
+        jobStatus: job.status,
+        serviceDetails: {
+          title: job.title,
+          category: job.category,
+          priority: job.priority,
+          isEmergency: job.isEmergency,
+          items: job.items || [],
+          subtotal: job.subtotal || 0,
+          taxAmount: job.taxAmount || 0,
+          discountAmount: job.discountAmount || 0
+        }
+      };
+      allBillingHistory.push(billingEntry);
+    });
+
+    console.log(`Found ${jobs.length} jobs for user ${req.user._id}`);
+    console.log('Sample job data:', jobs.length > 0 ? {
+      id: jobs[0]._id,
+      jobNumber: jobs[0].jobNumber,
+      title: jobs[0].title,
+      status: jobs[0].status,
+      totalAmount: jobs[0].totalAmount,
+      paymentStatus: jobs[0].payment?.status,
+      category: jobs[0].category
+    } : 'No jobs found');
+    console.log('All billing history entries count:', allBillingHistory.length);
+
     // Apply filters
     if (status) {
       allBillingHistory = allBillingHistory.filter(entry => entry.status === status);
@@ -650,6 +762,17 @@ router.get('/billing-history', authenticateToken, async (req, res) => {
       .filter(entry => entry.amount < 0)
       .reduce((sum, entry) => sum + Math.abs(entry.amount || 0), 0);
 
+    // Calculate service-specific totals
+    const servicePayments = allBillingHistory.filter(entry => entry.type === 'SERVICE');
+    const totalServicePaid = servicePayments
+      .filter(entry => entry.status === 'PAID')
+      .reduce((sum, entry) => sum + (entry.amount || 0), 0);
+
+    const subscriptionPayments = allBillingHistory.filter(entry => entry.type === 'SUBSCRIPTION');
+    const totalSubscriptionPaid = subscriptionPayments
+      .filter(entry => entry.status === 'PAID')
+      .reduce((sum, entry) => sum + (entry.amount || 0), 0);
+
     res.json({
       success: true,
       data: {
@@ -664,7 +787,15 @@ router.get('/billing-history', authenticateToken, async (req, res) => {
           totalPaid: totalPaid.toFixed(2),
           totalRefunds: totalRefunds.toFixed(2),
           netAmount: (totalPaid - totalRefunds).toFixed(2),
-          totalSubscriptions: subscriptions.length
+          totalSubscriptions: subscriptions.length,
+          servicePayments: {
+            total: totalServicePaid.toFixed(2),
+            count: servicePayments.length
+          },
+          subscriptionPayments: {
+            total: totalSubscriptionPaid.toFixed(2),
+            count: subscriptionPayments.length
+          }
         }
       },
       message: 'Complete billing history retrieved successfully'

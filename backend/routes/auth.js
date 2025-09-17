@@ -2,7 +2,7 @@ const express = require('express');
 const User = require('../models/User');
 const { Referral } = require('../models/Referral');
 const InviteCode = require('../models/InviteCode');
-const { generateToken } = require('../utils/jwt');
+const { generateToken, generateRefreshToken } = require('../utils/jwt');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
@@ -350,8 +350,14 @@ router.post('/login', async (req, res) => {
     // Update last login
     await user.updateLastLogin();
 
-    // Generate token
+    // Generate access token and refresh token
     const token = generateToken({ userId: user._id, email: user.email, role: user.role });
+    const refreshToken = generateRefreshToken({ userId: user._id, email: user.email, role: user.role });
+    
+    // Save refresh token to user (optional, for single-device logout)
+    user.refreshToken = refreshToken;
+    user.refreshTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    await user.save();
 
     // Remove password from response
     user.password = undefined;
@@ -359,6 +365,7 @@ router.post('/login', async (req, res) => {
     res.json({
       message: 'Login successful',
       token,
+      refreshToken,
       user,
       tacAvailable: user.tacEnabled || false // Include TAC availability
     });
@@ -410,11 +417,74 @@ router.put('/tac-preference', authenticateToken, async (req, res) => {
 // Logout (client-side token removal)
 router.post('/logout', authenticateToken, async (req, res) => {
   try {
-    // In a stateless JWT system, logout is handled client-side
-    // You could implement a token blacklist here if needed
+    // Clear refresh token from database
+    const user = await User.findById(req.user.userId);
+    if (user) {
+      user.refreshToken = null;
+      user.refreshTokenExpiresAt = null;
+      await user.save();
+    }
+    
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Refresh token endpoint
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      return res.status(401).json({ message: 'Refresh token is required' });
+    }
+
+    // Find user with this refresh token
+    const user = await User.findOne({ 
+      refreshToken,
+      refreshTokenExpiresAt: { $gt: new Date() }
+    });
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid or expired refresh token' });
+    }
+
+    // Generate new access token
+    const newToken = generateToken({ 
+      userId: user._id, 
+      email: user.email, 
+      role: user.role 
+    });
+
+    // Optionally generate new refresh token for rotation
+    const newRefreshToken = generateRefreshToken({ 
+      userId: user._id, 
+      email: user.email, 
+      role: user.role 
+    });
+    
+    // Update refresh token in database
+    user.refreshToken = newRefreshToken;
+    user.refreshTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    await user.save();
+
+    res.json({ 
+      token: newToken,
+      refreshToken: newRefreshToken,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        tacEnabled: user.tacEnabled || false
+      }
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

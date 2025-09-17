@@ -99,8 +99,9 @@ export const api = {
     getCurrentUser: () => request('/auth/me'),
     
     // Refresh token
-    refreshToken: () => request('/auth/refresh', {
+    refreshToken: (refreshToken) => request('/auth/refresh', {
       method: 'POST',
+      body: JSON.stringify({ refreshToken }),
     }),
     
     // Logout
@@ -660,6 +661,17 @@ export const apiUtils = {
   // Remove token
   removeToken: () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+  },
+  
+  // Set refresh token
+  setRefreshToken: (refreshToken) => {
+    localStorage.setItem('refreshToken', refreshToken);
+  },
+  
+  // Get refresh token
+  getRefreshToken: () => {
+    return localStorage.getItem('refreshToken');
   },
   
   // Check if token is valid
@@ -674,10 +686,46 @@ export const apiUtils = {
     }
   },
   
+  // Check if token is close to expiry (within 5 minutes)
+  isTokenExpiringSoon: (token) => {
+    if (!token) return true;
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const fiveMinutesFromNow = Date.now() + (5 * 60 * 1000);
+      return payload.exp * 1000 < fiveMinutesFromNow;
+    } catch (error) {
+      return true;
+    }
+  },
+  
+  // Attempt to refresh token automatically
+  refreshTokenIfNeeded: async () => {
+    const token = apiUtils.getToken();
+    const refreshToken = apiUtils.getRefreshToken();
+    
+    if (!token || !refreshToken) return false;
+    
+    if (apiUtils.isTokenExpiringSoon(token)) {
+      try {
+        const response = await api.auth.refreshToken(refreshToken);
+        apiUtils.setToken(response.token);
+        apiUtils.setRefreshToken(response.refreshToken);
+        return true;
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        apiUtils.removeToken();
+        return false;
+      }
+    }
+    
+    return true;
+  },
+  
   // Handle API errors
   handleError: (error) => {
     if (error.message.includes('401')) {
-      // Unauthorized, clear token and redirect to login page
+      // Unauthorized, clear tokens and redirect to login page
       apiUtils.removeToken();
       window.location.href = '/login';
     }
