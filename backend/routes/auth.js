@@ -165,6 +165,14 @@ router.post('/register-agent', async (req, res) => {
       });
     }
 
+    // Detect potential fraud indicators
+    const fraudCheck = ceaVerificationService.detectFraudIndicators({
+      firstName,
+      lastName,
+      email,
+      ceaRegistrationNumber
+    }, existingCEAUser);
+
     // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -201,23 +209,32 @@ router.post('/register-agent', async (req, res) => {
       city: city || 'Singapore',
       country: country || 'Singapore',
       role: 'referral',
-      status: 'PENDING', // Set to pending until CEA verification
+      status: fraudCheck.riskLevel === 'HIGH' ? 'SUSPENDED' : 'PENDING', // Suspend high risk users
       agentCode,
       commissionRate: 15.0,
       isAgentActive: false, // Will be activated after CEA verification
       ceaRegistrationNumber: ceaRegistrationNumber.toUpperCase(),
       ceaVerificationStatus: 'PENDING_MANUAL_VERIFICATION',
+      ceaFraudRiskLevel: fraudCheck.riskLevel,
+      ceaFraudWarnings: fraudCheck.warnings,
       referralUserType: 'property_agent',
       rewardType: 'money'
     });
 
-    // Create CEA verification record for reference
-    ceaVerificationService.createVerificationRecord({
+    // Create CEA verification record for reference with fraud detection
+    const verificationRecord = ceaVerificationService.createVerificationRecord({
       registrationNumber: ceaRegistrationNumber.toUpperCase(),
       agentName: `${firstName} ${lastName}`,
       email,
       phone
     });
+    
+    // Add fraud check results to verification
+    verificationRecord.fraudCheck = fraudCheck;
+    verificationRecord.securityNotes = fraudCheck.warnings.length > 0 
+      ? `SECURITY ALERT: ${fraudCheck.warnings.join(', ')}` 
+      : 'No security concerns detected';
+    verificationRecord.verificationPriority = fraudCheck.riskLevel === 'HIGH' ? 'URGENT' : 'NORMAL';
 
     // Create referral record for the new agent
     const newReferral = new Referral({

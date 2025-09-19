@@ -211,6 +211,28 @@ const userSchema = new mongoose.Schema({
     trim: true
   },
   
+  // CEA Fraud Detection Fields
+  ceaFraudRiskLevel: {
+    type: String,
+    enum: ['LOW', 'MEDIUM', 'HIGH'],
+    default: 'LOW'
+  },
+  ceaFraudWarnings: [{
+    type: String,
+    trim: true
+  }],
+  ceaSecurityChecked: {
+    type: Boolean,
+    default: false
+  },
+  ceaSecurityCheckDate: {
+    type: Date
+  },
+  ceaSecurityCheckBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  
   // New referral system fields
   referralUserType: {
     type: String,

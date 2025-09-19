@@ -14,6 +14,7 @@ import BlogPage from './pages/BlogPage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import CartPage from './pages/CartPage.jsx';
 import { CartProvider } from './contexts/CartContext';
+import CEAVerificationManagement from './pages/admin/CEAVerificationManagement.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import CompliancePage from './pages/legal/CompliancePage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
@@ -179,6 +180,16 @@ function App() {
                     <Header />
                     <main className="pt-24">
                       <OrderManagement />
+                    </main>
+                  </div>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/cea-verification" element={
+                <ProtectedRoute requiredRole="admin">
+                  <div className="min-h-screen bg-gray-50">
+                    <Header />
+                    <main className="pt-24">
+                      <CEAVerificationManagement />
                     </main>
                   </div>
                 </ProtectedRoute>
