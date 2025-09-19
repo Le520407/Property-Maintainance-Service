@@ -594,23 +594,26 @@ const RegisterPage = () => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Email Address *
+                          Email Address * <span className="text-orange-600 text-xs">(Gmail required for agents)</span>
                         </label>
                         <input
                           type="email"
                           {...register('email', { 
                             required: 'Email is required',
                             pattern: {
-                              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                              message: 'Invalid email address'
+                              value: /^[a-zA-Z0-9._%+-]+@gmail\.com$/i,
+                              message: 'Property agents must use a valid Gmail address (e.g., username@gmail.com)'
                             }
                           })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                          placeholder="Enter email address"
+                          placeholder="Enter Gmail address (required for agents)"
                         />
                         {errors.email && (
                           <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
                         )}
+                        <p className="text-gray-500 text-xs mt-1">
+                          Property agents must use Gmail for verification purposes
+                        </p>
                       </div>
 
                       <div>

@@ -114,6 +114,13 @@ const CEAVerificationManagement = () => {
     e.preventDefault();
     if (!selectedAgent) return;
 
+    // Check if agent has Gmail address for verification
+    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+    if (!gmailRegex.test(selectedAgent.email)) {
+      toast.error('Verification failed: Agent must have a Gmail address to be verified');
+      return;
+    }
+
     try {
       await api.put(`/admin/agents/${selectedAgent._id}/cea-verification`, {
         ...verificationForm,
@@ -422,7 +429,15 @@ const CEAVerificationManagement = () => {
                           <div className="text-sm font-medium text-gray-900">
                             {agent.fullName}
                           </div>
-                          <div className="text-sm text-gray-500">{agent.email}</div>
+                          <div className="flex items-center space-x-2">
+                            <div className="text-sm text-gray-500">{agent.email}</div>
+                            {!agent.email?.toLowerCase().endsWith('@gmail.com') && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                <AlertTriangle size={10} className="mr-1" />
+                                Non-Gmail
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-gray-400">{agent.agentCode}</div>
                         </div>
                       </td>
@@ -501,6 +516,15 @@ const CEAVerificationManagement = () => {
                 <div className="mb-4 p-3 bg-gray-50 rounded-lg">
                   <div className="text-sm text-gray-600">Agent: <span className="font-medium">{selectedAgent.fullName}</span></div>
                   <div className="text-sm text-gray-600">CEA Number: <span className="font-mono">{selectedAgent.ceaRegistrationNumber}</span></div>
+                  <div className="text-sm text-gray-600">
+                    Email: <span className="font-medium">{selectedAgent.email}</span>
+                    {!/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(selectedAgent.email) && (
+                      <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <AlertTriangle size={12} className="mr-1" />
+                        Non-Gmail
+                      </span>
+                    )}
+                  </div>
                   <a 
                     href="https://eservices.cea.gov.sg/aceas/public-register/"
                     target="_blank"
@@ -510,6 +534,18 @@ const CEAVerificationManagement = () => {
                     Verify on CEA Website <ExternalLink size={12} className="ml-1" />
                   </a>
                 </div>
+
+                {/* Gmail Requirement Warning */}
+                {!/^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(selectedAgent.email) && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-center">
+                      <AlertTriangle size={16} className="text-red-600 mr-2" />
+                      <p className="text-sm text-red-800">
+                        <strong>Gmail Required:</strong> This agent does not have a Gmail address. Only agents with Gmail addresses can be verified for security purposes.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <form onSubmit={handleVerificationSubmit} className="space-y-4">
                   <div>

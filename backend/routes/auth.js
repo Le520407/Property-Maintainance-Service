@@ -140,6 +140,14 @@ router.post('/register-agent', async (req, res) => {
       });
     }
 
+    // Gmail format validation for property agents
+    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+    if (!gmailRegex.test(email)) {
+      return res.status(400).json({ 
+        message: 'Property agents must use a valid Gmail address (e.g., username@gmail.com)' 
+      });
+    }
+
     // CEA Registration validation for property agents
     if (!ceaRegistrationNumber) {
       return res.status(400).json({ 
