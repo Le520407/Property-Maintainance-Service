@@ -1110,6 +1110,106 @@ router.get('/vendors/:vendorId/ratings', auth, async (req, res) => {
   }
 });
 
+// Job verification endpoint for admin
+router.patch('/jobs/:jobId/verify', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin()) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const { jobId } = req.params;
+    const { 
+      status, 
+      verified, 
+      verificationNotes, 
+      moneyDeduction, 
+      verifiedBy 
+    } = req.body;
+
+    console.log('Job verification request:', { 
+      jobId, 
+      status, 
+      verified, 
+      verificationNotes, 
+      moneyDeduction 
+    });
+
+    const job = await Job.findById(jobId)
+      .populate('customerId', 'firstName lastName email')
+      .populate('vendorId', 'firstName lastName email');
+    
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    // Ensure job is in PENDING_VERIFICATION status
+    if (job.status !== 'PENDING_VERIFICATION') {
+      return res.status(400).json({ 
+        message: 'Job is not pending verification',
+        currentStatus: job.status 
+      });
+    }
+
+    // Update job completion details
+    if (!job.completionDetails) {
+      job.completionDetails = {};
+    }
+
+    job.completionDetails.verified = verified;
+    job.completionDetails.verifiedBy = req.user._id;
+    job.completionDetails.verificationNotes = verificationNotes;
+    job.completionDetails.moneyDeduction = moneyDeduction || 0;
+
+    // Update job status and timing
+    if (status === 'COMPLETED') {
+      await job.updateStatus('COMPLETED', req.user._id, verificationNotes);
+      job.verifiedAt = new Date();
+    } else if (status === 'REJECTED') {
+      await job.updateStatus('IN_PROGRESS', req.user._id, verificationNotes); // Send back to vendor
+    }
+
+    await job.save();
+
+    // Handle money deduction if applicable
+    if (moneyDeduction && moneyDeduction > 0 && job.vendorId) {
+      try {
+        const Vendor = require('../models/Vendor');
+        const vendor = await Vendor.findOne({ userId: job.vendorId._id });
+        if (vendor) {
+          vendor.totalEarnings = Math.max(0, (vendor.totalEarnings || 0) - moneyDeduction);
+          await vendor.save();
+          console.log(`Deducted $${moneyDeduction} from vendor ${vendor.userId}`);
+        }
+      } catch (deductionError) {
+        console.error('Error applying money deduction:', deductionError);
+        // Don't fail the verification if deduction fails
+      }
+    }
+
+    console.log('Job verification completed successfully:', {
+      jobId: job._id,
+      newStatus: job.status,
+      verified: job.completionDetails.verified,
+      moneyDeduction: job.completionDetails.moneyDeduction
+    });
+
+    res.json({ 
+      message: 'Job verification completed successfully', 
+      job: {
+        _id: job._id,
+        jobNumber: job.jobNumber,
+        status: job.status,
+        completionDetails: job.completionDetails,
+        verifiedAt: job.verifiedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Job verification error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // ==================== REFERRAL AGENT MANAGEMENT ====================
 
 // Get all referral agents

@@ -23,6 +23,7 @@ import {
   Star,
   Trash2,
   TrendingUp,
+  Upload,
   User,
   Users,
   X
@@ -39,23 +40,18 @@ import VendorTACSettings from '../../components/vendor/VendorTACSettings';
 
 // Helper function to construct proper image URLs
 const getImageUrl = (relativeUrl) => {
-  console.log('🔍 Processing image URL:', relativeUrl);
-  
   // Handle empty or undefined URLs
   if (!relativeUrl) {
-    console.warn('⚠️ Empty or undefined image URL');
     return null;
   }
   
   // Handle complete URLs
   if (relativeUrl.startsWith('http')) {
-    console.log('✅ Using complete URL:', relativeUrl);
     return relativeUrl;
   }
   
   // Skip blob URLs (these are from old data and can't be accessed)
   if (relativeUrl.startsWith('blob:')) {
-    console.warn('⚠️ Skipping blob URL (old data):', relativeUrl);
     return null;
   }
   
@@ -946,10 +942,12 @@ const ReviewsComponent = () => {
                 {/* Criteria Breakdown */}
                 {rating.criteria && (
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
-                    {Object.entries(rating.criteria).map(([key, value]) => (
+                    {Object.entries(rating.criteria)
+                      .filter(([key]) => key !== '_id' && key !== '__v') // Filter out MongoDB fields
+                      .map(([key, value]) => (
                       <div key={key} className="text-center">
                         <div className="text-xs text-gray-500 capitalize mb-1">
-                          {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                          {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').toLowerCase().trim()}
                         </div>
                         <div className="flex justify-center">
                           {renderStars(value)}
@@ -1007,7 +1005,6 @@ const ReviewsComponent = () => {
                                 console.error('❌ Image failed to load:', imageUrl, e);
                                 e.target.style.display = 'none';
                               }}
-                              onLoad={() => console.log('✅ Image loaded successfully:', imageUrl)}
                             />
                             {image.caption && (
                               <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1322,7 +1319,6 @@ const VendorDashboardPage = () => {
       }
       
       const response = await api.vendor.getDashboard();
-      console.log('✅ Dashboard data received:', response);
       setDashboardData(response);
     } catch (error) {
       console.error('❌ Error fetching dashboard data:', error);
@@ -1521,6 +1517,7 @@ const VendorDashboardPage = () => {
                     <div className="flex items-center mt-2 space-x-4">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         job.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                        job.status === 'PENDING_VERIFICATION' ? 'bg-orange-100 text-orange-800' :
                         job.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
                         job.status === 'ASSIGNED' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
@@ -1703,7 +1700,7 @@ const VendorDashboardPage = () => {
     // Job Assignments Section
     if (activeSection === 'assignments') {
       if (activeTab === 'pending') return <VendorJobAssignments status="ASSIGNED" />;
-      if (activeTab === 'active') return <VendorJobAssignments status="IN_DISCUSSION,QUOTE_SENT,QUOTE_ACCEPTED,PAID,IN_PROGRESS" />;
+      if (activeTab === 'active') return <VendorJobAssignments status="IN_DISCUSSION,QUOTE_SENT,QUOTE_ACCEPTED,PAID,IN_PROGRESS,PENDING_VERIFICATION" />;
       if (activeTab === 'rejected') return <VendorJobAssignments status="QUOTE_REJECTED" />;
       if (activeTab === 'history') return <VendorJobAssignments status="COMPLETED,CANCELLED,REJECTED" />;
       if (activeTab === 'completed') return <VendorJobAssignments status="COMPLETED" />;
@@ -1924,6 +1921,8 @@ const VendorJobAssignments = ({ status }) => {
         return 'bg-red-100 text-red-800';
       case 'IN_PROGRESS':
         return 'bg-indigo-100 text-indigo-800';
+      case 'PENDING_VERIFICATION':
+        return 'bg-orange-100 text-orange-800';
       case 'COMPLETED':
         return 'bg-green-100 text-green-800';
       case 'CANCELLED':
@@ -1937,43 +1936,16 @@ const VendorJobAssignments = ({ status }) => {
   const loadJobs = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('🔄 Loading jobs with status:', status); // Debug log
-      console.log('🔍 Status type:', typeof status, 'Value:', JSON.stringify(status)); // Debug log
       
       const response = await api.vendor.getJobs({ status });
-      console.log('📋 Jobs API response:', response); // Debug log
       const jobsArray = response.jobs || [];
-      console.log('💼 Jobs loaded:', jobsArray.length, 'jobs'); // Debug log
-      
-      // Log each job's status for debugging
-      console.log('📝 Job statuses:', jobsArray.map(job => ({ 
-        jobNumber: job.jobNumber, 
-        status: job.status 
-      })));
       
       // Client-side filtering as additional safety measure
       const filteredJobs = jobsArray.filter(job => {
         if (!status) return true; // No filter, show all
         
         const statusArray = status.includes(',') ? status.split(',') : [status];
-        console.log(`🎯 Checking job ${job.jobNumber} status "${job.status}" against filter:`, statusArray);
         return statusArray.includes(job.status);
-      });
-      
-      console.log('💼 Jobs after filtering:', filteredJobs.length, 'jobs'); // Debug log
-      
-      // Log job prices for debugging  
-      filteredJobs.forEach(job => {
-        if (job.status === 'QUOTE_SENT' || job.totalAmount) {
-          console.log(`💰 JOB DEBUG:`, {
-            jobNumber: job.jobNumber,
-            jobId: job._id,
-            status: job.status, 
-            totalAmount: job.totalAmount,
-            estimatedBudget: job.estimatedBudget,
-            fullJobData: job
-          });
-        }
       });
       
       // Apply local price overrides to jobs (frontend-only fix)
@@ -2103,6 +2075,7 @@ const VendorJobAssignments = ({ status }) => {
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                       job.status === 'ASSIGNED' ? 'bg-yellow-100 text-yellow-800' :
                       job.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                      job.status === 'PENDING_VERIFICATION' ? 'bg-orange-100 text-orange-800' :
                       'bg-blue-100 text-blue-800'
                     }`}>
                       {job.status.replace('_', ' ')}
@@ -2628,6 +2601,11 @@ const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
   const [completionNotes, setCompletionNotes] = useState('');
   const [priceAmount, setPriceAmount] = useState(job.totalAmount || '');
   const [loading, setLoading] = useState(false);
+  
+  // Photo upload states for job completion
+  const [completionPhotos, setCompletionPhotos] = useState([]);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
 
   // Get available status options based on current status
   const getStatusOptions = () => {
@@ -2655,6 +2633,80 @@ const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
       default:
         return [];
     }
+  };
+
+  // Handle photo upload for job completion
+  const handlePhotoUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    // Validate file types and sizes
+    const validFiles = files.filter(file => {
+      const isImage = file.type.startsWith('image/');
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB limit
+      
+      if (!isImage) {
+        toast.error(`${file.name} is not a valid image file`);
+        return false;
+      }
+      if (!isValidSize) {
+        toast.error(`${file.name} is too large. Maximum size is 10MB`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
+    setPhotoUploading(true);
+
+    try {
+      const uploadPromises = validFiles.map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'job-completion');
+        formData.append('jobId', job._id);
+
+        const response = await api.vendor.uploadFile(formData);
+        return {
+          file: response.file,
+          serverFilename: response.serverFilename,
+          originalName: file.name,
+          size: file.size
+        };
+      });
+
+      const uploadedFiles = await Promise.all(uploadPromises);
+      
+      setCompletionPhotos(prev => [...prev, ...uploadedFiles]);
+      
+      // Create preview URLs
+      const newPreviews = validFiles.map(file => ({
+        url: URL.createObjectURL(file),
+        name: file.name
+      }));
+      setPhotoPreviews(prev => [...prev, ...newPreviews]);
+
+      toast.success(`${uploadedFiles.length} photo(s) uploaded successfully`);
+    } catch (error) {
+      console.error('Error uploading photos:', error);
+      toast.error('Failed to upload photos. Please try again.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  // Remove photo from completion photos
+  const removePhoto = (index) => {
+    setCompletionPhotos(prev => prev.filter((_, i) => i !== index));
+    setPhotoPreviews(prev => {
+      // Revoke the URL to prevent memory leaks
+      const toRemove = prev[index];
+      if (toRemove?.url) {
+        URL.revokeObjectURL(toRemove.url);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -2707,25 +2759,39 @@ const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
         toast.success('Work progress updated successfully!');
         
       } else if (selectedStatus === 'COMPLETED') {
-        // Handle job completion
+        // Handle job completion - require photos and notes
         if (!completionNotes.trim()) {
           toast.error('Please provide completion details');
           setLoading(false);
           return;
         }
         
+        if (completionPhotos.length === 0) {
+          toast.error('Please upload at least one photo of the completed work');
+          setLoading(false);
+          return;
+        }
+        
+        // Submit job for admin verification instead of marking directly as completed
         await api.vendor.updateJobStatus(job._id, {
-          status: selectedStatus,
-          notes: completionNotes
+          status: 'PENDING_VERIFICATION',
+          notes: completionNotes,
+          completionPhotos: completionPhotos.map(photo => photo.serverFilename),
+          completionDetails: {
+            notes: completionNotes,
+            photos: completionPhotos,
+            submittedAt: new Date().toISOString(),
+            submittedBy: 'vendor'
+          }
         });
         
         await api.vendor.updateJobProgress(job._id, {
           percentage: 100,
           notes: completionNotes,
-          status: 'COMPLETED'
+          status: 'PENDING_VERIFICATION'
         });
         
-        toast.success('Job marked as completed!');
+        toast.success('Job submitted for admin verification! You will be notified once verified.');
         
       } else {
         // Handle other status updates
@@ -2944,6 +3010,82 @@ const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
               required={selectedStatus === 'COMPLETED'}
             />
           </div>
+
+          {/* Photo Upload for Job Completion */}
+          {selectedStatus === 'COMPLETED' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Completion Photos *
+                </label>
+                <p className="text-sm text-gray-500 mb-3">
+                  Upload photos of the completed work for admin verification. At least one photo is required.
+                </p>
+                
+                {/* File Upload Button */}
+                <div className="flex items-center space-x-4">
+                  <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg border border-blue-200 transition-colors">
+                    <Upload className="h-4 w-4 inline mr-2" />
+                    {photoUploading ? 'Uploading...' : 'Upload Photos'}
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                      disabled={photoUploading}
+                    />
+                  </label>
+                  <span className="text-sm text-gray-500">
+                    Max 10MB per photo, JPEG/PNG only
+                  </span>
+                </div>
+
+                {/* Photo Previews */}
+                {photoPreviews.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      Uploaded Photos ({photoPreviews.length})
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {photoPreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={preview.url}
+                            alt={`Completed work ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(index)}
+                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Remove photo"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                          <p className="text-xs text-gray-500 mt-1 truncate">
+                            {preview.name}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Photo Upload Status */}
+                {completionPhotos.length === 0 && selectedStatus === 'COMPLETED' && (
+                  <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="flex items-center">
+                      <AlertCircle className="h-4 w-4 text-amber-600 mr-2" />
+                      <span className="text-sm text-amber-800">
+                        At least one photo is required to complete the job
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-4 pt-4">

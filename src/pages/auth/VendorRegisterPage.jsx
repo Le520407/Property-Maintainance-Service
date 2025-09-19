@@ -27,6 +27,38 @@ const VendorRegisterPage = ({ embedded = false }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const navigate = useNavigate();
 
+  // Singapore cities list
+  const singaporeCities = [
+    'Central Singapore',
+    'Ang Mo Kio',
+    'Bedok',
+    'Bishan',
+    'Boon Lay',
+    'Bukit Batok',
+    'Bukit Merah',
+    'Bukit Panjang',
+    'Bukit Timah',
+    'Choa Chu Kang',
+    'Clementi',
+    'Geylang',
+    'Hougang',
+    'Jurong East',
+    'Jurong West',
+    'Kallang',
+    'Marine Parade',
+    'Novena',
+    'Pasir Ris',
+    'Punggol',
+    'Queenstown',
+    'Sembawang',
+    'Sengkang',
+    'Serangoon',
+    'Tampines',
+    'Toa Payoh',
+    'Woodlands',
+    'Yishun'
+  ];
+
   const {
     register,
     handleSubmit,
@@ -431,12 +463,18 @@ const VendorRegisterPage = ({ embedded = false }) => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Service Area *
                         </label>
-                        <input
-                          type="text"
-                          {...register('serviceArea', { required: 'Please enter service area' })}
+                        <select
+                          {...register('serviceArea', { required: 'Please select service area' })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                          placeholder="e.g. Chaoyang District, Haidian District, etc."
-                        />
+                          defaultValue=""
+                        >
+                          <option value="" disabled>Select your service area</option>
+                          {singaporeCities.map((city) => (
+                            <option key={city} value={city}>
+                              {city}
+                            </option>
+                          ))}
+                        </select>
                         {errors.serviceArea && (
                           <p className="text-red-500 text-sm mt-1">{errors.serviceArea.message}</p>
                         )}

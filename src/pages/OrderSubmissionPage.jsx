@@ -4,11 +4,8 @@ import { motion } from 'framer-motion';
 import { 
   MapPin, 
   Calendar, 
-  Clock, 
   DollarSign, 
   FileText, 
-  Phone, 
-  Mail,
   Camera,
   AlertCircle,
   CheckCircle,
@@ -20,6 +17,38 @@ import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { SERVICE_CATEGORIES_SELECT_FORMAT } from '../constants/serviceCategories';
 import toast from 'react-hot-toast';
+
+// Singapore cities list
+const singaporeCities = [
+  'Central Singapore',
+  'Ang Mo Kio',
+  'Bedok',
+  'Bishan',
+  'Boon Lay',
+  'Bukit Batok',
+  'Bukit Merah',
+  'Bukit Panjang',
+  'Bukit Timah',
+  'Choa Chu Kang',
+  'Clementi',
+  'Geylang',
+  'Hougang',
+  'Jurong East',
+  'Jurong West',
+  'Kallang',
+  'Marine Parade',
+  'Novena',
+  'Pasir Ris',
+  'Punggol',
+  'Queenstown',
+  'Sembawang',
+  'Sengkang',
+  'Serangoon',
+  'Tampines',
+  'Toa Payoh',
+  'Woodlands',
+  'Yishun'
+];
 
 const OrderSubmissionPage = () => {
   const navigate = useNavigate();
@@ -41,22 +70,25 @@ const OrderSubmissionPage = () => {
       streetAddress: '',
       building: '',
       unit: '',
-      city: '',
-      state: '',
+      city: 'Central Singapore',
+      state: 'Singapore',
       zipCode: '',
       address: '', // Keep for backward compatibility
+      country: 'Singapore'
     },
     
     // Timing
     requestedTimeSlot: {
       date: '',
       startTime: '09:00',
-      endTime: '17:00'
+      endTime: '12:00'
     },
     estimatedDuration: 2,
     
     // Budget
     estimatedBudget: '',
+    isWeekendBooking: false,
+    weekendSurcharge: 0,
     
     // Contact & Special Instructions
     customerContactNumber: user?.phone || '',
@@ -127,10 +159,11 @@ const OrderSubmissionPage = () => {
         location: {
           ...prev.location,
           streetAddress: user.address || prev.location.streetAddress,
-          city: user.city || prev.location.city,
-          state: user.state || prev.location.state,
+          city: user.city || prev.location.city, // Keep Singapore default if user city is empty
+          state: 'Singapore', // Always use Singapore
           zipCode: user.zipCode || prev.location.zipCode,
           address: user.address || prev.location.address, // For backward compatibility
+          country: 'Singapore' // Always Singapore
         }
       }));
     }
@@ -150,6 +183,25 @@ const OrderSubmissionPage = () => {
         toast.error('Cannot select a date in the past. Please choose today or a future date.');
         return;
       }
+
+      // Check if selected date is weekend (Saturday = 6, Sunday = 0)
+      const dayOfWeek = selectedDate.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      
+      // Calculate weekend surcharge (20% extra)
+      const baseAmount = parseFloat(formData.estimatedBudget) || 0;
+      const weekendSurcharge = isWeekend ? baseAmount * 0.2 : 0;
+
+      setFormData(prev => ({
+        ...prev,
+        requestedTimeSlot: {
+          ...prev.requestedTimeSlot,
+          date: value
+        },
+        isWeekendBooking: isWeekend,
+        weekendSurcharge: weekendSurcharge
+      }));
+      return;
     }
 
     if (field.includes('.')) {
@@ -162,10 +214,20 @@ const OrderSubmissionPage = () => {
         }
       }));
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
+      setFormData(prev => {
+        const updatedData = {
+          ...prev,
+          [field]: value
+        };
+
+        // Update weekend surcharge when budget changes
+        if (field === 'estimatedBudget' && prev.isWeekendBooking) {
+          const baseAmount = parseFloat(value) || 0;
+          updatedData.weekendSurcharge = baseAmount * 0.2;
+        }
+
+        return updatedData;
+      });
     }
   };
 
@@ -283,6 +345,7 @@ const OrderSubmissionPage = () => {
       // Generate a unique job number
       const jobNumber = `JOB${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
       const budgetAmount = parseFloat(formData.estimatedBudget);
+      const totalAmount = budgetAmount + formData.weekendSurcharge;
       
       // Create complete address string for backend compatibility
       const completeAddress = [
@@ -300,7 +363,7 @@ const OrderSubmissionPage = () => {
         jobNumber: jobNumber,
         estimatedBudget: budgetAmount,
         subtotal: budgetAmount,
-        totalAmount: budgetAmount, // Initial estimate
+        totalAmount: totalAmount, // Include weekend surcharge
         status: 'PENDING', // Add initial status
         serviceCategory: formData.category, // Add service category for vendor matching
         location: {
@@ -829,7 +892,7 @@ const OrderSubmissionPage = () => {
                     type="text"
                     value={formData.location.streetAddress}
                     onChange={(e) => handleInputChange('location.streetAddress', e.target.value)}
-                    placeholder="e.g., Jalan Permas 16/1"
+                    placeholder="e.g., 123 Orchard Road"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                   />
                 </div>
@@ -840,42 +903,30 @@ const OrderSubmissionPage = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       City/Area *
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={formData.location.city}
                       onChange={(e) => handleInputChange('location.city', e.target.value)}
-                      placeholder="e.g., Masai"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                    />
+                    >
+                      <option value="">Select Area</option>
+                      {singaporeCities.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      State *
+                      Country *
                     </label>
-                    <select
-                      value={formData.location.state}
-                      onChange={(e) => handleInputChange('location.state', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-                    >
-                      <option value="">Select State</option>
-                      <option value="Johor">Johor</option>
-                      <option value="Kedah">Kedah</option>
-                      <option value="Kelantan">Kelantan</option>
-                      <option value="Kuala Lumpur">Kuala Lumpur</option>
-                      <option value="Labuan">Labuan</option>
-                      <option value="Melaka">Melaka</option>
-                      <option value="Negeri Sembilan">Negeri Sembilan</option>
-                      <option value="Pahang">Pahang</option>
-                      <option value="Penang">Penang</option>
-                      <option value="Perak">Perak</option>
-                      <option value="Perlis">Perlis</option>
-                      <option value="Putrajaya">Putrajaya</option>
-                      <option value="Sabah">Sabah</option>
-                      <option value="Sarawak">Sarawak</option>
-                      <option value="Selangor">Selangor</option>
-                      <option value="Terengganu">Terengganu</option>
-                    </select>
+                    <input
+                      type="text"
+                      value="Singapore"
+                      readOnly
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                    />
                   </div>
 
                   <div>
@@ -929,6 +980,26 @@ const OrderSubmissionPage = () => {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                   />
                   <p className="mt-1 text-sm text-gray-500">Please select from today onwards to allow proper scheduling</p>
+                  
+                  {/* Weekend Pricing Alert */}
+                  {formData.isWeekendBooking && (
+                    <div className="mt-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-start space-x-3">
+                        <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="text-sm font-medium text-red-800">Weekend Service Premium</h4>
+                          <p className="text-sm text-red-700 mt-1">
+                            You've selected a weekend date (Saturday/Sunday). Weekend services include a 20% premium charge.
+                            {formData.estimatedBudget && (
+                              <span className="block mt-1 font-medium">
+                                Additional charge: SGD {formData.weekendSurcharge.toFixed(2)}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Time Sessions */}
@@ -942,17 +1013,36 @@ const OrderSubmissionPage = () => {
                         type="radio"
                         name="timeSession"
                         value="morning"
-                        checked={formData.requestedTimeSlot.startTime === '08:00' && formData.requestedTimeSlot.endTime === '12:00'}
+                        checked={formData.requestedTimeSlot.startTime === '09:00' && formData.requestedTimeSlot.endTime === '12:00'}
                         onChange={() => {
-                          handleInputChange('requestedTimeSlot.startTime', '08:00');
+                          handleInputChange('requestedTimeSlot.startTime', '09:00');
                           handleInputChange('requestedTimeSlot.endTime', '12:00');
                         }}
                         className="mr-3 text-orange-600"
                       />
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">Morning Session</div>
-                        <div className="text-sm text-gray-500">8:00 AM - 12:00 PM</div>
-                        <div className="text-sm text-gray-400">Good for most services and appointments</div>
+                        <div className="text-sm text-gray-500">9:00 AM - 12:00 PM</div>
+                        <div className="text-sm text-gray-400">Great for starting fresh in the morning</div>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="radio"
+                        name="timeSession"
+                        value="midday"
+                        checked={formData.requestedTimeSlot.startTime === '12:00' && formData.requestedTimeSlot.endTime === '15:00'}
+                        onChange={() => {
+                          handleInputChange('requestedTimeSlot.startTime', '12:00');
+                          handleInputChange('requestedTimeSlot.endTime', '15:00');
+                        }}
+                        className="mr-3 text-orange-600"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">Midday Session</div>
+                        <div className="text-sm text-gray-500">12:00 PM - 3:00 PM</div>
+                        <div className="text-sm text-gray-400">Good for lunch time and early afternoon</div>
                       </div>
                     </label>
 
@@ -961,17 +1051,17 @@ const OrderSubmissionPage = () => {
                         type="radio"
                         name="timeSession"
                         value="afternoon"
-                        checked={formData.requestedTimeSlot.startTime === '12:00' && formData.requestedTimeSlot.endTime === '16:00'}
+                        checked={formData.requestedTimeSlot.startTime === '15:00' && formData.requestedTimeSlot.endTime === '18:00'}
                         onChange={() => {
-                          handleInputChange('requestedTimeSlot.startTime', '12:00');
-                          handleInputChange('requestedTimeSlot.endTime', '16:00');
+                          handleInputChange('requestedTimeSlot.startTime', '15:00');
+                          handleInputChange('requestedTimeSlot.endTime', '18:00');
                         }}
                         className="mr-3 text-orange-600"
                       />
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">Afternoon Session</div>
-                        <div className="text-sm text-gray-500">12:00 PM - 4:00 PM</div>
-                        <div className="text-sm text-gray-400">Good for most services and appointments</div>
+                        <div className="text-sm text-gray-500">3:00 PM - 6:00 PM</div>
+                        <div className="text-sm text-gray-400">Perfect for late afternoon services</div>
                       </div>
                     </label>
 
@@ -980,36 +1070,17 @@ const OrderSubmissionPage = () => {
                         type="radio"
                         name="timeSession"
                         value="evening"
-                        checked={formData.requestedTimeSlot.startTime === '16:00' && formData.requestedTimeSlot.endTime === '20:00'}
+                        checked={formData.requestedTimeSlot.startTime === '18:00' && formData.requestedTimeSlot.endTime === '21:00'}
                         onChange={() => {
-                          handleInputChange('requestedTimeSlot.startTime', '16:00');
-                          handleInputChange('requestedTimeSlot.endTime', '20:00');
+                          handleInputChange('requestedTimeSlot.startTime', '18:00');
+                          handleInputChange('requestedTimeSlot.endTime', '21:00');
                         }}
                         className="mr-3 text-orange-600"
                       />
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">Evening Session</div>
-                        <div className="text-sm text-gray-500">4:00 PM - 8:00 PM</div>
-                        <div className="text-sm text-gray-400">Perfect for after work hours</div>
-                      </div>
-                    </label>
-
-                    <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                      <input
-                        type="radio"
-                        name="timeSession"
-                        value="flexible"
-                        checked={formData.requestedTimeSlot.startTime === '09:00' && formData.requestedTimeSlot.endTime === '17:00'}
-                        onChange={() => {
-                          handleInputChange('requestedTimeSlot.startTime', '09:00');
-                          handleInputChange('requestedTimeSlot.endTime', '17:00');
-                        }}
-                        className="mr-3 text-orange-600"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">Flexible Timing</div>
-                        <div className="text-sm text-gray-500">Any time during business hours</div>
-                        <div className="text-sm text-gray-400">Let vendor choose the best time</div>
+                        <div className="text-sm text-gray-500">6:00 PM - 9:00 PM</div>
+                        <div className="text-sm text-gray-400">Ideal for after work hours</div>
                       </div>
                     </label>
                   </div>
@@ -1149,7 +1220,7 @@ const OrderSubmissionPage = () => {
                     {formData.location.unit && <div><strong>Unit:</strong> {formData.location.unit}</div>}
                     {formData.location.building && <div><strong>Building:</strong> {formData.location.building}</div>}
                     {formData.location.streetAddress && <div><strong>Street:</strong> {formData.location.streetAddress}</div>}
-                    <div><strong>Area:</strong> {formData.location.city}, {formData.location.state} {formData.location.zipCode}</div>
+                    <div><strong>Area:</strong> {formData.location.city}, Singapore {formData.location.zipCode}</div>
                   </div>
                 </div>
 
@@ -1166,8 +1237,23 @@ const OrderSubmissionPage = () => {
                 {/* Budget Summary */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="font-semibold text-gray-900 mb-3">Budget Estimate</h3>
-                  <div className="text-lg font-semibold text-orange-600">
-                    ${parseFloat(formData.estimatedBudget || 0).toFixed(2)} SGD
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm text-gray-700">
+                      <span>Base amount:</span>
+                      <span>${parseFloat(formData.estimatedBudget || 0).toFixed(2)} SGD</span>
+                    </div>
+                    {formData.isWeekendBooking && formData.weekendSurcharge > 0 && (
+                      <div className="flex justify-between text-sm text-red-600">
+                        <span>Weekend premium (20%):</span>
+                        <span>+${formData.weekendSurcharge.toFixed(2)} SGD</span>
+                      </div>
+                    )}
+                    <div className="border-t pt-2">
+                      <div className="flex justify-between text-lg font-semibold text-orange-600">
+                        <span>Total estimate:</span>
+                        <span>${(parseFloat(formData.estimatedBudget || 0) + formData.weekendSurcharge).toFixed(2)} SGD</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

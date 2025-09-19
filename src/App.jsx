@@ -1,6 +1,7 @@
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Route, Routes } from 'react-router-dom';
 import SessionManager from './components/auth/SessionManager';
+import CookieConsent from './components/common/CookieConsent';
 
 import AboutPage from './pages/AboutPage.jsx';
 import AgentAgreementPage from './pages/legal/AgentAgreementPage.jsx';
@@ -352,6 +353,7 @@ function App() {
           </AnimatePresence>
           </CartProvider>
         </MessagesProvider>
+        <CookieConsent />
       </AuthProvider>
     </LanguageProvider>
   );

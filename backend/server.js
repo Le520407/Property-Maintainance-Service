@@ -118,6 +118,15 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Initialize billing data retention service
+  try {
+    const retentionService = require('./scripts/billing-retention-service');
+    retentionService.start();
+    console.log('🗂️  Billing data retention service initialized');
+  } catch (error) {
+    console.error('❌ Failed to initialize billing retention service:', error.message);
+  }
 });
 
 module.exports = app;

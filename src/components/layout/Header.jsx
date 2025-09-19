@@ -69,14 +69,10 @@ const Header = () => {
       return;
     }
 
-    console.log('🔍 Header fetchUnreadCount - User:', user.role, 'ID:', user.id);
-
     // Check if user has visited messages page - if so, don't bother fetching
     const hasVisitedMessages = localStorage.getItem(`header-messages-visited-${user.id}`) === 'true';
-    console.log('📍 Has visited messages flag:', hasVisitedMessages);
     
     if (hasVisitedMessages && !forceRefresh) {
-      console.log('⚠️ Skip fetch - user has visited messages page');
       setUnreadCount(0);
       return;
     }
@@ -89,31 +85,22 @@ const Header = () => {
     }
 
     try {
-      console.log('📡 Fetching unread count from API...');
-      
       // Use cached API call to prevent excessive requests
       const response = await cachedApi.getConversations(user.id, user.role, forceRefresh);
-      console.log(`${user.role === 'admin' ? '👑 Admin' : '👤 User'} response:`, response);
       
       const conversations = response.conversations || [];
       const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
-      
-      console.log('💬 Conversations:', conversations.length, 'Total unread:', totalUnread);
-      console.log('🔢 Individual unread counts:', conversations.map(c => ({ name: c.customer?.firstName || c.vendor?.firstName, unread: c.unreadCount })));
       
       // Update cache
       setCachedUnreadCount(totalUnread);
       setLastFetchTime(now);
       setUnreadCount(totalUnread);
       
-      console.log('✅ Header unread count set to:', totalUnread);
-      
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
       
       // Handle rate limiting specifically
       if (error.response?.status === 429) {
-        console.warn('⚠️ Rate limited - using cached value if available');
         if (cachedUnreadCount !== null) {
           setUnreadCount(cachedUnreadCount);
         }
@@ -143,7 +130,6 @@ const Header = () => {
   useEffect(() => {
     if (!user) return;
 
-    console.log('🚀 Header mounted for user:', user.role, 'ID:', user.id);
     // Clear visited flag on mount to ensure we fetch unread count
     clearMessagesVisitedFlag(user.id);
     fetchUnreadCount(true); // Force refresh on mount
@@ -308,7 +294,6 @@ const Header = () => {
                       to={(user.role === 'vendor' || user.role === 'technician') ? '/vendor-dashboard' : '/dashboard'}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => {
-                        console.log('Dashboard link clicked. User role:', user.role);
                         setIsUserMenuOpen(false);
                       }}
                     >
@@ -334,7 +319,6 @@ const Header = () => {
                           to="/profile"
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => {
-                            console.log('Profile link clicked for customer');
                             setIsUserMenuOpen(false);
                           }}
                         >
@@ -344,7 +328,6 @@ const Header = () => {
                           to="/referral"
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => {
-                            console.log('Referrals link clicked for customer');
                             setIsUserMenuOpen(false);
                           }}
                         >
@@ -359,7 +342,6 @@ const Header = () => {
                           to="/profile"
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => {
-                            console.log('Profile link clicked for role:', user.role);
                             setIsUserMenuOpen(false);
                           }}
                         >

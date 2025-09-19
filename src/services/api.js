@@ -5,10 +5,6 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api
 const request = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
   
-  console.log('🔍 API Debug - Endpoint:', endpoint);
-  console.log('🔍 API Debug - Token exists:', !!token);
-  console.log('🔍 API Debug - Options:', options);
-  
   const config = {
     headers: {
       'Content-Type': 'application/json',
@@ -17,8 +13,6 @@ const request = async (endpoint, options = {}) => {
     },
     ...options,
   };
-
-  console.log('🔍 API Debug - Final config:', config);
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
@@ -289,6 +283,12 @@ export const api = {
         return request(`/admin/vendors/${vendorId}/ratings?${queryString}`);
       },
     },
+
+    // Job verification for admin
+    verifyJobCompletion: (jobId, verificationData) => request(`/admin/jobs/${jobId}/verify`, {
+      method: 'PATCH',
+      body: JSON.stringify(verificationData),
+    }),
   },
   
   // Referral system - User side
@@ -501,6 +501,20 @@ export const api = {
     
     // Get customer details
     getCustomerDetails: (customerId) => request(`/vendor/customers/${customerId}`),
+
+    // Upload job completion photos
+    uploadCompletionPhotos: (photos) => {
+      const formData = new FormData();
+      photos.forEach((photo, index) => {
+        formData.append('photos', photo.file || photo);
+      });
+      return api.uploadFiles('/upload/completion-photos', formData);
+    },
+
+    // Upload single file for job completion
+    uploadFile: (formData) => {
+      return api.uploadFiles('/upload/vendor-file', formData);
+    },
   },
 
   // CMS related
