@@ -1,25 +1,27 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  MapPin, 
-  Calendar, 
-  Clock, 
-  DollarSign, 
-  FileText, 
-  Phone, 
-  Mail,
-  Camera,
+﻿import {
   AlertCircle,
+  Calendar,
+  Camera,
   CheckCircle,
+  Clock,
+  DollarSign,
+  FileText,
+  Mail,
+  MapPin,
+  Phone,
   Upload,
   Video,
   X
 } from 'lucide-react';
-import { api } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
 import { SERVICE_CATEGORIES_SELECT_FORMAT } from '../constants/serviceCategories';
+import { SINGAPORE_DISTRICTS } from '../constants/singaporeRegions';
+import { api } from '../services/api';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 
 const OrderSubmissionPage = () => {
   const navigate = useNavigate();
@@ -844,37 +846,26 @@ const OrderSubmissionPage = () => {
                       type="text"
                       value={formData.location.city}
                       onChange={(e) => handleInputChange('location.city', e.target.value)}
-                      placeholder="e.g., Masai"
+                      placeholder="e.g., Tampines, Jurong East, Orchard"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      State *
+                      District/Region *
                     </label>
                     <select
                       value={formData.location.state}
                       onChange={(e) => handleInputChange('location.state', e.target.value)}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                     >
-                      <option value="">Select State</option>
-                      <option value="Johor">Johor</option>
-                      <option value="Kedah">Kedah</option>
-                      <option value="Kelantan">Kelantan</option>
-                      <option value="Kuala Lumpur">Kuala Lumpur</option>
-                      <option value="Labuan">Labuan</option>
-                      <option value="Melaka">Melaka</option>
-                      <option value="Negeri Sembilan">Negeri Sembilan</option>
-                      <option value="Pahang">Pahang</option>
-                      <option value="Penang">Penang</option>
-                      <option value="Perak">Perak</option>
-                      <option value="Perlis">Perlis</option>
-                      <option value="Putrajaya">Putrajaya</option>
-                      <option value="Sabah">Sabah</option>
-                      <option value="Sarawak">Sarawak</option>
-                      <option value="Selangor">Selangor</option>
-                      <option value="Terengganu">Terengganu</option>
+                      <option value="">Select District/Region</option>
+                      {SINGAPORE_DISTRICTS.map(district => (
+                        <option key={district.value} value={district.value}>
+                          {district.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -886,7 +877,9 @@ const OrderSubmissionPage = () => {
                       type="text"
                       value={formData.location.zipCode}
                       onChange={(e) => handleInputChange('location.zipCode', e.target.value)}
-                      placeholder="e.g., 81750"
+                      placeholder="e.g., 123456"
+                      pattern="[0-9]{6}"
+                      maxLength="6"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                     />
                   </div>

@@ -173,6 +173,44 @@ const userSchema = new mongoose.Schema({
     default: true
   },
   
+  // CEA (Council for Estate Agencies) Verification Fields
+  ceaRegistrationNumber: {
+    type: String,
+    trim: true,
+    uppercase: true,
+    sparse: true, // Allow multiple nulls but unique non-null values
+    validate: {
+      validator: function(v) {
+        // Only validate if it's provided and user is a property agent
+        if (!v || this.referralUserType !== 'property_agent') return true;
+        // Basic CEA registration format validation (adjust pattern as needed)
+        return /^[A-Z]{1,2}\d{6,8}[A-Z]?$/.test(v);
+      },
+      message: 'Invalid CEA registration number format'
+    }
+  },
+  ceaVerificationStatus: {
+    type: String,
+    enum: ['PENDING_MANUAL_VERIFICATION', 'VERIFIED', 'FAILED', 'EXPIRED', 'SUSPENDED'],
+    default: function() {
+      return this.ceaRegistrationNumber ? 'PENDING_MANUAL_VERIFICATION' : undefined;
+    }
+  },
+  ceaVerificationDate: {
+    type: Date
+  },
+  ceaVerifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  ceaExpiryDate: {
+    type: Date
+  },
+  ceaVerificationNotes: {
+    type: String,
+    trim: true
+  },
+  
   // New referral system fields
   referralUserType: {
     type: String,

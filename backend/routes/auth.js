@@ -1,9 +1,9 @@
 const express = require('express');
 const User = require('../models/User');
 const { Referral } = require('../models/Referral');
-const InviteCode = require('../models/InviteCode');
 const { generateToken } = require('../utils/jwt');
 const { authenticateToken } = require('../middleware/auth');
+const ceaVerificationService = require('../services/ceaVerificationService');
 
 const router = express.Router();
 
@@ -118,7 +118,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Register referral agent with invite code
+// Register referral agent with CEA registration
 router.post('/register-agent', async (req, res) => {
   try {
     const { 
@@ -130,13 +130,38 @@ router.post('/register-agent', async (req, res) => {
       address,
       city, 
       country,
-      inviteCode
+      ceaRegistrationNumber
     } = req.body;
 
     // Validation
-    if (!firstName || !lastName || !email || !password || !inviteCode) {
+    if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({ 
-        message: 'First name, last name, email, password, and invite code are required' 
+        message: 'First name, last name, email, and password are required' 
+      });
+    }
+
+    // CEA Registration validation for property agents
+    if (!ceaRegistrationNumber) {
+      return res.status(400).json({ 
+        message: 'CEA registration number is required for property agents' 
+      });
+    }
+
+    // Validate CEA registration format
+    const ceaValidation = ceaVerificationService.validateRegistrationFormat(ceaRegistrationNumber);
+    if (!ceaValidation.isValid) {
+      return res.status(400).json({ 
+        message: ceaValidation.error
+      });
+    }
+
+    // Check if CEA registration number already exists
+    const existingCEAUser = await User.findOne({ 
+      ceaRegistrationNumber: ceaRegistrationNumber.toUpperCase() 
+    });
+    if (existingCEAUser) {
+      return res.status(400).json({ 
+        message: 'This CEA registration number is already registered' 
       });
     }
 
@@ -144,21 +169,6 @@ router.post('/register-agent', async (req, res) => {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email' });
-    }
-
-    // Validate invite code
-    const inviteCodeDoc = await InviteCode.findOne({ 
-      code: inviteCode.toUpperCase().trim(),
-      userType: 'referral'
-    });
-
-    if (!inviteCodeDoc) {
-      return res.status(400).json({ message: 'Invalid invite code for agent registration' });
-    }
-
-    const validation = inviteCodeDoc.isValid();
-    if (!validation.valid) {
-      return res.status(400).json({ message: validation.reason });
     }
 
     // Generate unique agent code
@@ -188,20 +198,25 @@ router.post('/register-agent', async (req, res) => {
       password,
       phone,
       address,
-      city,
-      country,
+      city: city || 'Singapore',
+      country: country || 'Singapore',
       role: 'referral',
-      status: 'ACTIVE',
+      status: 'PENDING', // Set to pending until CEA verification
       agentCode,
-      inviteCode: inviteCode.toUpperCase(),
       commissionRate: 15.0,
-      isAgentActive: true
+      isAgentActive: false, // Will be activated after CEA verification
+      ceaRegistrationNumber: ceaRegistrationNumber.toUpperCase(),
+      ceaVerificationStatus: 'PENDING_MANUAL_VERIFICATION',
+      referralUserType: 'property_agent',
+      rewardType: 'money'
     });
 
-    // Use the invite code
-    await inviteCodeDoc.useCode(user._id, {
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent']
+    // Create CEA verification record for reference
+    ceaVerificationService.createVerificationRecord({
+      registrationNumber: ceaRegistrationNumber.toUpperCase(),
+      agentName: `${firstName} ${lastName}`,
+      email,
+      phone
     });
 
     // Create referral record for the new agent
@@ -416,6 +431,52 @@ router.post('/logout', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Logout error:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Validate CEA registration number format
+router.post('/validate-cea', async (req, res) => {
+  try {
+    const { ceaRegistrationNumber } = req.body;
+    
+    if (!ceaRegistrationNumber) {
+      return res.status(400).json({ 
+        valid: false,
+        message: 'CEA registration number is required' 
+      });
+    }
+
+    // Validate CEA registration format
+    const ceaValidation = ceaVerificationService.validateRegistrationFormat(ceaRegistrationNumber);
+    if (!ceaValidation.isValid) {
+      return res.status(400).json({ 
+        valid: false,
+        message: ceaValidation.error
+      });
+    }
+
+    // Check if CEA number is already registered
+    const existingUser = await User.findOne({ 
+      ceaRegistrationNumber: ceaRegistrationNumber.toUpperCase() 
+    });
+    
+    if (existingUser) {
+      return res.status(400).json({ 
+        valid: false,
+        message: 'This CEA registration number is already registered' 
+      });
+    }
+
+    res.json({ 
+      valid: true,
+      message: 'CEA registration number is valid and available' 
+    });
+  } catch (error) {
+    console.error('CEA validation error:', error);
+    res.status(500).json({ 
+      valid: false,
+      message: 'Internal server error during validation' 
+    });
   }
 });
 
