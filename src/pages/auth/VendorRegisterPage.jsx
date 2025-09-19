@@ -1,24 +1,25 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useForm } from 'react-hook-form';
-import { 
-  Eye, 
-  EyeOff, 
-  CheckCircle, 
-  AlertCircle, 
-  Upload, 
+import {
+  AlertCircle,
   Building,
-  User,
-  Phone,
+  CheckCircle,
+  Eye,
+  EyeOff,
+  FileText,
   Mail,
   MapPin,
-  FileText,
-  Shield
+  Phone,
+  Shield,
+  Upload,
+  User
 } from 'lucide-react';
-import { api } from '../../services/api';
-import toast from 'react-hot-toast';
+import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+
 import { SERVICE_CATEGORIES_OBJECT_FORMAT } from '../../constants/serviceCategories';
+import { api } from '../../services/api';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import { useForm } from 'react-hook-form';
 
 const VendorRegisterPage = ({ embedded = false }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -435,7 +436,7 @@ const VendorRegisterPage = ({ embedded = false }) => {
                           type="text"
                           {...register('serviceArea', { required: 'Please enter service area' })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                          placeholder="e.g. Chaoyang District, Haidian District, etc."
+                          placeholder="e.g. Tampines, Jurong East, Woodlands, etc."
                         />
                         {errors.serviceArea && (
                           <p className="text-red-500 text-sm mt-1">{errors.serviceArea.message}</p>

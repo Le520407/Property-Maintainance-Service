@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Award, CheckCircle, Eye, EyeOff, Lock, Mail, Shield, TrendingUp, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+
+import { api } from '../../services/api';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { User, Mail, Lock, Eye, EyeOff, Gift, CheckCircle, Shield, Award, TrendingUp } from 'lucide-react';
-import { api } from '../../services/api';
+import { useForm } from 'react-hook-form';
 
 const AgentRegisterPage = ({ embedded = false }) => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -18,29 +19,34 @@ const AgentRegisterPage = ({ embedded = false }) => {
   const { register, handleSubmit, formState: { errors }, trigger, watch, setValue } = useForm();
   
   const password = watch('password');
-  const inviteCode = watch('inviteCode');
+  const ceaRegistrationNumber = watch('ceaRegistrationNumber');
 
   const agentSteps = [
-    { number: 1, title: "Invite Code", icon: Shield },
+    { number: 1, title: "CEA Registration", icon: Shield },
     { number: 2, title: "Personal Info", icon: User },
     { number: 3, title: "Contact Details", icon: Mail },
     { number: 4, title: "Account Security", icon: Lock }
   ];
 
-  // Validate invite code
-  const validateInviteCode = async (code) => {
-    if (!code || code.length < 6) return;
+  // Validate CEA registration number
+  const validateCEARegistration = async (ceaNumber) => {
+    if (!ceaNumber || ceaNumber.length < 6) return;
     
     setIsValidatingCode(true);
     try {
-      const response = await api.post('/invite-codes/validate', { code });
-      if (response.success) {
+      const response = await api.post('/auth/validate-cea', { 
+        ceaRegistrationNumber: ceaNumber.toUpperCase() 
+      });
+      
+      if (response.valid) {
         setCodeValidated(true);
-        toast.success('Valid invite code!');
+        toast.success('Valid CEA registration number!');
+      } else {
+        throw new Error(response.message || 'Invalid CEA registration number');
       }
     } catch (error) {
       setCodeValidated(false);
-      toast.error(error.message || 'Invalid invite code');
+      toast.error(error.message || 'Invalid or already registered CEA number');
     } finally {
       setIsValidatingCode(false);
     }
@@ -51,10 +57,10 @@ const AgentRegisterPage = ({ embedded = false }) => {
     
     if (currentStep === 1) {
       if (!codeValidated) {
-        toast.error('Please validate your invite code first');
+        toast.error('Please validate your CEA registration number first');
         return;
       }
-      fieldsToValidate = ['inviteCode'];
+      fieldsToValidate = ['ceaRegistrationNumber'];
     } else if (currentStep === 2) {
       fieldsToValidate = ['firstName', 'lastName'];
     } else if (currentStep === 3) {
@@ -76,12 +82,12 @@ const AgentRegisterPage = ({ embedded = false }) => {
 
   const onSubmit = async (data) => {
     if (!codeValidated) {
-      toast.error('Please validate your invite code first');
+      toast.error('Please validate your CEA registration number first');
       return;
     }
 
-    if (!data.inviteCode) {
-      toast.error('Invite code is required');
+    if (!data.ceaRegistrationNumber) {
+      toast.error('CEA registration number is required');
       return;
     }
 
@@ -193,7 +199,7 @@ const AgentRegisterPage = ({ embedded = false }) => {
           {/* Form Container */}
           <div className="bg-white rounded-lg shadow-lg p-8">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Step 1: Invite Code Validation */}
+              {/* Step 1: CEA Registration Validation */}
               {currentStep === 1 && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
@@ -202,23 +208,37 @@ const AgentRegisterPage = ({ embedded = false }) => {
               >
                 <h2 className="text-2xl font-semibold mb-6 flex items-center">
                   <Shield className="mr-2" />
-                  Invite Code Verification
+                  CEA Registration Verification
                 </h2>
                 
                 <div className="space-y-6">
+                  {/* Information Panel */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <Shield className="mr-2 text-blue-600 mt-0.5" size={16} />
+                      <div className="text-sm">
+                        <p className="text-blue-800 font-medium">CEA Registration Required</p>
+                        <p className="text-blue-700 mt-1">
+                          All property agents must be registered with the Council for Estate Agencies (CEA) in Singapore.
+                          Your registration number will be verified during the approval process.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Admin Invite Code *
+                      CEA Registration Number *
                     </label>
                     <div className="flex space-x-2">
                       <div className="flex-1 relative">
-                        <Gift size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <Shield size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                         <input
-                          {...register('inviteCode', {
-                            required: 'Invite code is required for agent registration',
-                            minLength: {
-                              value: 6,
-                              message: 'Invite code must be at least 6 characters'
+                          {...register('ceaRegistrationNumber', {
+                            required: 'CEA registration number is required for agent registration',
+                            pattern: {
+                              value: /^[A-Z]{1,2}\d{6,8}[A-Z]?$/,
+                              message: 'Please enter a valid CEA registration number (e.g., R123456A)'
                             }
                           })}
                           type="text"
@@ -227,12 +247,12 @@ const AgentRegisterPage = ({ embedded = false }) => {
                               ? 'border-green-500 focus:ring-green-500' 
                               : 'border-gray-300 focus:ring-orange-500'
                           }`}
-                          placeholder="Enter your invite code"
+                          placeholder="e.g., R123456A"
                           style={{ textTransform: 'uppercase' }}
                           onChange={(e) => {
                             const value = e.target.value.toUpperCase();
                             e.target.value = value;
-                            setValue('inviteCode', value);
+                            setValue('ceaRegistrationNumber', value);
                             setCodeValidated(false);
                           }}
                         />
@@ -242,18 +262,26 @@ const AgentRegisterPage = ({ embedded = false }) => {
                       </div>
                       <button
                         type="button"
-                        onClick={() => validateInviteCode(inviteCode)}
-                        disabled={isValidatingCode || !inviteCode}
+                        onClick={() => validateCEARegistration(ceaRegistrationNumber)}
+                        disabled={isValidatingCode || !ceaRegistrationNumber}
                         className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isValidatingCode ? 'Validating...' : 'Validate'}
                       </button>
                     </div>
-                    {errors.inviteCode && (
-                      <p className="text-red-500 text-sm mt-1">{errors.inviteCode.message}</p>
+                    {errors.ceaRegistrationNumber && (
+                      <p className="text-red-500 text-sm mt-1">{errors.ceaRegistrationNumber.message}</p>
                     )}
                     <p className="mt-1 text-xs text-gray-500">
-                      Contact admin to obtain your exclusive agent invite code
+                      This will be verified through the{' '}
+                      <a 
+                        href="https://eservices.cea.gov.sg/aceas/public-register/" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline"
+                      >
+                        CEA Public Register
+                      </a>
                     </p>
                   </div>
                 </div>

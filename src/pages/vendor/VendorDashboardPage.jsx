@@ -32,10 +32,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { SERVICE_CATEGORIES_SIMPLE } from '../../constants/serviceCategories';
 import VendorCalendar from '../../components/vendor/VendorCalendar';
+import VendorTACSettings from '../../components/vendor/VendorTACSettings';
 import { api } from '../../services/api';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import VendorTACSettings from '../../components/vendor/VendorTACSettings';
 
 // Helper function to construct proper image URLs
 const getImageUrl = (relativeUrl) => {
@@ -352,7 +352,7 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
                     value={profileForm.serviceArea}
                     onChange={(e) => setProfileForm(prev => ({ ...prev, serviceArea: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
-                    placeholder="e.g., Singapore, Kuala Lumpur"
+                    placeholder="e.g., Tampines, Jurong East, Woodlands"
                   />
                 </div>
                 <div>
@@ -946,16 +946,18 @@ const ReviewsComponent = () => {
                 {/* Criteria Breakdown */}
                 {rating.criteria && (
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
-                    {Object.entries(rating.criteria).map(([key, value]) => (
-                      <div key={key} className="text-center">
-                        <div className="text-xs text-gray-500 capitalize mb-1">
-                          {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                    {Object.entries(rating.criteria)
+                      .filter(([key, value]) => key !== '_id' && typeof value === 'number' && value >= 1 && value <= 5)
+                      .map(([key, value]) => (
+                        <div key={key} className="text-center">
+                          <div className="text-xs text-gray-500 capitalize mb-1">
+                            {key === 'timeliness' ? 'Time Lines' : key.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                          </div>
+                          <div className="flex justify-center">
+                            {renderStars(value)}
+                          </div>
                         </div>
-                        <div className="flex justify-center">
-                          {renderStars(value)}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 )}
                 
@@ -2897,7 +2899,7 @@ const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
                   onChange={(e) => setWorkDetails(e.target.value)}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  placeholder="Describe what's included in this quote, materials, labor, timeline, etc..."
+                  placeholder="Describe what's included in this quote, materials, labor, Time Lines, etc..."
                 />
               </div>
               

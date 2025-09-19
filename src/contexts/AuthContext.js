@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { api, apiUtils } from '../services/api';
 
 const AuthContext = createContext();
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
           city: response.user.city || '',
           state: response.user.state || '',
           zipCode: response.user.zipCode || '',
-          country: response.user.country || 'Malaysia',
+          country: response.user.country || 'Singapore',
           tacEnabled: response.user.tacEnabled || false,
           wallet: {
             balance: response.user.totalSpent || 0,

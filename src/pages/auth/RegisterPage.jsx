@@ -1,16 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { useForm } from 'react-hook-form';
-import { 
-  Eye, EyeOff, User, Phone, Mail, Users, Briefcase, Award, Gift,
-  Building, FileText, Shield, Upload, CheckCircle, AlertCircle, MapPin,
-  ChevronLeft, ChevronRight
+import {
+  AlertCircle,
+  Award,
+  Briefcase,
+  Building,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  FileText,
+  Gift,
+  Mail,
+  MapPin,
+  Phone,
+  Shield,
+  Upload,
+  User,
+  Users
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { api } from '../../services/api';
-import toast from 'react-hot-toast';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+
 import { SERVICE_CATEGORIES_OBJECT_FORMAT } from '../../constants/serviceCategories';
+import { api } from '../../services/api';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
+import { useForm } from 'react-hook-form';
 
 const RegisterPage = () => {
   // Multi-step customer registration implementation - Updated Sept 2025
@@ -772,7 +788,7 @@ const RegisterPage = () => {
                           type="text"
                           {...register('serviceArea', { required: accountType === 'vendor' ? 'Service area is required' : false })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                          placeholder="e.g. Singapore, Jurong, etc."
+                          placeholder="e.g. Tampines, Jurong East, Woodlands, etc."
                         />
                         {errors.serviceArea && (
                           <p className="text-red-500 text-sm mt-1">{errors.serviceArea.message}</p>

@@ -1,15 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useForm } from 'react-hook-form';
-import { 
-  Eye, EyeOff, Mail, Lock, User, Phone, MapPin, CheckCircle, Gift, 
-  Users, Briefcase, Award, Shield, Settings, Copy, Building, FileText,
-  Upload, TrendingUp, AlertCircle
+import {
+  AlertCircle,
+  Award,
+  Briefcase,
+  Building,
+  CheckCircle,
+  Copy,
+  Eye,
+  EyeOff,
+  FileText,
+  Gift,
+  Lock,
+  Mail,
+  MapPin,
+  Phone,
+  Settings,
+  Shield,
+  TrendingUp,
+  Upload,
+  User,
+  Users
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+
+import { SERVICE_CATEGORIES_OBJECT_FORMAT } from '../../constants/serviceCategories';
 import { api } from '../../services/api';
 import toast from 'react-hot-toast';
-import { SERVICE_CATEGORIES_OBJECT_FORMAT } from '../../constants/serviceCategories';
+import { useForm } from 'react-hook-form';
 
 const AllInOneRegisterPage = () => {
   const [accountType, setAccountType] = useState('customer');
@@ -681,7 +699,7 @@ const AllInOneRegisterPage = () => {
                               type="text"
                               {...register('serviceArea', { required: 'Service area is required' })}
                               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-green-500 focus:ring-green-500"
-                              placeholder="e.g. Singapore, Jurong, etc."
+                              placeholder="e.g. Tampines, Jurong East, Woodlands, etc."
                             />
                             {errors.serviceArea && (
                               <p className="text-red-500 text-sm mt-1">{errors.serviceArea.message}</p>
