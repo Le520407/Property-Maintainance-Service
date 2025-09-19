@@ -83,7 +83,7 @@ const jobStatusHistorySchema = new mongoose.Schema({
     type: String,
     enum: [
       'PENDING', 'ASSIGNED', 'IN_DISCUSSION', 'QUOTE_SENT', 'QUOTE_ACCEPTED', 'QUOTE_REJECTED',
-      'PAID', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED', 'SUPPORT_PENDING'
+      'PAID', 'IN_PROGRESS', 'PENDING_VERIFICATION', 'COMPLETED', 'CANCELLED', 'REJECTED', 'SUPPORT_PENDING'
     ],
     required: true
   },
@@ -164,6 +164,8 @@ const jobSchema = new mongoose.Schema({
   assignedTimeSlot: jobTimeSlotSchema,
   actualStartTime: Date,
   actualEndTime: Date,
+  submittedForVerificationAt: Date,
+  verifiedAt: Date,
   estimatedDuration: {
     type: Number, // in hours
     min: 0.5
@@ -225,7 +227,8 @@ const jobSchema = new mongoose.Schema({
       'QUOTE_REJECTED', // Customer rejected quote
       'PAID',           // Customer paid, ready to start work
       'IN_PROGRESS',    // Work is being done
-      'COMPLETED',      // Work finished
+      'PENDING_VERIFICATION', // Vendor submitted completion, waiting for admin verification
+      'COMPLETED',      // Work finished and verified
       'SUPPORT_PENDING', // Customer support request
       'CANCELLED',      // Job cancelled
       'REJECTED'        // Vendor rejected assignment
@@ -286,6 +289,36 @@ const jobSchema = new mongoose.Schema({
     workNotes: String,
     imagesBeforeWork: [String], // URLs to images
     imagesAfterWork: [String], // URLs to images
+  },
+
+  // Job Completion Details
+  completionDetails: {
+    photos: [{
+      filename: String,
+      originalName: String,
+      serverFilename: String,
+      url: String,
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    notes: String,
+    submittedAt: Date,
+    verified: {
+      type: Boolean,
+      default: false
+    },
+    verifiedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    verificationNotes: String,
+    moneyDeduction: {
+      type: Number,
+      default: 0,
+      min: 0
+    }
   },
   
   // Payment Information
@@ -460,9 +493,18 @@ jobSchema.methods.updateStatus = function(newStatus, updatedBy, notes) {
     case 'IN_PROGRESS':
       this.actualStartTime = new Date();
       break;
+    case 'PENDING_VERIFICATION':
+      // Job submitted for verification, set completion timestamp
+      this.workProgress.percentage = 100;
+      this.submittedForVerificationAt = new Date();
+      break;
     case 'COMPLETED':
       this.actualEndTime = new Date();
       this.workProgress.percentage = 100;
+      this.verifiedAt = new Date();
+      break;
+    default:
+      // No special handling for other statuses
       break;
   }
   

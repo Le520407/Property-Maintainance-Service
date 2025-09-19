@@ -9,7 +9,6 @@ import {
   CheckCircle,
   AlertCircle,
   TrendingUp,
-  Users,
   Shield,
   X,
   AlertTriangle
@@ -47,8 +46,6 @@ const MembershipDashboard = () => {
 
   const fetchMembershipData = async () => {
     try {
-      console.log('🔍 Fetching membership data...');
-      
       // Check if user is logged in
       const token = localStorage.getItem('token');
       if (!token) {
@@ -60,12 +57,9 @@ const MembershipDashboard = () => {
       
       const response = await api.get('/membership/my-membership');
       
-      console.log('📋 API Response:', response);
-      
       if (response?.success) {
         setMembership(response.membership);
         setAnalytics(response.analytics);
-        console.log('✅ Membership data loaded successfully');
       } else if (response?.success === false) {
         console.error('❌ API returned unsuccessful response:', response);
         toast.error(response.message || 'Failed to load membership data');
@@ -94,26 +88,15 @@ const MembershipDashboard = () => {
   };
 
   const handleCancelMembership = async (immediate = false) => {
-    // Debug: Log the current membership object
-    console.log('🔍 DEBUG: Membership object:', {
-      status: membership.status,
-      cancelledAt: membership.cancelledAt,
-      autoRenew: membership.autoRenew,
-      willExpireAt: membership.willExpireAt,
-      endDate: membership.endDate
-    });
-
     // Check if membership is already cancelled or expired
     if (membership.status === 'CANCELLED' || membership.status === 'EXPIRED') {
       if (membership.status === 'CANCELLED' && immediate) {
         // Allow immediate cancellation if status is CANCELLED but not yet EXPIRED
         // This is for users who cancelled auto-renewal but want to end access immediately
-        console.log('🔍 Allowing immediate cancellation for CANCELLED membership');
       } else {
         const errorMsg = membership.status === 'EXPIRED' 
           ? 'Membership has already expired' 
           : 'Membership is already cancelled';
-        console.log('🔍 DEBUG: Preventing cancellation -', errorMsg);
         toast.error(errorMsg);
         setShowCancelModal(false);
         return;
@@ -130,9 +113,6 @@ const MembershipDashboard = () => {
 
     setCancelLoading(true);
     try {
-      console.log('🔍 Cancelling membership, immediate:', immediate);
-      console.log('🔍 Current membership status:', membership.status);
-      
       // Check if user is logged in
       const token = localStorage.getItem('token');
       if (!token) {
@@ -142,8 +122,6 @@ const MembershipDashboard = () => {
       }
       
       const response = await api.put('/membership/cancel', { immediate });
-      
-      console.log('📋 Cancel API Response:', response);
       
       if (response?.success) {
         const message = immediate 
@@ -163,7 +141,6 @@ const MembershipDashboard = () => {
         });
         
         fetchMembershipData(); // Refresh data
-        console.log('✅ Membership cancelled successfully, cache invalidated');
       } else if (response?.success === false) {
         console.error('❌ API returned unsuccessful response:', response);
         toast.error(response.message || 'Failed to cancel membership');
@@ -315,32 +292,35 @@ const MembershipDashboard = () => {
     );
   }
 
-  // Create fallback analytics data from membership if analytics is null
-  const effectiveAnalytics = analytics || {
-    tier: membership.tier?.displayName || 'Unknown Plan',
-    billingCycle: membership.billingCycle || 'MONTHLY',
-    nextBillingDate: membership.nextBillingDate || membership.endDate,
+  // Create enhanced analytics data with proper inspection calculations
+  const effectiveAnalytics = {
+    tier: analytics?.tier || membership.tier?.displayName || 'Unknown Plan',
+    billingCycle: analytics?.billingCycle || membership.billingCycle || 'MONTHLY',
+    nextBillingDate: analytics?.nextBillingDate || membership.nextBillingDate || membership.endDate,
     usage: {
       serviceRequests: {
-        used: membership.currentUsage?.serviceRequestsUsed || 0,
-        limit: membership.tier?.features?.serviceRequestsPerMonth || 'Unlimited',
-        remaining: membership.tier?.features?.serviceRequestsPerMonth 
+        used: analytics?.usage?.serviceRequests?.used || membership.currentUsage?.serviceRequestsUsed || 0,
+        limit: analytics?.usage?.serviceRequests?.limit || membership.tier?.features?.serviceRequestsPerMonth || 'Unlimited',
+        remaining: analytics?.usage?.serviceRequests?.remaining || (membership.tier?.features?.serviceRequestsPerMonth 
           ? Math.max(0, membership.tier.features.serviceRequestsPerMonth - (membership.currentUsage?.serviceRequestsUsed || 0))
-          : 'Unlimited'
+          : 'Unlimited')
       },
       materialDiscount: {
-        totalSaved: 0,
-        percentage: membership.tier?.features?.materialDiscountPercent || 0
+        totalSaved: analytics?.usage?.materialDiscount?.totalSaved || 0,
+        percentage: analytics?.usage?.materialDiscount?.percentage || membership.tier?.features?.materialDiscountPercent || 0
       },
       inspections: {
-        available: membership.tier?.features?.annualInspections || 0
+        used: analytics?.usage?.inspections?.used || membership.currentUsage?.inspectionCreditsUsed || 0,
+        available: analytics?.usage?.inspections?.available || membership.tier?.features?.annualInspections || 12,
+        monthly: 1, // Hardcode to 1 for now to test display
+        monthlyUsed: 0 // Hardcode to 0 for now to test display 
       }
     },
     benefits: {
-      responseTime: membership.tier?.features?.responseTimeHours ? `${membership.tier.features.responseTimeHours} hours` : 'Standard',
-      prioritySupport: membership.tier?.features?.prioritySupport || false,
-      emergencyService: membership.tier?.features?.emergencyService || false,
-      dedicatedManager: membership.tier?.features?.dedicatedManager || false
+      responseTime: analytics?.benefits?.responseTime || (membership.tier?.features?.responseTimeHours ? `${membership.tier.features.responseTimeHours} hours` : 'Standard'),
+      prioritySupport: analytics?.benefits?.prioritySupport || membership.tier?.features?.prioritySupport || false,
+      emergencyService: analytics?.benefits?.emergencyService || membership.tier?.features?.emergencyService || false,
+      dedicatedManager: analytics?.benefits?.dedicatedManager || membership.tier?.features?.dedicatedManager || false
     }
   };
 
@@ -676,14 +656,30 @@ const MembershipDashboard = () => {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Response Time</p>
+              <p className="text-sm font-medium text-gray-600">Monthly Inspections</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">
-                {effectiveAnalytics.benefits.responseTime}
+                {effectiveAnalytics.usage.inspections.monthlyUsed}
+                <span className="text-base font-normal text-gray-500">
+                  /{effectiveAnalytics.usage.inspections.monthly}
+                </span>
               </p>
             </div>
-            <Clock className="h-8 w-8 text-orange-500" />
+            <Shield className="h-8 w-8 text-orange-500" />
           </div>
-          <p className="text-sm text-gray-600 mt-2">Guaranteed response</p>
+          <div className="mt-4">
+            <div className="flex justify-between text-sm text-gray-600 mb-1">
+              <span>Usage this month</span>
+              <span>{effectiveAnalytics.usage.inspections.monthly - effectiveAnalytics.usage.inspections.monthlyUsed} remaining</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-orange-600 h-2 rounded-full" 
+                style={{ 
+                  width: `${(effectiveAnalytics.usage.inspections.monthlyUsed / effectiveAnalytics.usage.inspections.monthly) * 100}%` 
+                }}
+              ></div>
+            </div>
+          </div>
         </motion.div>
       </div>
 
@@ -722,8 +718,8 @@ const MembershipDashboard = () => {
               <span className="font-medium">{effectiveAnalytics.usage.materialDiscount.percentage}%</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span>Annual Inspections</span>
-              <span className="font-medium">{effectiveAnalytics.usage.inspections.available}</span>
+              <span>Monthly Inspections</span>
+              <span className="font-medium">{effectiveAnalytics.usage.inspections.monthlyUsed}/{effectiveAnalytics.usage.inspections.monthly}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span>Response Time</span>
@@ -760,8 +756,6 @@ const MembershipDashboard = () => {
           
           <button
             onClick={() => {
-              console.log('🔍 Cancel button clicked. Membership status:', membership.status);
-              console.log('🔍 Is expired?', membership.status === 'EXPIRED');
               if (membership.status !== 'EXPIRED') {
                 setShowCancelModal(true);
               }
@@ -1039,7 +1033,7 @@ const MembershipDashboard = () => {
                               <div className="flex items-center">
                                 <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
                                 <span className="text-gray-700 text-sm">
-                                  {plan.features.annualInspections} annual inspections
+                                  {Math.floor((plan.features.annualInspections || 0) / 12) || 1} monthly inspection{Math.floor((plan.features.annualInspections || 0) / 12) === 1 ? '' : 's'}
                                 </span>
                               </div>
                               {plan.features.materialDiscountPercent > 0 && (

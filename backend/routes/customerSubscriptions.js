@@ -1178,4 +1178,143 @@ router.get('/payment/cancel', async (req, res) => {
   }
 });
 
+// Billing Data Retention Management (Admin Only)
+const retentionService = require('../scripts/billing-retention-service');
+
+// Get retention service status
+router.get('/billing-retention/status', requireAdmin, async (req, res) => {
+  try {
+    const status = retentionService.getStatus();
+    res.json({
+      success: true,
+      data: status,
+      message: 'Billing retention service status retrieved'
+    });
+  } catch (error) {
+    console.error('Error getting retention service status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting retention service status'
+    });
+  }
+});
+
+// Trigger manual cleanup (Admin only)
+router.post('/billing-retention/cleanup', requireAdmin, async (req, res) => {
+  try {
+    const { dryRun = true } = req.body;
+    
+    console.log(`Admin ${req.user.email} triggered manual billing cleanup (dryRun: ${dryRun})`);
+    
+    // Set environment variable for the cleanup script
+    const originalDryRun = process.env.DRY_RUN;
+    process.env.DRY_RUN = dryRun.toString();
+    
+    try {
+      // Import and run cleanup directly
+      const { main: runCleanup } = require('../scripts/cleanup-old-billing-data');
+      await runCleanup();
+      
+      res.json({
+        success: true,
+        message: `Manual billing cleanup completed ${dryRun ? '(dry run)' : '(live deletion)'}`,
+        data: {
+          triggeredBy: req.user.email,
+          timestamp: new Date().toISOString(),
+          dryRun: dryRun
+        }
+      });
+    } finally {
+      // Restore original environment variable
+      if (originalDryRun !== undefined) {
+        process.env.DRY_RUN = originalDryRun;
+      } else {
+        delete process.env.DRY_RUN;
+      }
+    }
+  } catch (error) {
+    console.error('Error during manual billing cleanup:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error during manual billing cleanup',
+      error: error.message
+    });
+  }
+});
+
+// Get billing data statistics for retention planning
+router.get('/billing-retention/stats', requireAdmin, async (req, res) => {
+  try {
+    const cutoffDate = new Date();
+    cutoffDate.setFullYear(cutoffDate.getFullYear() - 2);
+
+    // Import models
+    const { CustomerMembership } = require('../models/CustomerMembership');
+    const Order = require('../models/Order');
+    const Job = require('../models/Job');
+
+    // Count old records
+    const oldMemberships = await CustomerMembership.countDocuments({
+      createdAt: { $lt: cutoffDate },
+      status: { $in: ['EXPIRED', 'CANCELLED'] }
+    });
+
+    const oldOrders = await Order.countDocuments({
+      createdAt: { $lt: cutoffDate },
+      status: { $in: ['COMPLETED', 'CANCELLED', 'REFUNDED'] }
+    });
+
+    const oldJobs = await Job.countDocuments({
+      createdAt: { $lt: cutoffDate },
+      status: { $in: ['COMPLETED', 'CANCELLED', 'PAID'] }
+    });
+
+    // Count total active records
+    const totalMemberships = await CustomerMembership.countDocuments();
+    const totalOrders = await Order.countDocuments();
+    const totalJobs = await Job.countDocuments();
+
+    // Count subscriptions with old billing history
+    const subscriptionsWithOldHistory = await CustomerSubscription.countDocuments({
+      'billingHistory.createdAt': { $lt: cutoffDate }
+    });
+
+    const stats = {
+      retentionPolicy: {
+        years: 2,
+        cutoffDate: cutoffDate.toISOString()
+      },
+      oldRecords: {
+        memberships: oldMemberships,
+        orders: oldOrders,
+        jobs: oldJobs,
+        subscriptionsWithOldHistory: subscriptionsWithOldHistory,
+        total: oldMemberships + oldOrders + oldJobs
+      },
+      totalRecords: {
+        memberships: totalMemberships,
+        orders: totalOrders,
+        jobs: totalJobs
+      },
+      cleanupImpact: {
+        percentageToDelete: Math.round(((oldMemberships + oldOrders + oldJobs) / (totalMemberships + totalOrders + totalJobs)) * 100),
+        estimatedSpaceSaved: 'Calculated based on record counts'
+      },
+      lastCalculated: new Date().toISOString()
+    };
+
+    res.json({
+      success: true,
+      data: stats,
+      message: 'Billing retention statistics calculated'
+    });
+  } catch (error) {
+    console.error('Error calculating retention stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error calculating retention statistics'
+    });
+  }
+});
+
 module.exports = router;
