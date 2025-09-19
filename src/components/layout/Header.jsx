@@ -40,22 +40,11 @@ const Header = () => {
   const navigation = [
     { name: t('home'), href: '/' },
     { name: t('services'), href: '/services' },
-    { name: t('products'), href: '/products' },
-    // { name: 'Announcements', href: '/announcements' }, // Hidden temporarily
+    { name: 'Membership', href: user?.role === 'customer' ? '/membership/plans' : user?.role === 'vendor' ? '/vendor/membership' : '/membership/plans' },
     { name: 'FAQ', href: '/faq' },
-    { name: t('about'), href: '/about' },
-    { name: t('contact'), href: '/contact' },
+    { name: 'About Us', href: '/about' },
+    { name: 'Contact Us', href: '/contact' },
   ];
-
-  // Customer-specific navigation items (only show for customers)
-  const customerNavigation = user?.role === 'customer' ? [
-    { name: 'Membership', href: '/membership/plans', badge: 'Premium' }
-  ] : [];
-
-  // Vendor-specific navigation items (only show for vendors)
-  const vendorNavigation = user?.role === 'vendor' ? [
-    { name: 'Membership', href: '/vendor/membership', badge: 'Pro' }
-  ] : [];
 
   // Admin navigation items (only show for admin users)
   const adminNavigation = user?.role === 'admin' ? [
@@ -187,28 +176,15 @@ const Header = () => {
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-white shadow-md">
-      {/* Top Bar */}
-      <div className="bg-orange-600 text-white py-2">
-        <div className="container mx-auto px-4 flex justify-between items-center text-sm">
-          <div className="flex items-center space-x-4">
-            <span>📞 +65 9123 4567</span>
-            <span>📧 info@swiftfixpro.sg</span>
-          </div>
-          <div className="hidden md:flex items-center space-x-4">
-            <span>🕒 Mon-Fri: 8AM-6PM</span>
-          </div>
-        </div>
-      </div>
-
       {/* Main Header */}
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img 
               src="/logo.png" 
               alt="Swift Fix Pro" 
-              className="h-16 w-auto border-0"
+              className="h-20 w-auto border-0"
             />
           </Link>
 
@@ -219,54 +195,18 @@ const Header = () => {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`text-gray-700 hover:text-orange-600 transition-colors ${
-                  location.pathname === item.href ? 'text-orange-600 font-medium' : ''
+                className={`text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors ${
+                  location.pathname === item.href ? 'text-orange-600 font-semibold' : ''
                 }`}
               >
                 {item.name}
-              </Link>
-            ))}
-            
-            {/* Customer Navigation */}
-            {customerNavigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`relative inline-flex items-center text-gray-700 hover:text-orange-600 transition-colors pr-12 ${
-                  location.pathname.startsWith('/membership') ? 'text-orange-600 font-medium' : ''
-                }`}
-              >
-                {item.name}
-                {item.badge && (
-                  <span className="absolute -top-4 right-4 bg-orange-100 text-orange-800 text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            ))}
-            
-            {/* Vendor Navigation */}
-            {vendorNavigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`relative inline-flex items-center text-gray-700 hover:text-orange-600 transition-colors pr-12 ${
-                  location.pathname.startsWith('/vendor/membership') ? 'text-orange-600 font-medium' : ''
-                }`}
-              >
-                {item.name}
-                {item.badge && (
-                  <span className="absolute -top-4 right-4 bg-orange-100 text-orange-800 text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                    {item.badge}
-                  </span>
-                )}
               </Link>
             ))}
             
             {/* Admin Navigation Dropdown */}
             {adminNavigation.map((item) => (
               <div key={item.name} className="relative group">
-                <button className="flex items-center text-gray-700 hover:text-orange-600 transition-colors">
+                <button className="flex items-center text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors">
                   {item.name}
                   <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -489,44 +429,6 @@ const Header = () => {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {item.name}
-                </Link>
-              ))}
-              
-              {/* Customer Navigation - Mobile */}
-              {customerNavigation.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center justify-between text-gray-700 hover:text-orange-600 transition-colors ${
-                    location.pathname.startsWith('/membership') ? 'text-orange-600 font-medium' : ''
-                  }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {item.name}
-                  {item.badge && (
-                    <span className="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-full">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              ))}
-              
-              {/* Vendor Navigation - Mobile */}
-              {vendorNavigation.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center justify-between text-gray-700 hover:text-orange-600 transition-colors ${
-                    location.pathname.startsWith('/vendor/membership') ? 'text-orange-600 font-medium' : ''
-                  }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {item.name}
-                  {item.badge && (
-                    <span className="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-full">
-                      {item.badge}
-                    </span>
-                  )}
                 </Link>
               ))}
               

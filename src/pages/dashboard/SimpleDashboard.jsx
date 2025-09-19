@@ -305,7 +305,7 @@ const SimpleDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24">
+    <div className="min-h-screen bg-gray-50 pt-20">
       <div className="flex h-[calc(100vh-6rem)]">
         {/* Mobile Menu Button */}
         <button

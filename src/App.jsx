@@ -41,8 +41,6 @@ import OrdersPage from './pages/OrdersPage.jsx';
 import PaymentPage from './pages/PaymentPage.jsx';
 import PricingPage from './pages/PricingPage.jsx';
 import PrivacyPolicyPage from './pages/legal/PrivacyPolicyPage.jsx';
-import ProductDetailPage from './pages/ProductDetailPage.jsx';
-import ProductsPage from './pages/ProductsPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import ProtectedRoute from './components/auth/ProtectedRoute.jsx';
 import RateVendor from './pages/customer/RateVendor.jsx';
@@ -137,7 +135,7 @@ function App() {
                 <ProtectedRoute requiredRole="admin">
                   <div className="min-h-screen bg-gray-50">
                     <Header />
-                    <main className="pt-24">
+                    <main className="pt-20">
                       <AnnouncementManagement />
                     </main>
                   </div>
@@ -147,7 +145,7 @@ function App() {
                 <ProtectedRoute requiredRole="admin">
                   <div className="min-h-screen bg-gray-50">
                     <Header />
-                    <main className="pt-24">
+                    <main className="pt-20">
                       <HomepageManagement />
                     </main>
                   </div>
@@ -157,7 +155,7 @@ function App() {
                 <ProtectedRoute requiredRole="admin">
                   <div className="min-h-screen bg-gray-50">
                     <Header />
-                    <main className="pt-24">
+                    <main className="pt-20">
                       <FAQManagement />
                     </main>
                   </div>
@@ -167,7 +165,7 @@ function App() {
                 <ProtectedRoute requiredRole="admin">
                   <div className="min-h-screen bg-gray-50">
                     <Header />
-                    <main className="pt-24">
+                    <main className="pt-20">
                       <UserManagement />
                     </main>
                   </div>
@@ -177,7 +175,7 @@ function App() {
                 <ProtectedRoute requiredRole="admin">
                   <div className="min-h-screen bg-gray-50">
                     <Header />
-                    <main className="pt-24">
+                    <main className="pt-20">
                       <OrderManagement />
                     </main>
                   </div>
@@ -188,13 +186,11 @@ function App() {
               <Route path="*" element={
                 <div className="min-h-screen bg-gray-50">
                   <Header />
-                  <main className="pt-16">
+                  <main className="pt-20">
                     <Routes>
                       <Route path="/" element={<HomePage />} />
                       <Route path="/services" element={<ServicesPage />} />
                       <Route path="/services/:id" element={<ServiceDetailPage />} />
-                      <Route path="/products" element={<ProductsPage />} />
-                      <Route path="/products/:id" element={<ProductDetailPage />} />
                       <Route path="/blog" element={<BlogPage />} />
                       <Route path="/blog/:slug" element={<BlogDetailPage />} />
                       <Route path="/announcements" element={<AnnouncementsPage />} />
@@ -369,7 +365,7 @@ const DashboardRedirect = () => {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <div className="flex items-center justify-center pt-24">
+        <div className="flex items-center justify-center pt-20">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading...</p>
