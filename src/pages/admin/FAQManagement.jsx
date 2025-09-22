@@ -4,14 +4,9 @@ import {
   Plus, 
   Edit2, 
   Trash2, 
-  Eye, 
-  EyeOff,
   Save,
   X,
   HelpCircle,
-  ThumbsUp,
-  ThumbsDown,
-  Tag,
   Search
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,30 +22,34 @@ const FAQManagement = () => {
     answer: '',
     category: 'general',
     isActive: true,
-    keywords: ''
+    keywords: '',
+    slug: '',
+    order: 0
   });
 
-  // FAQ分类选项
+  // FAQ分类选项 - Updated to match our comprehensive categories
   const categoryOptions = [
-    { value: 'general', label: 'General' },
-    { value: 'services', label: 'Services' },
-    { value: 'pricing', label: 'Pricing' },
-    { value: 'booking', label: 'Booking' },
-    { value: 'technical', label: 'Technical' },
-    { value: 'billing', label: 'Billing' }
+    { value: 'general', label: 'General Services', icon: '🏠' },
+    { value: 'account', label: 'Account & Registration', icon: '👤' },
+    { value: 'agent-program', label: 'Agent Referral Program', icon: '⭐' },
+    { value: 'cea-verification', label: 'CEA Verification Process', icon: '🛡️' },
+    { value: 'privacy-cookies', label: 'Privacy & Cookies', icon: '🍪' },
+    { value: 'payments', label: 'Payments & Billing', icon: '💳' },
+    { value: 'technical', label: 'Technical Support', icon: '⚙️' },
+    { value: 'contact-support', label: 'Contact & Support', icon: '🎧' }
   ];
 
   // 获取所有FAQ
   const fetchFAQs = async () => {
     try {
-      const response = await fetch('/api/cms/faqs?admin=true', {
+      const response = await fetch('/api/cms/faq-file?admin=true', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       if (response.ok) {
         const data = await response.json();
-        setFaqs(data);
+        setFaqs(data.faqs || []);
       }
     } catch (error) {
       console.error('Error fetching FAQs:', error);
@@ -65,13 +64,35 @@ const FAQManagement = () => {
     }
   }, [user]);
 
+  // Generate slug from question
+  const generateSlug = (text) => {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9 -]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single
+      .trim()
+      .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+  };
+
   // 处理表单输入
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    const newValue = type === 'checkbox' ? checked : value;
+    
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [name]: newValue
+      };
+      
+      // Auto-generate slug when question changes and slug is empty
+      if (name === 'question' && (!prev.slug || prev.slug === generateSlug(prev.question))) {
+        updated.slug = generateSlug(newValue);
+      }
+      
+      return updated;
+    });
   };
 
   // 提交FAQ（创建或更新）
@@ -79,15 +100,23 @@ const FAQManagement = () => {
     e.preventDefault();
     try {
       const faqData = {
-        ...formData,
-        keywords: formData.keywords.split(',').map(keyword => keyword.trim()).filter(keyword => keyword)
+        question: formData.question,
+        answer: formData.answer,
+        category: formData.category,
+        slug: formData.slug || generateSlug(formData.question)
       };
 
-      const url = editingFAQ 
-        ? `/api/cms/faqs/${editingFAQ._id}`
-        : '/api/cms/faqs';
+      let url, method;
       
-      const method = editingFAQ ? 'PUT' : 'POST';
+      if (editingFAQ) {
+        // Update existing FAQ
+        url = `/api/cms/faq-file/${editingFAQ.category}/${editingFAQ.id}`;
+        method = 'PUT';
+      } else {
+        // Create new FAQ
+        url = '/api/cms/faq-file';
+        method = 'POST';
+      }
       
       const response = await fetch(url, {
         method,
@@ -102,6 +131,9 @@ const FAQManagement = () => {
         await fetchFAQs();
         resetForm();
         alert(editingFAQ ? 'FAQ updated successfully!' : 'FAQ created successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Error saving FAQ');
       }
     } catch (error) {
       console.error('Error saving FAQ:', error);
@@ -110,10 +142,10 @@ const FAQManagement = () => {
   };
 
   // 删除FAQ
-  const handleDelete = async (id) => {
+  const handleDelete = async (faq) => {
     if (window.confirm('Are you sure you want to delete this FAQ?')) {
       try {
-        const response = await fetch(`/api/cms/faqs/${id}`, {
+        const response = await fetch(`/api/cms/faq-file/${faq.category}/${faq.id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -123,6 +155,9 @@ const FAQManagement = () => {
         if (response.ok) {
           await fetchFAQs();
           alert('FAQ deleted successfully!');
+        } else {
+          const errorData = await response.json();
+          alert(errorData.error || 'Error deleting FAQ');
         }
       } catch (error) {
         console.error('Error deleting FAQ:', error);
@@ -131,26 +166,7 @@ const FAQManagement = () => {
     }
   };
 
-  // 切换FAQ状态
-  const toggleFAQStatus = async (faq) => {
-    try {
-      const response = await fetch(`/api/cms/faqs/${faq._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ ...faq, isActive: !faq.isActive })
-      });
-
-      if (response.ok) {
-        await fetchFAQs();
-      }
-    } catch (error) {
-      console.error('Error updating FAQ status:', error);
-    }
-  };
-
+  // Remove the toggleFAQStatus function since static data doesn't have isActive status
 
   // 编辑FAQ
   const startEditing = (faq) => {
@@ -159,8 +175,10 @@ const FAQManagement = () => {
       question: faq.question,
       answer: faq.answer,
       category: faq.category,
-      isActive: faq.isActive,
-      keywords: faq.keywords.join(', ')
+      isActive: true, // Default for static data
+      keywords: '', // Static data doesn't have keywords
+      slug: faq.id || '',
+      order: 0 // Static data doesn't have order
     });
     setShowForm(true);
   };
@@ -172,7 +190,9 @@ const FAQManagement = () => {
       answer: '',
       category: 'general',
       isActive: true,
-      keywords: ''
+      keywords: '',
+      slug: '',
+      order: 0
     });
     setEditingFAQ(null);
     setShowForm(false);
@@ -202,14 +222,6 @@ const FAQManagement = () => {
               <p className="text-xl text-orange-100 max-w-2xl">
                 Efficiently manage frequently asked questions to help your customers find answers quickly and improve support experience
               </p>
-              {faqs.filter(faq => !faq.isActive).length > 0 && (
-                <div className="flex items-center mt-4 px-4 py-3 bg-orange-800 bg-opacity-80 text-orange-100 rounded-lg backdrop-blur-sm inline-flex">
-                  <HelpCircle className="w-5 h-5 mr-3" />
-                  <span className="font-semibold">
-                    {faqs.filter(faq => !faq.isActive).length} inactive FAQ{faqs.filter(faq => !faq.isActive).length !== 1 ? 's' : ''} need attention
-                  </span>
-                </div>
-              )}
             </div>
             
             <div className="flex flex-wrap gap-3">
@@ -334,19 +346,20 @@ const FAQManagement = () => {
                   value={formData.category}
                   onChange={handleInputChange}
                   required
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 >
                   {categoryOptions.map(option => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {option.icon} {option.label}
                     </option>
                   ))}
                 </select>
               </div>
 
 
-              {/* 关键词 */}
-              <div className="md:col-span-2">
+            {/* 关键词和排序 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Keywords (comma separated)
                 </label>
@@ -356,9 +369,41 @@ const FAQManagement = () => {
                   value={formData.keywords}
                   onChange={handleInputChange}
                   placeholder="plumbing, repair, emergency"
-                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Order (for sorting)
+                </label>
+                <input
+                  type="number"
+                  name="order"
+                  value={formData.order}
+                  onChange={handleInputChange}
+                  placeholder="0"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Slug field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Slug * (URL-friendly identifier)
+              </label>
+              <input
+                type="text"
+                name="slug"
+                value={formData.slug}
+                onChange={handleInputChange}
+                required
+                placeholder="unique-identifier-for-this-faq"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-500 mt-1">Used for unique identification. Will be auto-generated from question if left empty.</p>
+            </div>
             </div>
 
             {/* 问题 */}
@@ -372,7 +417,7 @@ const FAQManagement = () => {
                 value={formData.question}
                 onChange={handleInputChange}
                 required
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 placeholder="What is the question customers frequently ask?"
               />
             </div>
@@ -388,30 +433,16 @@ const FAQManagement = () => {
                 onChange={handleInputChange}
                 required
                 rows={6}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 placeholder="Provide a clear and helpful answer..."
               />
-            </div>
-
-            {/* 激活状态 */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="isActive"
-                checked={formData.isActive}
-                onChange={handleInputChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label className="ml-2 block text-sm text-gray-700">
-                Active (visible to users)
-              </label>
             </div>
 
             {/* 表单按钮 */}
             <div className="flex gap-4 pt-4">
               <button
                 type="submit"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {editingFAQ ? 'Update' : 'Create'} FAQ
@@ -439,31 +470,12 @@ const FAQManagement = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-green-600 bg-green-100 px-3 py-1 rounded-full">
-                    {faqs.filter(faq => faq.isActive).length} Active
+                    {faqs.length} Total
                   </span>
-                  {faqs.filter(faq => !faq.isActive).length > 0 && (
-                    <span className="text-sm font-medium text-red-600 bg-red-100 px-3 py-1 rounded-full">
-                      {faqs.filter(faq => !faq.isActive).length} Inactive
-                    </span>
-                  )}
                 </div>
               </div>
               
               <div className="flex items-center space-x-3">
-                {/* Quick Actions */}
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => {
-                      // Bulk activate logic would go here
-                      console.log('Bulk activate feature coming soon!');
-                    }}
-                    className="px-4 py-2 text-sm font-semibold text-green-600 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
-                    title="Activate all inactive FAQs"
-                  >
-                    ✓ Activate All
-                  </button>
-                </div>
-                
                 {/* Export Button */}
                 <button
                   className="px-4 py-2 text-sm font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center"
@@ -524,11 +536,6 @@ const FAQManagement = () => {
                                 <div className="flex items-start gap-2 mb-3">
                                   <div className="flex items-center gap-2 flex-1">
                                     <h4 className="font-semibold text-gray-900 text-lg">{faq.question}</h4>
-                                    {!faq.isActive && (
-                                      <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
-                                        Inactive
-                                      </span>
-                                    )}
                                   </div>
                                 </div>
 
@@ -537,73 +544,22 @@ const FAQManagement = () => {
                                   {faq.answer}
                                 </p>
 
-                                {/* Keywords and Statistics */}
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-4 border-t border-gray-100">
-                                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                                    {/* Keywords */}
-                                    {faq.keywords && faq.keywords.length > 0 && (
-                                      <div className="flex items-center gap-2">
-                                        <Tag className="w-4 h-4 text-gray-400" />
-                                        <div className="flex flex-wrap gap-1">
-                                          {faq.keywords.slice(0, 3).map((keyword, index) => (
-                                            <span key={index} className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
-                                              {keyword}
-                                            </span>
-                                          ))}
-                                          {faq.keywords.length > 3 && (
-                                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                                              +{faq.keywords.length - 3} more
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Statistics */}
-                                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                                      <div className="flex items-center gap-1">
-                                        <Eye className="w-4 h-4" />
-                                        <span>{faq.views || 0} views</span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <ThumbsUp className="w-4 h-4 text-green-600" />
-                                        <span>{faq.helpful?.yes || 0}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <ThumbsDown className="w-4 h-4 text-red-600" />
-                                        <span>{faq.helpful?.no || 0}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Action Buttons */}
-                                  <div className="flex gap-2">
-                                    <button
-                                      onClick={() => toggleFAQStatus(faq)}
-                                      className={`p-2 rounded-lg transition-colors ${
-                                        faq.isActive 
-                                          ? 'text-green-600 hover:text-green-800 hover:bg-green-50' 
-                                          : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
-                                      }`}
-                                      title="Toggle Active Status"
-                                    >
-                                      {faq.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                                    </button>
-                                    <button
-                                      onClick={() => startEditing(faq)}
-                                      className="p-2 text-orange-600 hover:text-orange-800 hover:bg-orange-50 rounded-lg transition-colors"
-                                      title="Edit FAQ"
-                                    >
-                                      <Edit2 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(faq._id)}
-                                      className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
-                                      title="Delete FAQ"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
+                                {/* Actions */}
+                                <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+                                  <button
+                                    onClick={() => startEditing(faq)}
+                                    className="p-2 text-orange-600 hover:text-orange-800 hover:bg-orange-50 rounded-lg transition-colors"
+                                    title="Edit FAQ"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(faq)}
+                                    className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Delete FAQ"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
                                 </div>
                               </div>
                             </div>
