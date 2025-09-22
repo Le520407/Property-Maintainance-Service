@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api, apiUtils } from '../services/api';
+import cookieManager from '../utils/cookieManager';
 
 const AuthContext = createContext();
 
@@ -77,7 +78,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check token and user info
-    const token = apiUtils.getToken();
+    const token = apiUtils.getToken() || cookieManager.auth.getToken();
     const savedUser = localStorage.getItem('user');
     
     if (token && apiUtils.isTokenValid(token)) {
@@ -89,18 +90,27 @@ export const AuthProvider = ({ children }) => {
     } else if (token && !apiUtils.isTokenValid(token)) {
       // Token expired, clear local data
       apiUtils.removeToken();
+      cookieManager.auth.removeToken();
       localStorage.removeItem('user');
     }
     
     setLoading(false);
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, rememberMe = false) => {
     try {
       const response = await api.auth.login({ email, password });
       
-      // 保存token
+      // Save tokens with remember me preference
       apiUtils.setToken(response.token);
+      if (cookieManager.consent.hasConsent('preferences')) {
+        cookieManager.auth.setToken(response.token, rememberMe);
+        cookieManager.auth.setRememberMe(rememberMe);
+      }
+      
+      if (response.refreshToken) {
+        apiUtils.setRefreshToken(response.refreshToken);
+      }
       
       // 转换用户数据格式以匹配前端期望
       const userData = {
@@ -150,6 +160,15 @@ export const AuthProvider = ({ children }) => {
 
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Save user preferences to cookies if consent given
+      if (cookieManager.consent.hasConsent('preferences')) {
+        cookieManager.auth.setUserPreferences({
+          ...userData,
+          lastLogin: Date.now()
+        });
+      }
+      
       return { success: true, user: userData };
     } catch (error) {
       // Check if it's a TAC requirement error
@@ -259,10 +278,21 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout API error:', error);
     } finally {
-      // 清除本地数据
+      // 清除本地数据和cookies
       setUser(null);
       apiUtils.removeToken();
+      cookieManager.auth.removeToken();
       localStorage.removeItem('user');
+      
+      // Clear user preferences from cookies
+      if (cookieManager.consent.hasConsent('preferences')) {
+        const currentPrefs = cookieManager.auth.getUserPreferences();
+        cookieManager.auth.setUserPreferences({
+          ...currentPrefs,
+          loggedOut: true,
+          lastLogout: Date.now()
+        });
+      }
     }
   };
 

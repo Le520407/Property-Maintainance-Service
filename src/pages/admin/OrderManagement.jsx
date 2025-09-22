@@ -319,7 +319,7 @@ const OrderManagement = () => {
     return stars;
   };
 
-  const JobDetailsModal = ({ job, onClose }) => (
+  const JobDetailsModal = ({ job, onClose, onImageZoom }) => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
@@ -571,6 +571,58 @@ const OrderManagement = () => {
           </div>
         </div>
 
+        {/* Job Completion Details for Verification */}
+        {job.status === 'PENDING_VERIFICATION' && job.completionDetails && (
+          <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+            <h3 className="text-lg font-semibold mb-4 text-yellow-800 flex items-center">
+              <AlertCircle className="w-5 h-5 mr-2" />
+              Job Completion Pending Verification
+            </h3>
+            
+            {/* Completion Photos */}
+            {job.completionDetails.photos && job.completionDetails.photos.length > 0 && (
+              <div className="mb-4">
+                <h4 className="font-medium text-gray-700 mb-2">Completion Photos</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {job.completionDetails.photos.map((photo, index) => (
+                    <div key={index} className="relative group cursor-pointer">
+                      <img
+                        src={`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${photo.path || photo}`}
+                        alt={`Completion ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg border border-gray-200 group-hover:opacity-90 transition-opacity"
+                        onClick={() => onImageZoom(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${photo.path || photo}`)}
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg flex items-center justify-center">
+                        <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Completion Notes */}
+            {job.completionDetails.notes && (
+              <div className="mb-4">
+                <h4 className="font-medium text-gray-700 mb-2">Completion Notes</h4>
+                <div className="p-3 bg-white rounded-lg border border-gray-200">
+                  <p className="text-sm text-gray-600">{job.completionDetails.notes}</p>
+                </div>
+              </div>
+            )}
+            
+            {/* Submission Time */}
+            {job.completionDetails.submittedAt && (
+              <div>
+                <h4 className="font-medium text-gray-700 mb-2">Submitted At</h4>
+                <p className="text-sm text-gray-600">
+                  {new Date(job.completionDetails.submittedAt).toLocaleString()}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Status History */}
         {job.statusHistory && job.statusHistory.length > 0 && (
           <div className="mt-6">
@@ -610,6 +662,162 @@ const OrderManagement = () => {
                   Assign to Vendor
                 </button>
               )}
+              
+              {job.status === 'QUOTE_SENT' && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.patch(`/jobs/${job._id}/status`, { 
+                        status: 'QUOTE_ACCEPTED',
+                        adminApproved: true 
+                      });
+                      toast.success('Quote accepted successfully!');
+                      fetchJobs();
+                      onClose();
+                    } catch (error) {
+                      console.error('Error accepting quote:', error);
+                      toast.error('Failed to accept quote');
+                    }
+                  }}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Accept Quote
+                </button>
+              )}
+              
+              {job.status === 'QUOTE_ACCEPTED' && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.patch(`/jobs/${job._id}/status`, { 
+                        status: 'PAID',
+                        adminApproved: true 
+                      });
+                      toast.success('Job marked as paid successfully!');
+                      fetchJobs();
+                      onClose();
+                    } catch (error) {
+                      console.error('Error marking as paid:', error);
+                      toast.error('Failed to mark as paid');
+                    }
+                  }}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Mark as Paid
+                </button>
+              )}
+              
+              {job.status === 'PAID' && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.patch(`/jobs/${job._id}/status`, { 
+                        status: 'IN_PROGRESS',
+                        adminApproved: true 
+                      });
+                      toast.success('Job started successfully!');
+                      fetchJobs();
+                      onClose();
+                    } catch (error) {
+                      console.error('Error starting job:', error);
+                      toast.error('Failed to start job');
+                    }
+                  }}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                >
+                  <Wrench className="w-4 h-4 mr-2" />
+                  Start Job
+                </button>
+              )}
+              
+              {job.status === 'IN_PROGRESS' && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.patch(`/jobs/${job._id}/status`, { 
+                        status: 'COMPLETED',
+                        adminApproved: true 
+                      });
+                      toast.success('Job completed successfully!');
+                      fetchJobs();
+                      onClose();
+                    } catch (error) {
+                      console.error('Error completing job:', error);
+                      toast.error('Failed to complete job');
+                    }
+                  }}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Complete Job
+                </button>
+              )}
+              
+              {job.status === 'PENDING_VERIFICATION' && (
+                <>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await api.admin.verifyJobCompletion(job._id, {
+                          status: 'COMPLETED',
+                          verified: true,
+                          verificationNotes: 'Job completion verified and approved by admin.',
+                          verifiedAt: new Date().toISOString(),
+                          verifiedBy: 'admin'
+                        });
+                        toast.success('Job verified and completed successfully!');
+                        fetchJobs();
+                        onClose();
+                      } catch (error) {
+                        console.error('Error verifying job completion:', error);
+                        toast.error('Failed to verify job completion: ' + (error.response?.data?.message || error.message));
+                      }
+                    }}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Verify & Complete
+                  </button>
+                  
+                  <button
+                    onClick={async () => {
+                      const reason = prompt('Please provide a reason for rejecting this job completion:');
+                      if (reason === null) return; // User cancelled
+                      
+                      const deductionAmount = prompt('Enter money deduction amount (optional, enter 0 for no deduction):');
+                      const deduction = parseFloat(deductionAmount) || 0;
+                      
+                      try {
+                        await api.admin.verifyJobCompletion(job._id, {
+                          status: 'REJECTED',
+                          verified: false,
+                          verificationNotes: reason || 'Job completion rejected by admin.',
+                          moneyDeduction: deduction,
+                          verifiedAt: new Date().toISOString(),
+                          verifiedBy: 'admin'
+                        });
+                        toast.success(
+                          deduction > 0 
+                            ? `Job rejected with $${deduction} deduction applied.`
+                            : 'Job rejected and returned to vendor.'
+                        );
+                        fetchJobs();
+                        onClose();
+                      } catch (error) {
+                        console.error('Error rejecting job completion:', error);
+                        toast.error('Failed to reject job completion: ' + (error.response?.data?.message || error.message));
+                      }
+                    }}
+                    className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Reject & Return
+                  </button>
+                </>
+              )}
+              
               {canDeleteJob(job) && (
                 <button
                   onClick={() => {
@@ -1176,6 +1384,19 @@ const OrderManagement = () => {
                 <div className="flex items-center">
                   <BarChart3 className="w-5 h-5 mr-2" />
                   Pricing Monitor
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('verification')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'verification'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center">
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  Job Verification
                 </div>
               </button>
             </nav>
@@ -2045,11 +2266,19 @@ const OrderManagement = () => {
           <PricingMonitor jobs={jobs} />
         )}
 
+        {/* Job Verification Tab */}
+        {activeTab === 'verification' && (
+          <JobVerificationSection jobs={jobs} onJobUpdate={fetchJobs} />
+        )}
+
+      </div>
+
       {/* Modals */}
       {selectedJob && !showAssignModal && (
         <JobDetailsModal 
           job={selectedJob} 
-          onClose={() => setSelectedJob(null)} 
+          onClose={() => setSelectedJob(null)}
+          onImageZoom={setZoomedImage}
         />
       )}
       
@@ -2070,7 +2299,6 @@ const OrderManagement = () => {
           />
         )}
       </AnimatePresence>
-      </div>
     </div>
   );
 };
@@ -2107,6 +2335,385 @@ const ImageZoomModal = ({ imageSrc, onClose }) => {
           onClick={onClose}
         />
       </motion.div>
+    </div>
+  );
+};
+
+// Job Verification Section Component
+const JobVerificationSection = ({ jobs, onJobUpdate }) => {
+  const [pendingJobs, setPendingJobs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [verificationAction, setVerificationAction] = useState(null); // 'approve' or 'reject'
+  const [deductionAmount, setDeductionAmount] = useState('');
+  const [verificationNotes, setVerificationNotes] = useState('');
+
+  // Fetch jobs that need verification specifically
+  const fetchPendingVerificationJobs = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/jobs?status=PENDING_VERIFICATION&limit=100');
+      setPendingJobs(response.jobs || []);
+      console.log('Fetched pending verification jobs:', response.jobs?.length || 0);
+    } catch (error) {
+      console.error('Error fetching pending verification jobs:', error);
+      toast.error('Failed to fetch jobs pending verification');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch pending verification jobs when component mounts
+  React.useEffect(() => {
+    fetchPendingVerificationJobs();
+  }, []);
+
+  // Also filter from the general jobs list as backup
+  React.useEffect(() => {
+    if (!pendingJobs.length) {
+      const jobsNeedingVerification = jobs.filter(job => job.status === 'PENDING_VERIFICATION');
+      setPendingJobs(jobsNeedingVerification);
+    }
+  }, [jobs, pendingJobs.length]);
+
+  // Handle job verification approval
+  const handleApproveJob = async (jobId) => {
+    setLoading(true);
+    try {
+      await api.admin.verifyJobCompletion(jobId, {
+        status: 'COMPLETED',
+        verified: true,
+        verificationNotes: verificationNotes || 'Job completion verified and approved.',
+        verifiedAt: new Date().toISOString(),
+        verifiedBy: 'admin'
+      });
+
+      toast.success('Job approved and marked as completed!');
+      onJobUpdate(); // Refresh jobs list
+      fetchPendingVerificationJobs(); // Refresh verification list
+      setSelectedJob(null);
+      setVerificationNotes('');
+    } catch (error) {
+      console.error('Error approving job:', error);
+      toast.error('Failed to approve job: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle job verification rejection with money deduction
+  const handleRejectJob = async (jobId) => {
+    setLoading(true);
+    try {
+      const deductionAmountFloat = parseFloat(deductionAmount) || 0;
+      
+      await api.admin.verifyJobCompletion(jobId, {
+        status: 'REJECTED',
+        verified: false,
+        verificationNotes: verificationNotes || 'Job completion rejected by admin.',
+        moneyDeduction: deductionAmountFloat,
+        verifiedAt: new Date().toISOString(),
+        verifiedBy: 'admin'
+      });
+
+      toast.success(
+        deductionAmountFloat > 0 
+          ? `Job rejected with $${deductionAmountFloat} deduction applied.`
+          : 'Job rejected and returned to vendor.'
+      );
+      
+      onJobUpdate(); // Refresh jobs list
+      fetchPendingVerificationJobs(); // Refresh verification list
+      setSelectedJob(null);
+      setVerificationNotes('');
+      setDeductionAmount('');
+    } catch (error) {
+      console.error('Error rejecting job:', error);
+      toast.error('Failed to reject job: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get customer feedback for a job
+  const getCustomerFeedback = (job) => {
+    // This would come from the job's feedback/rating data
+    return job.customerFeedback || job.rating || null;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                <CheckCircle className="w-6 h-6 mr-3 text-orange-600" />
+                Job Completion Verification
+              </h2>
+              <p className="text-gray-600 mt-2">
+                Review jobs submitted for completion verification with photos and customer feedback.
+              </p>
+            </div>
+            <button
+              onClick={fetchPendingVerificationJobs}
+              disabled={loading}
+              className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {pendingJobs.length === 0 ? (
+          <div className="p-12 text-center">
+            <CheckCircle className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Jobs Pending Verification</h3>
+            <p className="text-gray-500 mb-4">
+              All submitted jobs have been reviewed. New submissions will appear here.
+            </p>
+            <button
+              onClick={fetchPendingVerificationJobs}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+            >
+              Check for New Submissions
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {pendingJobs.map((job) => (
+              <div key={job._id} className="p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Job Information */}
+                  <div className="lg:col-span-1">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Job #{job.jobNumber}
+                      </h3>
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                        Pending Verification
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">Service:</span>
+                        <p className="text-gray-600">{job.title}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Customer:</span>
+                        <p className="text-gray-600">
+                          {job.customerId?.firstName} {job.customerId?.lastName}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Vendor:</span>
+                        <p className="text-gray-600">
+                          {job.assignedVendor?.userId?.businessName || job.assignedVendor?.businessName || 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Amount:</span>
+                        <p className="text-gray-600 font-medium">${job.totalAmount?.toLocaleString() || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Submitted:</span>
+                        <p className="text-gray-600">
+                          {job.completionDetails?.submittedAt 
+                            ? new Date(job.completionDetails.submittedAt).toLocaleDateString()
+                            : 'N/A'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Customer Feedback */}
+                    {getCustomerFeedback(job) && (
+                      <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <h4 className="font-medium text-blue-900 mb-2">Customer Feedback</h4>
+                        <div className="flex items-center space-x-2 mb-2">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-4 h-4 ${
+                                star <= (getCustomerFeedback(job).rating || 0)
+                                  ? 'text-yellow-400 fill-current'
+                                  : 'text-gray-300'
+                              }`}
+                            />
+                          ))}
+                          <span className="text-sm text-gray-600">
+                            ({getCustomerFeedback(job).rating || 0}/5)
+                          </span>
+                        </div>
+                        {getCustomerFeedback(job).comment && (
+                          <p className="text-sm text-blue-800">
+                            "{getCustomerFeedback(job).comment}"
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Completion Photos */}
+                  <div className="lg:col-span-1">
+                    <h4 className="font-medium text-gray-700 mb-3">Completion Photos</h4>
+                    {job.completionDetails?.photos?.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-2">
+                        {job.completionDetails.photos.map((photo, index) => (
+                          <div key={index} className="relative group cursor-pointer">
+                            <img
+                              src={photo.serverFilename ? `/uploads/${photo.serverFilename}` : photo.file}
+                              alt={`Completion ${index + 1}`}
+                              className="w-full h-24 object-cover rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                              onClick={() => {
+                                // Add photo zoom functionality here if needed
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg flex items-center justify-center">
+                              <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center p-4 border border-gray-200 rounded-lg">
+                        <Camera className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500">No photos uploaded</p>
+                      </div>
+                    )}
+
+                    {/* Completion Notes */}
+                    <div className="mt-4">
+                      <h4 className="font-medium text-gray-700 mb-2">Completion Notes</h4>
+                      <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <p className="text-sm text-gray-600">
+                          {job.completionDetails?.notes || 'No notes provided'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Verification Actions */}
+                  <div className="lg:col-span-1">
+                    <h4 className="font-medium text-gray-700 mb-3">Verification Actions</h4>
+                    
+                    {selectedJob?._id === job._id ? (
+                      <div className="space-y-4">
+                        {/* Verification Notes */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Verification Notes
+                          </label>
+                          <textarea
+                            value={verificationNotes}
+                            onChange={(e) => setVerificationNotes(e.target.value)}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="Add notes about your verification decision..."
+                          />
+                        </div>
+
+                        {/* Money Deduction (for rejection) */}
+                        {verificationAction === 'reject' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Money Deduction Amount (Optional)
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-2 text-gray-500">$</span>
+                              <input
+                                type="number"
+                                value={deductionAmount}
+                                onChange={(e) => setDeductionAmount(e.target.value)}
+                                min="0"
+                                step="0.01"
+                                className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                placeholder="0.00"
+                              />
+                            </div>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Amount to deduct from vendor payment (leave empty for no deduction)
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex space-x-3">
+                          {verificationAction === 'approve' && (
+                            <button
+                              onClick={() => handleApproveJob(job._id)}
+                              disabled={loading}
+                              className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {loading ? 'Approving...' : 'Confirm Approval'}
+                            </button>
+                          )}
+                          
+                          {verificationAction === 'reject' && (
+                            <button
+                              onClick={() => handleRejectJob(job._id)}
+                              disabled={loading}
+                              className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {loading ? 'Rejecting...' : 'Confirm Rejection'}
+                            </button>
+                          )}
+                          
+                          <button
+                            onClick={() => {
+                              setSelectedJob(null);
+                              setVerificationAction(null);
+                              setVerificationNotes('');
+                              setDeductionAmount('');
+                            }}
+                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => {
+                            setSelectedJob(job);
+                            setVerificationAction('approve');
+                          }}
+                          className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Approve & Complete
+                        </button>
+                        
+                        <button
+                          onClick={() => {
+                            setSelectedJob(job);
+                            setVerificationAction('reject');
+                          }}
+                          className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Reject Job
+                        </button>
+                        
+                        <button
+                          onClick={() => setSelectedJob(job)}
+                          className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Details
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

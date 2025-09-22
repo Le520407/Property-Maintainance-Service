@@ -1,4 +1,6 @@
 {
     "git.ignoreLimitWarning": true,
-    "vscode-corda.isCordaProject": false
+    "vscode-corda.isCordaProject": false,
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python-envs.pythonProjects": []
 }

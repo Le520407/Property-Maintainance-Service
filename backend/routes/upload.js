@@ -174,6 +174,73 @@ router.post('/rating-images', auth, orderAttachmentUpload.array('images', 5), (r
   }
 });
 
+// Vendor job completion photos upload route
+router.post('/completion-photos', auth, orderAttachmentUpload.array('photos', 10), (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: 'No photos uploaded' });
+    }
+
+    // Only vendors can upload completion photos
+    if (req.user.role !== 'vendor') {
+      return res.status(403).json({ message: 'Only vendors can upload completion photos' });
+    }
+
+    // Return uploaded photo information
+    const uploadedPhotos = req.files.map(file => ({
+      filename: file.filename,
+      originalName: file.originalname,
+      size: file.size,
+      mimetype: file.mimetype,
+      url: `/uploads/order-attachments/${file.filename}`,
+      serverFilename: file.filename
+    }));
+    
+    res.status(200).json({
+      message: 'Completion photos uploaded successfully',
+      photos: uploadedPhotos
+    });
+
+  } catch (error) {
+    console.error('Completion photos upload error:', error);
+    res.status(500).json({ message: 'Failed to upload completion photos' });
+  }
+});
+
+// Single file upload for vendors (generic)
+router.post('/vendor-file', auth, orderAttachmentUpload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    // Only vendors can upload files via this endpoint
+    if (req.user.role !== 'vendor') {
+      return res.status(403).json({ message: 'Only vendors can upload files via this endpoint' });
+    }
+
+    // Return uploaded file information
+    const uploadedFile = {
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+      url: `/uploads/order-attachments/${req.file.filename}`,
+      file: `/uploads/order-attachments/${req.file.filename}`,
+      serverFilename: req.file.filename
+    };
+    
+    res.status(200).json({
+      message: 'File uploaded successfully',
+      ...uploadedFile
+    });
+
+  } catch (error) {
+    console.error('Vendor file upload error:', error);
+    res.status(500).json({ message: 'Failed to upload file' });
+  }
+});
+
 // 错误处理中间件
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
