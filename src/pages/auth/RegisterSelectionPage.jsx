@@ -6,6 +6,7 @@ import { Users, Building, UserPlus, ArrowRight, Star, ChevronLeft, CheckCircle }
 // Import the registration components
 import CustomerRegisterPage from './CustomerRegisterPage';
 import VendorRegisterPage from './VendorRegisterPage';
+import AgentRegisterPage from './AgentRegisterPage';
 
 const RegisterSelectionPage = () => {
   const [selectedUserType, setSelectedUserType] = useState(null);
@@ -23,6 +24,13 @@ const RegisterSelectionPage = () => {
       title: 'Vendor',
       description: 'Provide maintenance services',
       icon: Building,
+      color: 'orange'
+    },
+    {
+      id: 'agent',
+      title: 'Agent',
+      description: 'Refer clients and earn commissions',
+      icon: UserPlus,
       color: 'orange'
     }
   ];
@@ -152,6 +160,16 @@ const RegisterSelectionPage = () => {
                   transition={{ duration: 0.6 }}
                 >
                   <VendorRegisterPage embedded={true} />
+                </motion.div>
+              )}
+
+              {selectedUserType === 'agent' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <AgentRegisterPage />
                 </motion.div>
               )}
 
