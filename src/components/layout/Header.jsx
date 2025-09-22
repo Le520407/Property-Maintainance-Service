@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { useCart } from '../../contexts/CartContext';
+// import { useCart } from '../../contexts/CartContext'; // Hidden temporarily - cart disabled
 import { useLanguage } from '../../contexts/LanguageContext';
-import { ShoppingCart, User, Menu, X, Gift, MessageCircle } from 'lucide-react';
+import { User, Menu, X, Gift, MessageCircle } from 'lucide-react'; // Removed ShoppingCart - cart disabled
 import { cachedApi } from '../../utils/globalCache';
 
 // Global function to clear messages visited flag (can be called from anywhere)
@@ -15,7 +15,7 @@ export const clearMessagesVisitedFlag = (userId) => {
 
 const Header = () => {
   const { user, logout } = useAuth();
-  const { cartItems } = useCart();
+  // const { cartItems } = useCart(); // Hidden temporarily - cart disabled
   const location = useLocation();
   const { t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -40,7 +40,7 @@ const Header = () => {
   const navigation = [
     { name: t('home'), href: '/' },
     { name: t('services'), href: '/services' },
-    { name: t('products'), href: '/products' },
+    // { name: t('products'), href: '/products' }, // Hidden temporarily
     // { name: 'Announcements', href: '/announcements' }, // Hidden temporarily
     { name: 'FAQ', href: '/faq' },
     { name: t('about'), href: '/about' },
@@ -187,28 +187,15 @@ const Header = () => {
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-white shadow-md">
-      {/* Top Bar */}
-      <div className="bg-orange-600 text-white py-2">
-        <div className="container mx-auto px-4 flex justify-between items-center text-sm">
-          <div className="flex items-center space-x-4">
-            <span>📞 +65 9123 4567</span>
-            <span>📧 info@swiftfixpro.sg</span>
-          </div>
-          <div className="hidden md:flex items-center space-x-4">
-            <span>🕒 Mon-Fri: 8AM-6PM</span>
-          </div>
-        </div>
-      </div>
-
       {/* Main Header */}
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
+        <div className="flex items-center justify-between h-20">
+          {/* Logo - Made bigger */}
           <Link to="/" className="flex items-center">
-            <img 
-              src="/logo.png" 
-              alt="Swift Fix Pro" 
-              className="h-16 w-auto border-0"
+            <img
+              src="/logo.png"
+              alt="Swift Fix Pro"
+              className="h-20 w-auto border-0"
             />
           </Link>
 
@@ -219,8 +206,8 @@ const Header = () => {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`text-gray-700 hover:text-orange-600 transition-colors ${
-                  location.pathname === item.href ? 'text-orange-600 font-medium' : ''
+                className={`text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors ${
+                  location.pathname === item.href ? 'text-orange-600 font-semibold' : ''
                 }`}
               >
                 {item.name}
@@ -232,8 +219,8 @@ const Header = () => {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`relative inline-flex items-center text-gray-700 hover:text-orange-600 transition-colors pr-12 ${
-                  location.pathname.startsWith('/membership') ? 'text-orange-600 font-medium' : ''
+                className={`relative inline-flex items-center text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors pr-12 ${
+                  location.pathname.startsWith('/membership') ? 'text-orange-600 font-semibold' : ''
                 }`}
               >
                 {item.name}
@@ -250,8 +237,8 @@ const Header = () => {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`relative inline-flex items-center text-gray-700 hover:text-orange-600 transition-colors pr-12 ${
-                  location.pathname.startsWith('/vendor/membership') ? 'text-orange-600 font-medium' : ''
+                className={`relative inline-flex items-center text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors pr-12 ${
+                  location.pathname.startsWith('/vendor/membership') ? 'text-orange-600 font-semibold' : ''
                 }`}
               >
                 {item.name}
@@ -266,7 +253,7 @@ const Header = () => {
             {/* Admin Navigation Dropdown */}
             {adminNavigation.map((item) => (
               <div key={item.name} className="relative group">
-                <button className="flex items-center text-gray-700 hover:text-orange-600 transition-colors">
+                <button className="flex items-center text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors">
                   {item.name}
                   <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -306,16 +293,16 @@ const Header = () => {
                 )}
               </Link>
             )}
-            
-            {/* Cart */}
-            <Link to="/cart" className="relative flex items-center text-gray-700 hover:text-orange-600">
+
+            {/* Cart - Hidden temporarily */}
+            {/* <Link to="/cart" className="relative flex items-center text-gray-700 hover:text-orange-600">
               <ShoppingCart className="w-6 h-6" />
               {cartItems.length > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {cartItems.length}
                 </span>
               )}
-            </Link>
+            </Link> */}
 
             {/* User Menu */}
             {user ? (
@@ -494,8 +481,8 @@ const Header = () => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`text-gray-700 hover:text-orange-600 transition-colors ${
-                    location.pathname === item.href ? 'text-orange-600 font-medium' : ''
+                  className={`text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors ${
+                    location.pathname === item.href ? 'text-orange-600 font-semibold' : ''
                   }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -508,8 +495,8 @@ const Header = () => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center justify-between text-gray-700 hover:text-orange-600 transition-colors ${
-                    location.pathname.startsWith('/membership') ? 'text-orange-600 font-medium' : ''
+                  className={`flex items-center justify-between text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors ${
+                    location.pathname.startsWith('/membership') ? 'text-orange-600 font-semibold' : ''
                   }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -527,8 +514,8 @@ const Header = () => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center justify-between text-gray-700 hover:text-orange-600 transition-colors ${
-                    location.pathname.startsWith('/vendor/membership') ? 'text-orange-600 font-medium' : ''
+                  className={`flex items-center justify-between text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors ${
+                    location.pathname.startsWith('/vendor/membership') ? 'text-orange-600 font-semibold' : ''
                   }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >

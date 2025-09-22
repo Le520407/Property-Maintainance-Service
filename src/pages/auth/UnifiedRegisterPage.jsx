@@ -636,21 +636,26 @@ const UnifiedRegisterPage = () => {
                 )}
               </div>
 
-              {/* City & Country */}
+              {/* State/Region & Country */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
-                    City <span className="text-red-500">*</span>
+                    State/Region <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <select
                     {...register('city', {
-                      required: 'City is required'
+                      required: 'State/Region is required'
                     })}
-                    type="text"
                     id="city"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-                    placeholder="City"
-                  />
+                  >
+                    <option value="">Select State/Region</option>
+                    <option value="Central Region">Central Region</option>
+                    <option value="East Region">East Region</option>
+                    <option value="North Region">North Region</option>
+                    <option value="North-East Region">North-East Region</option>
+                    <option value="West Region">West Region</option>
+                  </select>
                   {errors.city && (
                     <p className="mt-1 text-sm text-red-600">{errors.city.message}</p>
                   )}
@@ -666,8 +671,9 @@ const UnifiedRegisterPage = () => {
                     })}
                     type="text"
                     id="country"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-                    placeholder="Country"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 bg-gray-100"
+                    value="Singapore"
+                    readOnly
                   />
                   {errors.country && (
                     <p className="mt-1 text-sm text-red-600">{errors.country.message}</p>

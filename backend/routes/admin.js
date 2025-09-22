@@ -1496,4 +1496,503 @@ router.get('/agents/analytics/overview', auth, async (req, res) => {
   }
 });
 
+// ==== CEA NUMBER APPROVAL WORKFLOW ====
+
+// Get pending CEA approvals
+router.get('/cea-approvals', auth, async (req, res) => {
+  try {
+    // Check permissions
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+    }
+
+    const { status = 'PENDING', page = 1, limit = 20 } = req.query;
+
+    const query = {
+      role: 'referral',
+      ceaNumber: { $exists: true },
+      ceaNumberStatus: status
+    };
+
+    const users = await User.find(query)
+      .select('firstName lastName email ceaNumber ceaNumberStatus createdAt approvedAt approvedBy')
+      .populate('approvedBy', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await User.countDocuments(query);
+
+    const summary = await User.aggregate([
+      { $match: { role: 'referral', ceaNumber: { $exists: true } } },
+      { $group: { _id: '$ceaNumberStatus', count: { $sum: 1 } } }
+    ]);
+
+    res.json({
+      users,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      },
+      summary: summary.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {})
+    });
+
+  } catch (error) {
+    console.error('Error fetching CEA approvals:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Approve CEA number
+router.post('/cea-approvals/:userId/approve', auth, async (req, res) => {
+  try {
+    // Check permissions
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+    }
+
+    const { userId } = req.params;
+    const { notes } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.ceaNumberStatus !== 'PENDING') {
+      return res.status(400).json({ message: 'CEA number is not pending approval' });
+    }
+
+    // Update user status
+    user.ceaNumberStatus = 'APPROVED';
+    user.status = 'ACTIVE';
+    user.isAgentActive = true;
+    user.approvedAt = new Date();
+    user.approvedBy = req.user._id;
+
+    await user.save();
+
+    // Log the approval action
+    console.log(`CEA number ${user.ceaNumber} approved for user ${user.email} by admin ${req.user.email}`);
+
+    res.json({
+      message: 'CEA number approved successfully',
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        ceaNumber: user.ceaNumber,
+        ceaNumberStatus: user.ceaNumberStatus,
+        status: user.status,
+        approvedAt: user.approvedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error approving CEA number:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Reject CEA number
+router.post('/cea-approvals/:userId/reject', auth, async (req, res) => {
+  try {
+    // Check permissions
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+    }
+
+    const { userId } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ message: 'Rejection reason is required' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.ceaNumberStatus !== 'PENDING') {
+      return res.status(400).json({ message: 'CEA number is not pending approval' });
+    }
+
+    // Update user status
+    user.ceaNumberStatus = 'REJECTED';
+    user.status = 'SUSPENDED';
+    user.isAgentActive = false;
+    user.approvedBy = req.user._id;
+
+    await user.save();
+
+    // Log the rejection action
+    console.log(`CEA number ${user.ceaNumber} rejected for user ${user.email} by admin ${req.user.email}. Reason: ${reason}`);
+
+    res.json({
+      message: 'CEA number rejected',
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        ceaNumber: user.ceaNumber,
+        ceaNumberStatus: user.ceaNumberStatus,
+        status: user.status,
+        rejectionReason: reason
+      }
+    });
+
+  } catch (error) {
+    console.error('Error rejecting CEA number:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get CEA approval details
+router.get('/cea-approvals/:userId', auth, async (req, res) => {
+  try {
+    // Check permissions
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+    }
+
+    const { userId } = req.params;
+
+    const user = await User.findById(userId)
+      .select('firstName lastName email phone address city country ceaNumber ceaNumberStatus status createdAt approvedAt approvedBy')
+      .populate('approvedBy', 'firstName lastName email');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ user });
+
+  } catch (error) {
+    console.error('Error fetching CEA approval details:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== RATING MANAGEMENT ROUTES ====================
+
+// Get all ratings with filtering for admin review
+router.get('/ratings', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('view_analytics')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      search,
+      startDate,
+      endDate,
+      minRating,
+      maxRating
+    } = req.query;
+
+    // Build query
+    const query = {};
+    if (status) query['adminReview.status'] = status;
+    if (minRating) query.overallRating = { ...query.overallRating, $gte: parseInt(minRating) };
+    if (maxRating) query.overallRating = { ...query.overallRating, $lte: parseInt(maxRating) };
+
+    if (startDate && endDate) {
+      query.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    // Search across customer, vendor, and job details
+    let ratings = await Rating.find(query)
+      .populate('customerId', 'firstName lastName email')
+      .populate('vendorId', 'firstName lastName email')
+      .populate('jobId', 'title jobNumber')
+      .populate('adminReview.reviewedBy', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    // Apply search filter if provided
+    if (search) {
+      const searchTerm = search.toLowerCase();
+      ratings = ratings.filter(rating =>
+        rating.customerId?.firstName?.toLowerCase().includes(searchTerm) ||
+        rating.customerId?.lastName?.toLowerCase().includes(searchTerm) ||
+        rating.customerId?.email?.toLowerCase().includes(searchTerm) ||
+        rating.vendorId?.firstName?.toLowerCase().includes(searchTerm) ||
+        rating.vendorId?.lastName?.toLowerCase().includes(searchTerm) ||
+        rating.vendorId?.email?.toLowerCase().includes(searchTerm) ||
+        rating.jobId?.title?.toLowerCase().includes(searchTerm) ||
+        rating.jobId?.jobNumber?.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    const total = await Rating.countDocuments(query);
+
+    res.json({
+      ratings,
+      total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page)
+    });
+
+  } catch (error) {
+    console.error('Get ratings error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get rating statistics for admin dashboard
+router.get('/ratings/stats', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('view_analytics')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const stats = await Rating.aggregate([
+      {
+        $group: {
+          _id: '$adminReview.status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Format stats
+    const formattedStats = stats.reduce((acc, stat) => {
+      const status = stat._id || 'PENDING';
+      acc[status.toLowerCase()] = stat.count;
+      return acc;
+    }, {});
+
+    // Get additional metrics
+    const [totalRatings, averageRating, recentRatings] = await Promise.all([
+      Rating.countDocuments(),
+      Rating.aggregate([
+        { $group: { _id: null, avg: { $avg: '$overallRating' } } }
+      ]),
+      Rating.countDocuments({
+        createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+      })
+    ]);
+
+    res.json({
+      ...formattedStats,
+      totalRatings,
+      averageRating: averageRating[0]?.avg || 0,
+      recentRatings
+    });
+
+  } catch (error) {
+    console.error('Get rating stats error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update rating admin review status
+router.patch('/ratings/:ratingId/review', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_content')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { status, notes, flagReason } = req.body;
+
+    if (!['APPROVED', 'FLAGGED', 'REJECTED'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid review status' });
+    }
+
+    const rating = await Rating.findById(req.params.ratingId);
+    if (!rating) {
+      return res.status(404).json({ message: 'Rating not found' });
+    }
+
+    // Update admin review
+    rating.adminReview = {
+      status,
+      reviewedBy: req.user._id,
+      reviewedAt: new Date(),
+      notes: notes || rating.adminReview?.notes,
+      flagReason: status === 'FLAGGED' ? flagReason : undefined
+    };
+
+    // Update visibility based on status
+    if (status === 'REJECTED') {
+      rating.isPublic = false;
+    } else if (status === 'APPROVED') {
+      rating.isPublic = true;
+      rating.isVerified = true;
+    }
+
+    await rating.save();
+
+    // Populate the response
+    await rating.populate('adminReview.reviewedBy', 'firstName lastName email');
+
+    res.json({
+      message: 'Rating review updated successfully',
+      rating
+    });
+
+  } catch (error) {
+    console.error('Update rating review error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get detailed rating for admin review
+router.get('/ratings/:ratingId', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('view_analytics')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const rating = await Rating.findById(req.params.ratingId)
+      .populate('customerId', 'firstName lastName email phone')
+      .populate('vendorId', 'firstName lastName email phone')
+      .populate('jobId', 'title jobNumber category totalAmount status createdAt')
+      .populate('adminReview.reviewedBy', 'firstName lastName email');
+
+    if (!rating) {
+      return res.status(404).json({ message: 'Rating not found' });
+    }
+
+    res.json({ rating });
+
+  } catch (error) {
+    console.error('Get rating details error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Bulk update multiple ratings
+router.patch('/ratings/bulk-review', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_content')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { ratingIds, status, notes } = req.body;
+
+    if (!Array.isArray(ratingIds) || ratingIds.length === 0) {
+      return res.status(400).json({ message: 'Rating IDs array is required' });
+    }
+
+    if (!['APPROVED', 'FLAGGED', 'REJECTED'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid review status' });
+    }
+
+    const updateData = {
+      'adminReview.status': status,
+      'adminReview.reviewedBy': req.user._id,
+      'adminReview.reviewedAt': new Date()
+    };
+
+    if (notes) updateData['adminReview.notes'] = notes;
+    if (status === 'REJECTED') updateData.isPublic = false;
+    if (status === 'APPROVED') {
+      updateData.isPublic = true;
+      updateData.isVerified = true;
+    }
+
+    const result = await Rating.updateMany(
+      { _id: { $in: ratingIds } },
+      { $set: updateData }
+    );
+
+    res.json({
+      message: `${result.modifiedCount} ratings updated successfully`,
+      modifiedCount: result.modifiedCount
+    });
+
+  } catch (error) {
+    console.error('Bulk update ratings error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get vendor evidence report - ratings that prove good work
+router.get('/vendors/:vendorId/evidence-report', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('view_analytics')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { startDate, endDate } = req.query;
+    const vendorId = req.params.vendorId;
+
+    // Build query for approved ratings
+    const query = {
+      vendorId,
+      'adminReview.status': 'APPROVED',
+      isPublic: true
+    };
+
+    if (startDate && endDate) {
+      query.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    // Get approved ratings as evidence
+    const evidenceRatings = await Rating.find(query)
+      .populate('customerId', 'firstName lastName email')
+      .populate('jobId', 'title jobNumber category totalAmount actualStartTime actualEndTime')
+      .populate('adminReview.reviewedBy', 'firstName lastName')
+      .sort({ overallRating: -1, createdAt: -1 });
+
+    // Get vendor stats
+    const vendor = await User.findById(vendorId).select('firstName lastName email');
+    const ratingStats = await Rating.getVendorStats(vendorId);
+
+    // Calculate evidence summary
+    const summary = {
+      totalEvidenceRatings: evidenceRatings.length,
+      averageRating: evidenceRatings.length > 0
+        ? evidenceRatings.reduce((sum, r) => sum + r.overallRating, 0) / evidenceRatings.length
+        : 0,
+      recommendationRate: evidenceRatings.length > 0
+        ? (evidenceRatings.filter(r => r.wouldRecommend).length / evidenceRatings.length) * 100
+        : 0,
+      totalJobValue: evidenceRatings.reduce((sum, r) => sum + (r.jobId?.totalAmount || 0), 0),
+      ratingDistribution: evidenceRatings.reduce((acc, r) => {
+        acc[r.overallRating] = (acc[r.overallRating] || 0) + 1;
+        return acc;
+      }, {}),
+      topPositiveAspects: evidenceRatings
+        .flatMap(r => r.positiveAspects || [])
+        .reduce((acc, aspect) => {
+          acc[aspect] = (acc[aspect] || 0) + 1;
+          return acc;
+        }, {})
+    };
+
+    res.json({
+      vendor,
+      summary,
+      evidenceRatings: evidenceRatings.slice(0, 50), // Limit for performance
+      overallStats: ratingStats,
+      generatedAt: new Date(),
+      reportPeriod: { startDate, endDate }
+    });
+
+  } catch (error) {
+    console.error('Get vendor evidence report error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;

@@ -522,22 +522,27 @@ const AllInOneRegisterPage = () => {
                   )}
                 </div>
 
-                {/* City & Country - Only for non-vendor */}
+                {/* State/Region & Country - Only for non-vendor */}
                 {accountType !== 'vendor' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
-                        City <span className="text-red-500">*</span>
+                        State/Region <span className="text-red-500">*</span>
                       </label>
-                      <input
+                      <select
                         {...register('city', {
-                          required: 'City is required'
+                          required: 'State/Region is required'
                         })}
-                        type="text"
                         id="city"
                         className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-${selectedType.color}-500 focus:ring-${selectedType.color}-500`}
-                        placeholder="City"
-                      />
+                      >
+                        <option value="">Select State/Region</option>
+                        <option value="Central Region">Central Region</option>
+                        <option value="East Region">East Region</option>
+                        <option value="North Region">North Region</option>
+                        <option value="North-East Region">North-East Region</option>
+                        <option value="West Region">West Region</option>
+                      </select>
                       {errors.city && (
                         <p className="mt-1 text-sm text-red-600">{errors.city.message}</p>
                       )}
@@ -553,8 +558,9 @@ const AllInOneRegisterPage = () => {
                         })}
                         type="text"
                         id="country"
-                        className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-${selectedType.color}-500 focus:ring-${selectedType.color}-500`}
-                        placeholder="Country"
+                        className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-${selectedType.color}-500 focus:ring-${selectedType.color}-500 bg-gray-100`}
+                        value="Singapore"
+                        readOnly
                       />
                       {errors.country && (
                         <p className="mt-1 text-sm text-red-600">{errors.country.message}</p>
@@ -677,12 +683,18 @@ const AllInOneRegisterPage = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Service Area <span className="text-red-500">*</span>
                             </label>
-                            <input
-                              type="text"
+                            <select
                               {...register('serviceArea', { required: 'Service area is required' })}
                               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:border-green-500 focus:ring-green-500"
-                              placeholder="e.g. Singapore, Jurong, etc."
-                            />
+                            >
+                              <option value="">Select Service Area</option>
+                              <option value="Central Region">Central Region</option>
+                              <option value="East Region">East Region</option>
+                              <option value="North Region">North Region</option>
+                              <option value="North-East Region">North-East Region</option>
+                              <option value="West Region">West Region</option>
+                              <option value="All Singapore">All Singapore</option>
+                            </select>
                             {errors.serviceArea && (
                               <p className="text-red-500 text-sm mt-1">{errors.serviceArea.message}</p>
                             )}

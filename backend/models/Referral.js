@@ -186,14 +186,14 @@ const payoutSchema = new mongoose.Schema({
 const REFERRAL_REWARDS = {
   property_agent: {
     tier1: {
-      type: 'money',
-      amount: 5, // $5 for direct referrals
-      description: 'Direct referral commission'
+      type: 'points',
+      amount: 500, // 500 points for direct referrals (equivalent to $5)
+      description: 'Direct referral bonus points'
     },
     tier2: {
-      type: 'money', 
-      amount: 2, // $2 for indirect referrals
-      description: 'Indirect referral commission'
+      type: 'points',
+      amount: 200, // 200 points for indirect referrals (equivalent to $2)
+      description: 'Indirect referral bonus points'
     }
   },
   customer: {
@@ -204,7 +204,7 @@ const REFERRAL_REWARDS = {
     },
     tier2: {
       type: 'points',
-      amount: 50, // 50 points for indirect referrals  
+      amount: 50, // 50 points for indirect referrals
       description: 'Indirect referral bonus points'
     }
   },

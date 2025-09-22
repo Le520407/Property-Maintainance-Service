@@ -133,58 +133,39 @@ router.get('/dashboard', auth, async (req, res) => {
     // Get current user to check type
     const currentUser = await User.findById(req.user._id);
     const isPropertyAgent = currentUser.referralUserType === 'property_agent' || currentUser.role === 'referral';
-    
-    let statistics, recentTransactions;
-    
+
+    // All users now get points - but handle display differently for property agents
+    const PointsTransaction = require('../models/PointsTransaction');
+
+    // Get recent points transactions for referrals
+    const recentTransactions = await PointsTransaction.find({
+      user: req.user._id,
+      type: 'EARNED_REFERRAL'
+    })
+      .populate('metadata.referredUser', 'firstName lastName')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    // Calculate points earned from referrals
+    const referralPoints = recentTransactions.reduce((sum, txn) => sum + txn.points, 0);
+
+    // For property agents, also show pending money from point exchanges
+    let pendingMoney = 0;
     if (isPropertyAgent) {
-      // For property agents: show money commissions
-      const commissions = await Commission.find({ referrer: req.user._id });
-      const totalEarned = commissions.reduce((sum, comm) => sum + comm.commissionAmount, 0);
-      const pendingEarnings = commissions
-        .filter(comm => comm.status === 'PENDING' || comm.status === 'APPROVED')
-        .reduce((sum, comm) => sum + comm.commissionAmount, 0);
-      
-      // Get recent commissions
-      recentTransactions = await Commission.find({ referrer: req.user._id })
-        .populate('referredUser', 'firstName lastName')
-        .sort({ createdAt: -1 })
-        .limit(10);
-      
-      statistics = {
-        totalReferrals: referral.totalReferrals,
-        activeReferrals: referral.activeReferrals,
-        totalEarned,
-        pendingEarnings,
-        totalPaid: referral.totalCommissionPaid,
-        rewardType: 'money'
-      };
-    } else {
-      // For customers: show points
-      const PointsTransaction = require('../models/PointsTransaction');
-      
-      // Get recent points transactions
-      recentTransactions = await PointsTransaction.find({ 
-        user: req.user._id,
-        type: 'EARNED_REFERRAL'
-      })
-        .populate('metadata.referredUser', 'firstName lastName')
-        .sort({ createdAt: -1 })
-        .limit(10);
-      
-      // Calculate points earned from referrals
-      const referralPoints = recentTransactions.reduce((sum, txn) => sum + txn.points, 0);
-      
-      statistics = {
-        totalReferrals: referral.totalReferrals,
-        activeReferrals: referral.activeReferrals,
-        totalEarned: referralPoints, // Total points earned from referrals
-        pendingEarnings: 0, // No pending concept for points
-        totalPaid: 0, // Not applicable for points
-        pointsBalance: currentUser.pointsBalance,
-        totalPointsEarned: currentUser.totalPointsEarned,
-        rewardType: 'points'
-      };
+      pendingMoney = currentUser.pendingCommission || 0;
     }
+
+    const statistics = {
+      totalReferrals: referral.totalReferrals,
+      activeReferrals: referral.activeReferrals,
+      totalEarned: referralPoints, // Total points earned from referrals
+      pendingEarnings: pendingMoney, // Money pending from point exchanges (property agents only)
+      totalPaid: currentUser.totalCommissionPaid || 0, // Money already paid out
+      pointsBalance: currentUser.pointsBalance,
+      totalPointsEarned: currentUser.totalPointsEarned,
+      canExchangePointsForMoney: currentUser.canExchangePointsForMoney,
+      rewardType: 'points' // Everyone gets points now
+    };
     
     // Calculate tier progress (same for both types)
     const currentTier = referral.referralTier;
@@ -213,8 +194,8 @@ router.get('/dashboard', auth, async (req, res) => {
       } : null,
       statistics,
       referredUsers: referral.referredUsers,
-      recentCommissions: isPropertyAgent ? recentTransactions : [], // For backward compatibility
-      recentTransactions // New field for both types
+      recentCommissions: [], // Deprecated - all users use points now
+      recentTransactions // Points transactions for all users
     });
     
   } catch (error) {
@@ -683,6 +664,116 @@ router.get('/links/:linkId/clicks', auth, async (req, res) => {
     
   } catch (error) {
     console.error('Get link clicks error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==== POINTS EXCHANGE FEATURE ====
+
+// Exchange points for money (referral users only)
+router.post('/exchange-points', auth, async (req, res) => {
+  try {
+    const { points, exchangeRate = 100 } = req.body;
+
+    if (!points || points <= 0) {
+      return res.status(400).json({ message: 'Valid points amount is required' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user is authorized to exchange points for money
+    if (!user.canExchangePointsForMoney) {
+      return res.status(403).json({
+        message: 'Only referral users can exchange points for money'
+      });
+    }
+
+    if (user.pointsBalance < points) {
+      return res.status(400).json({
+        message: 'Insufficient points balance',
+        currentBalance: user.pointsBalance,
+        requestedPoints: points
+      });
+    }
+
+    // Perform the exchange
+    const result = await user.exchangePointsForMoney(points, exchangeRate);
+
+    res.json({
+      success: true,
+      message: `Successfully exchanged ${points} points for $${result.moneyAmount.toFixed(2)}`,
+      exchange: {
+        pointsExchanged: points,
+        moneyAmount: result.moneyAmount,
+        exchangeRate: exchangeRate,
+        newPointsBalance: result.newBalance,
+        newPendingCommission: user.pendingCommission
+      },
+      transactionId: result.transactionId
+    });
+
+  } catch (error) {
+    console.error('Exchange points error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get points exchange rates and user eligibility
+router.get('/exchange-info', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const exchangeRate = 100; // 100 points = $1
+    const minimumExchange = 100; // Minimum 100 points to exchange
+
+    res.json({
+      canExchange: user.canExchangePointsForMoney,
+      currentBalance: user.pointsBalance,
+      exchangeRate: exchangeRate,
+      minimumExchange: minimumExchange,
+      maxExchangeable: user.pointsBalance >= minimumExchange ? user.pointsBalance : 0,
+      estimatedValue: user.pointsBalance / exchangeRate,
+      userType: user.referralUserType,
+      isReferralUser: user.role === 'referral' || user.referralUserType === 'property_agent'
+    });
+
+  } catch (error) {
+    console.error('Get exchange info error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get points transaction history
+router.get('/points-history', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 20, type } = req.query;
+
+    const PointsTransaction = require('../models/PointsTransaction');
+
+    const options = {
+      limit: parseInt(limit),
+      skip: (parseInt(page) - 1) * parseInt(limit),
+      type: type || null
+    };
+
+    const transactions = await PointsTransaction.getUserHistory(req.user._id, options);
+    const total = await PointsTransaction.countDocuments({ user: req.user._id });
+
+    res.json({
+      transactions,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
+      total
+    });
+
+  } catch (error) {
+    console.error('Get points history error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

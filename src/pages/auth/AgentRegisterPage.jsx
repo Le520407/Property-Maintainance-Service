@@ -11,54 +11,43 @@ const AgentRegisterPage = ({ embedded = false }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isValidatingCode, setIsValidatingCode] = useState(false);
-  const [codeValidated, setCodeValidated] = useState(false);
+  const [isValidatingCEA, setIsValidatingCEA] = useState(false);
+  const [ceaValidated, setCeaValidated] = useState(false);
   
   const navigate = useNavigate();
   const { register, handleSubmit, formState: { errors }, trigger, watch, setValue } = useForm();
   
   const password = watch('password');
-  const inviteCode = watch('inviteCode');
+  const ceaNumber = watch('ceaNumber');
 
   const agentSteps = [
-    { number: 1, title: "Invite Code", icon: Shield },
+    { number: 1, title: "CEA Verification", icon: Shield },
     { number: 2, title: "Personal Info", icon: User },
     { number: 3, title: "Contact Details", icon: Mail },
     { number: 4, title: "Account Security", icon: Lock }
   ];
 
-  // Validate invite code
-  const validateInviteCode = async (code) => {
-    if (!code || code.length < 6) return;
-    
-    setIsValidatingCode(true);
-    try {
-      const response = await api.post('/invite-codes/validate', { code });
-      if (response.success) {
-        setCodeValidated(true);
-        toast.success('Valid invite code!');
-      }
-    } catch (error) {
-      setCodeValidated(false);
-      toast.error(error.message || 'Invalid invite code');
-    } finally {
-      setIsValidatingCode(false);
-    }
+  // Validate CEA number format
+  const validateCEANumber = (ceaNum) => {
+    if (!ceaNum) return false;
+    // CEA number format: R123456A (Letter + 6 digits + Letter)
+    const ceaRegex = /^[A-Z]\d{6}[A-Z]$/i;
+    return ceaRegex.test(ceaNum);
   };
 
   const nextStep = async () => {
     let fieldsToValidate = [];
-    
+
     if (currentStep === 1) {
-      if (!codeValidated) {
-        toast.error('Please validate your invite code first');
+      if (!validateCEANumber(ceaNumber)) {
+        toast.error('Please enter a valid CEA number (format: R123456A)');
         return;
       }
-      fieldsToValidate = ['inviteCode'];
+      fieldsToValidate = ['ceaNumber'];
     } else if (currentStep === 2) {
       fieldsToValidate = ['firstName', 'lastName'];
     } else if (currentStep === 3) {
-      fieldsToValidate = ['email', 'phone', 'address'];
+      fieldsToValidate = ['email', 'phone', 'state', 'address'];
     }
     
     const isValid = await trigger(fieldsToValidate);
@@ -75,13 +64,8 @@ const AgentRegisterPage = ({ embedded = false }) => {
   };
 
   const onSubmit = async (data) => {
-    if (!codeValidated) {
-      toast.error('Please validate your invite code first');
-      return;
-    }
-
-    if (!data.inviteCode) {
-      toast.error('Invite code is required');
+    if (!validateCEANumber(data.ceaNumber)) {
+      toast.error('Please enter a valid CEA number');
       return;
     }
 
@@ -89,11 +73,13 @@ const AgentRegisterPage = ({ embedded = false }) => {
     try {
       const response = await api.post('/auth/register-agent', {
         ...data,
-        role: 'referral'
+        role: 'referral',
+        country: 'Singapore',
+        city: data.state || 'Singapore'
       });
 
       if (response.token) {
-        toast.success('Agent registration successful! Please verify your email.');
+        toast.success('Agent registration submitted! Please wait for admin approval of your CEA number.');
         navigate('/login');
       }
     } catch (error) {
@@ -193,7 +179,7 @@ const AgentRegisterPage = ({ embedded = false }) => {
           {/* Form Container */}
           <div className="bg-white rounded-lg shadow-lg p-8">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Step 1: Invite Code Validation */}
+              {/* Step 1: CEA Number Verification */}
               {currentStep === 1 && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
@@ -202,59 +188,49 @@ const AgentRegisterPage = ({ embedded = false }) => {
               >
                 <h2 className="text-2xl font-semibold mb-6 flex items-center">
                   <Shield className="mr-2" />
-                  Invite Code Verification
+                  CEA Number Verification
                 </h2>
-                
+
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Admin Invite Code *
+                      CEA Number *
                     </label>
-                    <div className="flex space-x-2">
-                      <div className="flex-1 relative">
-                        <Gift size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input
-                          {...register('inviteCode', {
-                            required: 'Invite code is required for agent registration',
-                            minLength: {
-                              value: 6,
-                              message: 'Invite code must be at least 6 characters'
-                            }
-                          })}
-                          type="text"
-                          className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:border-transparent ${
-                            codeValidated 
-                              ? 'border-green-500 focus:ring-green-500' 
-                              : 'border-gray-300 focus:ring-orange-500'
-                          }`}
-                          placeholder="Enter your invite code"
-                          style={{ textTransform: 'uppercase' }}
-                          onChange={(e) => {
-                            const value = e.target.value.toUpperCase();
-                            e.target.value = value;
-                            setValue('inviteCode', value);
-                            setCodeValidated(false);
-                          }}
-                        />
-                        {codeValidated && (
-                          <CheckCircle size={20} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500" />
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => validateInviteCode(inviteCode)}
-                        disabled={isValidatingCode || !inviteCode}
-                        className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isValidatingCode ? 'Validating...' : 'Validate'}
-                      </button>
+                    <div className="relative">
+                      <Gift size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        {...register('ceaNumber', {
+                          required: 'CEA number is required for agent registration',
+                          pattern: {
+                            value: /^[A-Z]\d{6}[A-Z]$/i,
+                            message: 'CEA number must be in format: R123456A'
+                          }
+                        })}
+                        type="text"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Enter your CEA number (e.g., R123456A)"
+                        style={{ textTransform: 'uppercase' }}
+                        onChange={(e) => {
+                          const value = e.target.value.toUpperCase();
+                          e.target.value = value;
+                          setValue('ceaNumber', value);
+                        }}
+                      />
+                      {ceaNumber && validateCEANumber(ceaNumber) && (
+                        <CheckCircle size={20} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500" />
+                      )}
                     </div>
-                    {errors.inviteCode && (
-                      <p className="text-red-500 text-sm mt-1">{errors.inviteCode.message}</p>
+                    {errors.ceaNumber && (
+                      <p className="text-red-500 text-sm mt-1">{errors.ceaNumber.message}</p>
                     )}
-                    <p className="mt-1 text-xs text-gray-500">
-                      Contact admin to obtain your exclusive agent invite code
-                    </p>
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="text-sm font-semibold text-blue-800 mb-1">About CEA Number</h4>
+                      <p className="text-xs text-blue-700">
+                        Your CEA (Council for Estate Agencies) number is a unique identifier for licensed property agents in Singapore.
+                        Format: Letter + 6 digits + Letter (e.g., R123456A).
+                        Admin will verify your CEA number before approving your account.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -359,17 +335,49 @@ const AgentRegisterPage = ({ embedded = false }) => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      State/Region *
+                    </label>
+                    <select
+                      {...register('state', { required: 'State/Region is required' })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    >
+                      <option value="">Select State/Region</option>
+                      <option value="Central Region">Central Region</option>
+                      <option value="East Region">East Region</option>
+                      <option value="North Region">North Region</option>
+                      <option value="North-East Region">North-East Region</option>
+                      <option value="West Region">West Region</option>
+                    </select>
+                    {errors.state && (
+                      <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Address *
                     </label>
                     <textarea
                       {...register('address', { required: 'Address is required' })}
                       rows="3"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      placeholder="Enter your full address"
+                      placeholder="Enter your full Singapore address"
                     />
                     {errors.address && (
                       <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>
                     )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100"
+                      value="Singapore"
+                      readOnly
+                    />
                   </div>
                 </div>
               </motion.div>

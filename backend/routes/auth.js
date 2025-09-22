@@ -118,25 +118,33 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Register referral agent with invite code
+// Register referral agent with CEA number
 router.post('/register-agent', async (req, res) => {
   try {
-    const { 
-      firstName, 
-      lastName, 
-      email, 
-      password, 
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
       phone,
       address,
-      city, 
+      city,
       country,
-      inviteCode
+      ceaNumber
     } = req.body;
 
     // Validation
-    if (!firstName || !lastName || !email || !password || !inviteCode) {
-      return res.status(400).json({ 
-        message: 'First name, last name, email, password, and invite code are required' 
+    if (!firstName || !lastName || !email || !password || !ceaNumber) {
+      return res.status(400).json({
+        message: 'First name, last name, email, password, and CEA number are required'
+      });
+    }
+
+    // Validate CEA number format (example: R123456A)
+    const ceaRegex = /^[A-Z]\d{6}[A-Z]$/i;
+    if (!ceaRegex.test(ceaNumber)) {
+      return res.status(400).json({
+        message: 'Invalid CEA number format. Expected format: R123456A'
       });
     }
 
@@ -146,19 +154,10 @@ router.post('/register-agent', async (req, res) => {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
-    // Validate invite code
-    const inviteCodeDoc = await InviteCode.findOne({ 
-      code: inviteCode.toUpperCase().trim(),
-      userType: 'referral'
-    });
-
-    if (!inviteCodeDoc) {
-      return res.status(400).json({ message: 'Invalid invite code for agent registration' });
-    }
-
-    const validation = inviteCodeDoc.isValid();
-    if (!validation.valid) {
-      return res.status(400).json({ message: validation.reason });
+    // Check if CEA number is already registered
+    const existingCEA = await User.findOne({ ceaNumber: ceaNumber.toUpperCase() });
+    if (existingCEA) {
+      return res.status(400).json({ message: 'This CEA number is already registered' });
     }
 
     // Generate unique agent code
@@ -179,7 +178,7 @@ router.post('/register-agent', async (req, res) => {
       return res.status(500).json({ message: 'Failed to generate unique agent code' });
     }
 
-    // Create referral agent user
+    // Create referral agent user (pending approval)
     const user = await User.create({
       firstName,
       lastName,
@@ -191,17 +190,15 @@ router.post('/register-agent', async (req, res) => {
       city,
       country,
       role: 'referral',
-      status: 'ACTIVE',
+      status: 'PENDING', // Pending admin approval for CEA verification
       agentCode,
-      inviteCode: inviteCode.toUpperCase(),
+      ceaNumber: ceaNumber.toUpperCase(),
+      ceaNumberStatus: 'PENDING',
       commissionRate: 15.0,
-      isAgentActive: true
-    });
-
-    // Use the invite code
-    await inviteCodeDoc.useCode(user._id, {
-      ipAddress: req.ip,
-      userAgent: req.headers['user-agent']
+      isAgentActive: false, // Will be activated after approval
+      referralUserType: 'property_agent',
+      rewardType: 'points',
+      canExchangePointsForMoney: true
     });
 
     // Create referral record for the new agent
@@ -221,7 +218,7 @@ router.post('/register-agent', async (req, res) => {
     const token = generateToken({ userId: user._id, email: user.email, role: user.role });
 
     res.status(201).json({
-      message: 'Referral agent registered successfully',
+      message: 'Agent registration submitted successfully. Please wait for admin approval of your CEA number.',
       token,
       user: {
         id: user._id,
@@ -235,7 +232,9 @@ router.post('/register-agent', async (req, res) => {
         status: user.status,
         agentCode: user.agentCode,
         referralCode: user.referralCode,
-        commissionRate: user.commissionRate
+        commissionRate: user.commissionRate,
+        ceaNumber: user.ceaNumber,
+        ceaNumberStatus: user.ceaNumberStatus
       }
     });
 

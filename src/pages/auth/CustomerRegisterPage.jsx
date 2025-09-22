@@ -356,15 +356,20 @@ const CustomerRegisterPage = ({ embedded = false }) => {
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          City *
+                          State/Region *
                         </label>
-                        <input
-                          type="text"
-                          {...register('city', { required: 'City is required' })}
+                        <select
+                          {...register('city', { required: 'State/Region is required' })}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
-                          placeholder="Enter your city"
-                          defaultValue="Singapore"
-                        />
+                          defaultValue=""
+                        >
+                          <option value="">Select State/Region</option>
+                          <option value="Central Region">Central Region</option>
+                          <option value="East Region">East Region</option>
+                          <option value="North Region">North Region</option>
+                          <option value="North-East Region">North-East Region</option>
+                          <option value="West Region">West Region</option>
+                        </select>
                         {errors.city && (
                           <p className="text-red-500 text-sm mt-1 flex items-center">
                             <AlertCircle size={16} className="mr-1" />
@@ -377,16 +382,13 @@ const CustomerRegisterPage = ({ embedded = false }) => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Country *
                         </label>
-                        <select
+                        <input
+                          type="text"
                           {...register('country', { required: 'Country is required' })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
-                          defaultValue="Singapore"
-                        >
-                          <option value="Singapore">Singapore</option>
-                          <option value="Malaysia">Malaysia</option>
-                          <option value="Thailand">Thailand</option>
-                          <option value="Philippines">Philippines</option>
-                        </select>
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors bg-gray-100"
+                          value="Singapore"
+                          readOnly
+                        />
                         {errors.country && (
                           <p className="text-red-500 text-sm mt-1 flex items-center">
                             <AlertCircle size={16} className="mr-1" />

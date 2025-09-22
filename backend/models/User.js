@@ -149,6 +149,26 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  ceaNumber: {
+    type: String,
+    trim: true,
+    sparse: true,
+    unique: true
+  },
+  ceaNumberStatus: {
+    type: String,
+    enum: ['PENDING', 'APPROVED', 'REJECTED'],
+    default: 'PENDING'
+  },
+  approvedAt: {
+    type: Date,
+    default: null
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
   commissionRate: {
     type: Number,
     default: 15.0,
@@ -184,9 +204,7 @@ const userSchema = new mongoose.Schema({
   rewardType: {
     type: String,
     enum: ['money', 'points'],
-    default: function() {
-      return this.referralUserType === 'property_agent' ? 'money' : 'points';
-    }
+    default: 'points' // All users now earn points by default
   },
   pointsBalance: {
     type: Number,
@@ -202,6 +220,12 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0
+  },
+  canExchangePointsForMoney: {
+    type: Boolean,
+    default: function() {
+      return this.role === 'referral' || this.referralUserType === 'property_agent';
+    }
   },
   tier1MoneyReward: {
     type: Number,
@@ -383,9 +407,9 @@ userSchema.methods.deductPoints = async function(points, description = 'Points r
   if (this.pointsBalance < points) {
     throw new Error('Insufficient points balance');
   }
-  
+
   const PointsTransaction = require('./PointsTransaction');
-  
+
   const transaction = await PointsTransaction.createTransaction({
     user: this._id,
     type: transactionData.type || 'REDEEMED_DISCOUNT',
@@ -395,12 +419,44 @@ userSchema.methods.deductPoints = async function(points, description = 'Points r
     relatedModel: transactionData.relatedModel || null,
     metadata: transactionData.metadata || {}
   });
-  
+
   return {
     newBalance: transaction.newBalance,
     pointsDeducted: points,
     description,
     transactionId: transaction._id
+  };
+};
+
+userSchema.methods.exchangePointsForMoney = async function(points, exchangeRate = 100) {
+  // Check if user is allowed to exchange points for money
+  if (!this.canExchangePointsForMoney) {
+    throw new Error('User is not authorized to exchange points for money');
+  }
+
+  if (this.pointsBalance < points) {
+    throw new Error('Insufficient points balance');
+  }
+
+  const moneyAmount = points / exchangeRate; // 100 points = $1 by default
+
+  const result = await this.deductPoints(points, `Points exchanged for $${moneyAmount.toFixed(2)}`, {
+    type: 'REDEEMED_CASH',
+    metadata: {
+      exchangeRate: exchangeRate,
+      moneyAmount: moneyAmount,
+      exchangeDate: new Date()
+    }
+  });
+
+  // Add to pending commission (money that will be paid out)
+  this.pendingCommission += moneyAmount;
+  await this.save();
+
+  return {
+    ...result,
+    moneyAmount: moneyAmount,
+    exchangeRate: exchangeRate
   };
 };
 
