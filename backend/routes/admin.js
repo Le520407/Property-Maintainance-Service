@@ -9,6 +9,10 @@ const InviteCode = require('../models/InviteCode');
 const { authenticateToken: auth } = require('../middleware/auth');
 const referralService = require('../services/referralService');
 
+// Include CEA verification routes
+const ceaVerificationRoutes = require('./ceaVerification');
+router.use('/', ceaVerificationRoutes);
+
 // Create user (Admin permission required)
 router.post('/create-user', auth, async (req, res) => {
   try {

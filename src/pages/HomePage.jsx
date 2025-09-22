@@ -145,11 +145,11 @@ const HomePage = () => {
             >
               <div className="flex items-center">
                 <Phone className="w-5 h-5 mr-2" />
-                <span>+65 8123 4567</span>
+                <span>+65 8861 31966</span>
               </div>
               <div className="flex items-center">
                 <Mail className="w-5 h-5 mr-2" />
-                <span>info@swiftfixpro.sg</span>
+                <span>sales@swiftfixpro.com</span>
               </div>
               <div className="flex items-center">
                 <MapPin className="w-5 h-5 mr-2" />

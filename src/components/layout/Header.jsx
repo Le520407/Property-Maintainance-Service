@@ -52,6 +52,7 @@ const Header = () => {
       { name: 'Homepage Management', href: '/admin/homepage' },
       { name: 'Order Management', href: '/admin/orders' },
       { name: 'User Management', href: '/admin/users' },
+      { name: 'CEA Verification', href: '/admin/cea-verification' },
       // { name: 'Announcement Management', href: '/admin/announcements' }, // Hidden temporarily
       { name: 'FAQ Management', href: '/admin/faqs' },
     ]}

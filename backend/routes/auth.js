@@ -4,6 +4,7 @@ const { Referral } = require('../models/Referral');
 const InviteCode = require('../models/InviteCode');
 const { generateToken, generateRefreshToken } = require('../utils/jwt');
 const { authenticateToken } = require('../middleware/auth');
+const ceaVerificationService = require('../services/ceaVerificationService');
 
 const router = express.Router();
 
@@ -118,7 +119,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Register referral agent with CEA number
+// Register referral agent with CEA registration
 router.post('/register-agent', async (req, res) => {
   try {
     const {
@@ -130,34 +131,61 @@ router.post('/register-agent', async (req, res) => {
       address,
       city,
       country,
-      ceaNumber
+      ceaRegistrationNumber
     } = req.body;
 
     // Validation
-    if (!firstName || !lastName || !email || !password || !ceaNumber) {
+    if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({
-        message: 'First name, last name, email, password, and CEA number are required'
+        message: 'First name, last name, email, and password are required'
       });
     }
 
-    // Validate CEA number format (example: R123456A)
-    const ceaRegex = /^[A-Z]\d{6}[A-Z]$/i;
-    if (!ceaRegex.test(ceaNumber)) {
-      return res.status(400).json({
-        message: 'Invalid CEA number format. Expected format: R123456A'
+    // Gmail format validation for property agents
+    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+    if (!gmailRegex.test(email)) {
+      return res.status(400).json({ 
+        message: 'Property agents must use a valid Gmail address (e.g., username@gmail.com)' 
       });
     }
+
+    // CEA Registration validation for property agents
+    if (!ceaRegistrationNumber) {
+      return res.status(400).json({ 
+        message: 'CEA registration number is required for property agents' 
+      });
+    }
+
+    // Validate CEA registration format
+    const ceaValidation = ceaVerificationService.validateRegistrationFormat(ceaRegistrationNumber);
+    if (!ceaValidation.isValid) {
+      return res.status(400).json({ 
+        message: ceaValidation.error
+      });
+    }
+
+    // Check if CEA registration number already exists
+    const existingCEAUser = await User.findOne({ 
+      ceaRegistrationNumber: ceaRegistrationNumber.toUpperCase() 
+    });
+    if (existingCEAUser) {
+      return res.status(400).json({ 
+        message: 'This CEA registration number is already registered' 
+      });
+    }
+
+    // Detect potential fraud indicators
+    const fraudCheck = ceaVerificationService.detectFraudIndicators({
+      firstName,
+      lastName,
+      email,
+      ceaRegistrationNumber
+    }, existingCEAUser);
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email' });
-    }
-
-    // Check if CEA number is already registered
-    const existingCEA = await User.findOne({ ceaNumber: ceaNumber.toUpperCase() });
-    if (existingCEA) {
-      return res.status(400).json({ message: 'This CEA number is already registered' });
     }
 
     // Generate unique agent code
@@ -187,19 +215,36 @@ router.post('/register-agent', async (req, res) => {
       password,
       phone,
       address,
-      city,
-      country,
+      city: city || 'Singapore',
+      country: country || 'Singapore',
       role: 'referral',
-      status: 'PENDING', // Pending admin approval for CEA verification
+      status: fraudCheck.riskLevel === 'HIGH' ? 'SUSPENDED' : 'PENDING', // Suspend high risk users
       agentCode,
-      ceaNumber: ceaNumber.toUpperCase(),
-      ceaNumberStatus: 'PENDING',
       commissionRate: 15.0,
-      isAgentActive: false, // Will be activated after approval
+      isAgentActive: false, // Will be activated after CEA verification
+      ceaRegistrationNumber: ceaRegistrationNumber.toUpperCase(),
+      ceaVerificationStatus: 'PENDING_MANUAL_VERIFICATION',
+      ceaFraudRiskLevel: fraudCheck.riskLevel,
+      ceaFraudWarnings: fraudCheck.warnings,
       referralUserType: 'property_agent',
-      rewardType: 'points',
+      rewardType: 'money',
       canExchangePointsForMoney: true
     });
+
+    // Create CEA verification record for reference with fraud detection
+    const verificationRecord = ceaVerificationService.createVerificationRecord({
+      registrationNumber: ceaRegistrationNumber.toUpperCase(),
+      agentName: `${firstName} ${lastName}`,
+      email,
+      phone
+    });
+    
+    // Add fraud check results to verification
+    verificationRecord.fraudCheck = fraudCheck;
+    verificationRecord.securityNotes = fraudCheck.warnings.length > 0 
+      ? `SECURITY ALERT: ${fraudCheck.warnings.join(', ')}` 
+      : 'No security concerns detected';
+    verificationRecord.verificationPriority = fraudCheck.riskLevel === 'HIGH' ? 'URGENT' : 'NORMAL';
 
     // Create referral record for the new agent
     const newReferral = new Referral({
@@ -233,8 +278,8 @@ router.post('/register-agent', async (req, res) => {
         agentCode: user.agentCode,
         referralCode: user.referralCode,
         commissionRate: user.commissionRate,
-        ceaNumber: user.ceaNumber,
-        ceaNumberStatus: user.ceaNumberStatus
+        ceaRegistrationNumber: user.ceaRegistrationNumber,
+        ceaVerificationStatus: user.ceaVerificationStatus
       }
     });
 
@@ -435,41 +480,41 @@ router.post('/logout', authenticateToken, async (req, res) => {
 router.post('/refresh', async (req, res) => {
   try {
     const { refreshToken } = req.body;
-    
+
     if (!refreshToken) {
       return res.status(401).json({ message: 'Refresh token is required' });
     }
 
     // Find user with this refresh token
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       refreshToken,
       refreshTokenExpiresAt: { $gt: new Date() }
     });
-    
+
     if (!user) {
       return res.status(401).json({ message: 'Invalid or expired refresh token' });
     }
 
     // Generate new access token
-    const newToken = generateToken({ 
-      userId: user._id, 
-      email: user.email, 
-      role: user.role 
+    const newToken = generateToken({
+      userId: user._id,
+      email: user.email,
+      role: user.role
     });
 
     // Optionally generate new refresh token for rotation
-    const newRefreshToken = generateRefreshToken({ 
-      userId: user._id, 
-      email: user.email, 
-      role: user.role 
+    const newRefreshToken = generateRefreshToken({
+      userId: user._id,
+      email: user.email,
+      role: user.role
     });
-    
+
     // Update refresh token in database
     user.refreshToken = newRefreshToken;
     user.refreshTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
     await user.save();
 
-    res.json({ 
+    res.json({
       token: newToken,
       refreshToken: newRefreshToken,
       user: {
@@ -485,6 +530,52 @@ router.post('/refresh', async (req, res) => {
   } catch (error) {
     console.error('Token refresh error:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Validate CEA registration number format
+router.post('/validate-cea', async (req, res) => {
+  try {
+    const { ceaRegistrationNumber } = req.body;
+
+    if (!ceaRegistrationNumber) {
+      return res.status(400).json({
+        valid: false,
+        message: 'CEA registration number is required'
+      });
+    }
+
+    // Validate CEA registration format
+    const ceaValidation = ceaVerificationService.validateRegistrationFormat(ceaRegistrationNumber);
+    if (!ceaValidation.isValid) {
+      return res.status(400).json({
+        valid: false,
+        message: ceaValidation.error
+      });
+    }
+
+    // Check if CEA number is already registered
+    const existingUser = await User.findOne({
+      ceaRegistrationNumber: ceaRegistrationNumber.toUpperCase()
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        valid: false,
+        message: 'This CEA registration number is already registered'
+      });
+    }
+
+    res.json({
+      valid: true,
+      message: 'CEA registration number is valid and available'
+    });
+  } catch (error) {
+    console.error('CEA validation error:', error);
+    res.status(500).json({
+      valid: false,
+      message: 'Internal server error during validation'
+    });
   }
 });
 

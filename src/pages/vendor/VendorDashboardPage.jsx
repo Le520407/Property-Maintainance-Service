@@ -33,10 +33,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { SERVICE_CATEGORIES_SIMPLE } from '../../constants/serviceCategories';
 import VendorCalendar from '../../components/vendor/VendorCalendar';
+import VendorTACSettings from '../../components/vendor/VendorTACSettings';
 import { api } from '../../services/api';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import VendorTACSettings from '../../components/vendor/VendorTACSettings';
 
 // Helper function to construct proper image URLs
 const getImageUrl = (relativeUrl) => {
@@ -348,7 +348,7 @@ const ProfileTab = ({ vendor, onUpdate, activeSection: initialSection }) => {
                     value={profileForm.serviceArea}
                     onChange={(e) => setProfileForm(prev => ({ ...prev, serviceArea: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500"
-                    placeholder="e.g., Singapore, Kuala Lumpur"
+                    placeholder="e.g., Tampines, Jurong East, Woodlands"
                   />
                 </div>
                 <div>
@@ -943,17 +943,17 @@ const ReviewsComponent = () => {
                 {rating.criteria && (
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
                     {Object.entries(rating.criteria)
-                      .filter(([key]) => key !== '_id' && key !== '__v') // Filter out MongoDB fields
+                      .filter(([key, value]) => key !== '_id' && typeof value === 'number' && value >= 1 && value <= 5)
                       .map(([key, value]) => (
-                      <div key={key} className="text-center">
-                        <div className="text-xs text-gray-500 capitalize mb-1">
-                          {key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').toLowerCase().trim()}
+                        <div key={key} className="text-center">
+                          <div className="text-xs text-gray-500 capitalize mb-1">
+                            {key === 'timeliness' ? 'Time Lines' : key.replace(/([A-Z])/g, ' $1').toLowerCase()}
+                          </div>
+                          <div className="flex justify-center">
+                            {renderStars(value)}
+                          </div>
                         </div>
-                        <div className="flex justify-center">
-                          {renderStars(value)}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 )}
                 
@@ -1945,8 +1945,9 @@ const VendorJobAssignments = ({ status }) => {
   const loadJobs = useCallback(async () => {
     try {
       setLoading(true);
-      
-      const response = await api.vendor.getJobs({ status });
+      console.log('🔄 Loading jobs with status:', status); // Debug log
+      const response = await api.vendor.getJobs(status);
+      console.log('📋 Jobs API response:', response); // Debug log
       const jobsArray = response.jobs || [];
       
       // Client-side filtering as additional safety measure
@@ -2040,7 +2041,11 @@ const VendorJobAssignments = ({ status }) => {
              status === 'COMPLETED' ? 'Completed Jobs' : 'Jobs'}
           </h3>
           <p className="text-sm text-gray-500 mt-1">
-            Status filter: {status} | Found: {jobs.length} jobs
+            {status === 'ASSIGNED' ? 'Jobs assigned to you that need your response' : 
+             status.includes('IN_DISCUSSION') ? 'Jobs you have accepted and are working on' :
+             status.includes('COMPLETED,CANCELLED,REJECTED') ? 'All completed, cancelled, and rejected jobs' :
+             status === 'COMPLETED' ? 'Successfully completed jobs only' : 
+             `Status filter: ${status} | Found: ${jobs.length} jobs`}
           </p>
         </div>
         <span className="bg-blue-100 text-blue-800 text-sm font-medium px-2.5 py-0.5 rounded">
@@ -2053,10 +2058,10 @@ const VendorJobAssignments = ({ status }) => {
           <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No jobs found</h3>
           <p className="text-gray-600">
-            {status === 'ASSIGNED' ? 'No pending assignments at the moment.' :
-             status.includes('IN_DISCUSSION') ? 'No active jobs currently.' :
-             status.includes('COMPLETED,CANCELLED,REJECTED') ? 'No job history available yet.' :
-             status === 'COMPLETED' ? 'No completed jobs yet.' : 'No jobs available.'}
+            {status === 'ASSIGNED' ? 'No jobs have been assigned to you yet. Check back later for new assignments.' :
+             status.includes('IN_DISCUSSION') ? 'No active jobs at the moment. Accepted jobs will appear here.' :
+             status.includes('COMPLETED,CANCELLED,REJECTED') ? 'No job history available yet. Completed and ended jobs will appear here.' :
+             status === 'COMPLETED' ? 'No completed jobs yet. Successfully finished jobs will appear here.' : 'No jobs available.'}
           </p>
         </div>
       ) : (
@@ -2954,7 +2959,7 @@ const JobStatusUpdateModal = ({ job, onClose, onUpdate }) => {
                   onChange={(e) => setWorkDetails(e.target.value)}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  placeholder="Describe what's included in this quote, materials, labor, timeline, etc..."
+                  placeholder="Describe what's included in this quote, materials, labor, Time Lines, etc..."
                 />
               </div>
               
