@@ -802,7 +802,7 @@ router.post('/:id/rating', auth, async (req, res) => {
       isAnonymous: Boolean(isAnonymous),
       isPublic: true,
       adminReview: {
-        status: 'APPROVED' // Auto-approve for now
+        status: 'PENDING' // Require admin review as evidence of vendor performance
       }
     };
 

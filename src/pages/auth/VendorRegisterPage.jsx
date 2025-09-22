@@ -431,12 +431,18 @@ const VendorRegisterPage = ({ embedded = false }) => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Service Area *
                         </label>
-                        <input
-                          type="text"
-                          {...register('serviceArea', { required: 'Please enter service area' })}
+                        <select
+                          {...register('serviceArea', { required: 'Please select service area' })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                          placeholder="e.g. Chaoyang District, Haidian District, etc."
-                        />
+                        >
+                          <option value="">Select Service Area</option>
+                          <option value="Central Region">Central Region</option>
+                          <option value="East Region">East Region</option>
+                          <option value="North Region">North Region</option>
+                          <option value="North-East Region">North-East Region</option>
+                          <option value="West Region">West Region</option>
+                          <option value="All Singapore">All Singapore</option>
+                        </select>
                         {errors.serviceArea && (
                           <p className="text-red-500 text-sm mt-1">{errors.serviceArea.message}</p>
                         )}

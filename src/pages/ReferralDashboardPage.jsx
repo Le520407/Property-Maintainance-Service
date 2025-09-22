@@ -32,6 +32,9 @@ const ReferralDashboardPage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showPayoutModal, setShowPayoutModal] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showExchangeModal, setShowExchangeModal] = useState(false);
+  const [exchangeInfo, setExchangeInfo] = useState(null);
+  const [pointsHistory, setPointsHistory] = useState([]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -40,6 +43,8 @@ const ReferralDashboardPage = () => {
     fetchFraudAlerts();
     fetchCommissionHistory();
     fetchReferralLinks();
+    fetchExchangeInfo();
+    fetchPointsHistory();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -99,6 +104,24 @@ const ReferralDashboardPage = () => {
     }
   };
 
+  const fetchExchangeInfo = async () => {
+    try {
+      const data = await api.referral.getExchangeInfo();
+      setExchangeInfo(data);
+    } catch (error) {
+      console.error('Error fetching exchange info:', error);
+    }
+  };
+
+  const fetchPointsHistory = async () => {
+    try {
+      const data = await api.referral.getPointsHistory();
+      setPointsHistory(data.transactions || []);
+    } catch (error) {
+      console.error('Error fetching points history:', error);
+    }
+  };
+
   const generateReferralCode = async () => {
     try {
       await api.referral.generateCode();
@@ -131,6 +154,20 @@ const ReferralDashboardPage = () => {
       toast.success('Advanced link created successfully!');
     } catch (error) {
       toast.error(error.message || 'Error creating advanced link');
+      console.error('Error:', error);
+    }
+  };
+
+  const handleExchangePoints = async (points) => {
+    try {
+      await api.referral.exchangePoints({ points });
+      await fetchDashboardData();
+      await fetchExchangeInfo();
+      await fetchPointsHistory();
+      setShowExchangeModal(false);
+      toast.success(`Successfully exchanged ${points} points for cash!`);
+    } catch (error) {
+      toast.error(error.message || 'Error exchanging points');
       console.error('Error:', error);
     }
   };
@@ -247,7 +284,7 @@ const ReferralDashboardPage = () => {
             
             {/* Tab Navigation */}
             <div className="flex justify-center space-x-8 mt-8">
-              {['overview', 'wallet', 'commissions', 'links', 'alerts'].map((tab) => (
+              {['overview', 'points', 'wallet', 'commissions', 'links', 'alerts'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -533,6 +570,117 @@ const ReferralDashboardPage = () => {
           </>
         )}
 
+        {/* Points Tab */}
+        {activeTab === 'points' && exchangeInfo && (
+          <div className="space-y-8">
+            {/* Points Overview */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-xl shadow-xl p-8"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-3xl font-bold text-gray-900">Points Management</h2>
+                <Award className="h-10 w-10 text-yellow-600" />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-yellow-50 rounded-lg p-6 border-l-4 border-yellow-600">
+                  <p className="text-sm font-bold text-yellow-600">Current Balance</p>
+                  <p className="text-3xl font-bold text-gray-900">{exchangeInfo.currentBalance} pts</p>
+                </div>
+
+                <div className="bg-green-50 rounded-lg p-6 border-l-4 border-green-600">
+                  <p className="text-sm font-bold text-green-600">Estimated Value</p>
+                  <p className="text-3xl font-bold text-gray-900">${exchangeInfo.estimatedValue.toFixed(2)}</p>
+                </div>
+
+                <div className="bg-blue-50 rounded-lg p-6 border-l-4 border-blue-600">
+                  <p className="text-sm font-bold text-blue-600">Exchange Rate</p>
+                  <p className="text-3xl font-bold text-gray-900">{exchangeInfo.exchangeRate} pts = $1</p>
+                </div>
+              </div>
+
+              {/* Exchange Points Feature */}
+              {exchangeInfo.canExchange && exchangeInfo.maxExchangeable >= exchangeInfo.minimumExchange ? (
+                <div className="bg-green-50 rounded-lg p-6 border border-green-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold text-green-900">Exchange Points for Cash</h3>
+                      <p className="text-green-700">
+                        You can exchange your points for real money! Minimum: {exchangeInfo.minimumExchange} points
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowExchangeModal(true)}
+                      className="bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 transition-colors"
+                    >
+                      <DollarSign className="inline-block h-5 w-5 mr-2" />
+                      Exchange Points
+                    </button>
+                  </div>
+                </div>
+              ) : exchangeInfo.canExchange ? (
+                <div className="bg-yellow-50 rounded-lg p-6 border border-yellow-200">
+                  <h3 className="text-xl font-bold text-yellow-900">Exchange Points for Cash</h3>
+                  <p className="text-yellow-700">
+                    You need at least {exchangeInfo.minimumExchange} points to exchange for cash.
+                    You currently have {exchangeInfo.currentBalance} points.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                  <h3 className="text-xl font-bold text-gray-900">Points Exchange Not Available</h3>
+                  <p className="text-gray-700">
+                    Only referral users can exchange points for cash. You can still use your points for discounts and rewards!
+                  </p>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Points History */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white rounded-xl shadow-xl"
+            >
+              <div className="p-8 border-b border-gray-200">
+                <h3 className="text-2xl font-bold text-gray-900">Points History</h3>
+              </div>
+              <div className="p-8">
+                {pointsHistory.length > 0 ? (
+                  <div className="space-y-4">
+                    {pointsHistory.map((transaction, index) => (
+                      <div key={index} className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0">
+                        <div>
+                          <p className="text-lg font-bold text-gray-900">
+                            {transaction.points > 0 ? '+' : ''}{transaction.points} points
+                          </p>
+                          <p className="text-sm text-gray-600">{transaction.description}</p>
+                          <p className="text-xs text-gray-500">
+                            {transaction.type.replace(/_/g, ' ')}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-gray-900">
+                            Balance: {transaction.newBalance} pts
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(transaction.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-8">No points transactions yet</p>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {/* Wallet Tab */}
         {activeTab === 'wallet' && walletData && (
           <div className="space-y-8">
@@ -777,9 +925,12 @@ const ReferralDashboardPage = () => {
 
         {/* Payout Modal */}
         {showPayoutModal && <PayoutModal onClose={() => setShowPayoutModal(false)} onSubmit={handlePayoutRequest} walletData={walletData} />}
-        
+
         {/* Advanced Link Modal */}
         {showLinkModal && <AdvancedLinkModal onClose={() => setShowLinkModal(false)} onSubmit={handleCreateAdvancedLink} />}
+
+        {/* Exchange Points Modal */}
+        {showExchangeModal && exchangeInfo && <ExchangePointsModal onClose={() => setShowExchangeModal(false)} onSubmit={handleExchangePoints} exchangeInfo={exchangeInfo} />}
       </div>
     </div>
   );
@@ -919,6 +1070,138 @@ const PayoutModal = ({ onClose, onSubmit, walletData }) => {
               className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700"
             >
               Submit Request
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
+
+// Exchange Points Modal Component
+const ExchangePointsModal = ({ onClose, onSubmit, exchangeInfo }) => {
+  const [pointsToExchange, setPointsToExchange] = useState(exchangeInfo.minimumExchange || 100);
+  const [isCustomAmount, setIsCustomAmount] = useState(false);
+
+  const presetAmounts = [
+    exchangeInfo.minimumExchange || 100,
+    500,
+    1000,
+    Math.floor(exchangeInfo.currentBalance / 2),
+    exchangeInfo.currentBalance
+  ].filter((amount, index, arr) => amount <= exchangeInfo.currentBalance && arr.indexOf(amount) === index);
+
+  const estimatedMoney = pointsToExchange / exchangeInfo.exchangeRate;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (pointsToExchange < exchangeInfo.minimumExchange) {
+      alert(`Minimum exchange amount is ${exchangeInfo.minimumExchange} points`);
+      return;
+    }
+    if (pointsToExchange > exchangeInfo.currentBalance) {
+      alert('Insufficient points balance');
+      return;
+    }
+    onSubmit(pointsToExchange);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-2xl font-bold text-gray-900">Exchange Points for Cash</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-2xl"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="mb-6 p-4 bg-yellow-50 rounded-lg">
+          <p className="text-sm text-yellow-600 font-bold">Available Balance</p>
+          <p className="text-2xl font-bold text-yellow-900">{exchangeInfo.currentBalance} points</p>
+          <p className="text-sm text-yellow-600">Exchange Rate: {exchangeInfo.exchangeRate} points = $1</p>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              Points to Exchange
+            </label>
+
+            {!isCustomAmount && (
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {presetAmounts.map((amount) => (
+                  <button
+                    key={amount}
+                    type="button"
+                    onClick={() => setPointsToExchange(amount)}
+                    className={`p-3 rounded-lg border font-bold ${
+                      pointsToExchange === amount
+                        ? 'bg-green-600 text-white border-green-600'
+                        : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
+                    }`}
+                  >
+                    {amount} pts
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center space-x-2 mb-4">
+              <input
+                type="checkbox"
+                id="customAmount"
+                checked={isCustomAmount}
+                onChange={(e) => setIsCustomAmount(e.target.checked)}
+                className="rounded"
+              />
+              <label htmlFor="customAmount" className="text-sm text-gray-600">
+                Enter custom amount
+              </label>
+            </div>
+
+            {isCustomAmount && (
+              <input
+                type="number"
+                value={pointsToExchange}
+                onChange={(e) => setPointsToExchange(parseInt(e.target.value) || 0)}
+                min={exchangeInfo.minimumExchange}
+                max={exchangeInfo.currentBalance}
+                className="w-full p-3 border border-gray-300 rounded-lg"
+                placeholder={`Minimum ${exchangeInfo.minimumExchange} points`}
+                required
+              />
+            )}
+          </div>
+
+          <div className="mb-6 p-4 bg-green-50 rounded-lg">
+            <p className="text-sm text-green-600 font-bold">You will receive</p>
+            <p className="text-2xl font-bold text-green-900">${estimatedMoney.toFixed(2)}</p>
+            <p className="text-sm text-green-600">
+              Points will be deducted from your balance immediately
+            </p>
+          </div>
+
+          <div className="flex space-x-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-bold hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700"
+            >
+              Exchange Points
             </button>
           </div>
         </form>

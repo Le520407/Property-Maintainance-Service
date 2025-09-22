@@ -196,7 +196,25 @@ export const api = {
     deleteUser: (userId) => request(`/admin/users/${userId}`, {
       method: 'DELETE',
     }),
-    
+
+    // CEA Number Approval Workflow
+    getCEAApprovals: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return request(`/admin/cea-approvals?${queryString}`);
+    },
+
+    approveCEA: (userId, notes = '') => request(`/admin/cea-approvals/${userId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ notes }),
+    }),
+
+    rejectCEA: (userId, reason) => request(`/admin/cea-approvals/${userId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+
+    getCEAApprovalDetails: (userId) => request(`/admin/cea-approvals/${userId}`),
+
     // Get system statistics
     getStats: () => request('/admin/stats'),
     
@@ -373,6 +391,19 @@ export const api = {
     getAnalytics: (params = {}) => {
       const queryString = new URLSearchParams(params).toString();
       return request(`/referral/analytics?${queryString}`);
+    },
+
+    // Points exchange features
+    getExchangeInfo: () => request('/referral/exchange-info'),
+
+    exchangePoints: (exchangeData) => request('/referral/exchange-points', {
+      method: 'POST',
+      body: JSON.stringify(exchangeData),
+    }),
+
+    getPointsHistory: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return request(`/referral/points-history?${queryString}`);
     },
   },
   

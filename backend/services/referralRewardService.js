@@ -128,13 +128,8 @@ class ReferralRewardService {
       eventType: eventType
     };
     
-    if (rewardConfig.type === 'money') {
-      // Property agent gets money commission
-      await this.giveMoneyCommission(referrer, referredUser, reward);
-    } else {
-      // Customer gets points
-      await this.givePointsReward(referrer, referredUser, reward);
-    }
+    // All users now get points instead of direct money
+    await this.givePointsReward(referrer, referredUser, reward);
     
     console.log(`Gave ${rewardConfig.type} reward of ${rewardConfig.amount} to ${referrer.referralUserType} ${referrer._id} for tier ${tier} referral`);
     
