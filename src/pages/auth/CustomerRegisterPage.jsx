@@ -16,7 +16,7 @@ import {
   Home
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { api } from '../../services/api';
+import cookieManager from '../../utils/cookieManager';
 import toast from 'react-hot-toast';
 
 const CustomerRegisterPage = ({ embedded = false }) => {
@@ -27,6 +27,38 @@ const CustomerRegisterPage = ({ embedded = false }) => {
   const [searchParams] = useSearchParams();
   const { register: registerUser } = useAuth();
   const navigate = useNavigate();
+
+  // Singapore cities list
+  const singaporeCities = [
+    'Central Singapore',
+    'Ang Mo Kio',
+    'Bedok',
+    'Bishan',
+    'Boon Lay',
+    'Bukit Batok',
+    'Bukit Merah',
+    'Bukit Panjang',
+    'Bukit Timah',
+    'Choa Chu Kang',
+    'Clementi',
+    'Geylang',
+    'Hougang',
+    'Jurong East',
+    'Jurong West',
+    'Kallang',
+    'Marine Parade',
+    'Novena',
+    'Pasir Ris',
+    'Punggol',
+    'Queenstown',
+    'Sembawang',
+    'Sengkang',
+    'Serangoon',
+    'Tampines',
+    'Toa Payoh',
+    'Woodlands',
+    'Yishun'
+  ];
 
   const {
     register,
@@ -50,25 +82,65 @@ const CustomerRegisterPage = ({ embedded = false }) => {
     if (refCode) {
       setValue('referralCode', refCode.toUpperCase());
     }
+    
+    // Track page visit for analytics
+    if (cookieManager.consent.hasConsent('analytics')) {
+      cookieManager.analytics.trackPageView('/register/customer');
+    }
+    
+    // Restore form data from cookies if available
+    if (cookieManager.consent.hasConsent('preferences')) {
+      const savedFormData = cookieManager.ux.getFormData('customer-registration');
+      if (savedFormData && Object.keys(savedFormData).length > 0) {
+        Object.keys(savedFormData).forEach(key => {
+          setValue(key, savedFormData[key]);
+        });
+      }
+    }
   }, [searchParams, setValue]);
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
     
     try {
+      // Track registration attempt
+      if (cookieManager.consent.hasConsent('analytics')) {
+        cookieManager.analytics.setConversionData({
+          event: 'registration_attempt',
+          timestamp: Date.now(),
+          userAgent: navigator.userAgent,
+          referralCode: data.referralCode || null
+        });
+      }
+      
       const result = await registerUser({
         name: `${data.firstName} ${data.lastName}`,
         email: data.email,
         password: data.password,
         phone: data.phone,
         address: data.address,
-        city: data.city || 'Singapore',
-        country: data.country || 'Singapore',
+        city: data.city,
+        country: 'Singapore',
         role: 'customer',
         referralCode: data.referralCode
       });
       
       if (result.success) {
+        // Clear saved form data on successful registration
+        if (cookieManager.consent.hasConsent('preferences')) {
+          cookieManager.ux.removeFormData('customer-registration');
+        }
+        
+        // Track successful registration
+        if (cookieManager.consent.hasConsent('analytics')) {
+          cookieManager.analytics.setConversionData({
+            event: 'registration_success',
+            timestamp: Date.now(),
+            userId: result.user?.id,
+            role: 'customer'
+          });
+        }
+        
         toast.success('Customer registration successful!');
         navigate('/dashboard');
       } else {
@@ -76,6 +148,16 @@ const CustomerRegisterPage = ({ embedded = false }) => {
       }
     } catch (error) {
       console.error('Registration error:', error);
+      
+      // Track registration failure
+      if (cookieManager.consent.hasConsent('analytics')) {
+        cookieManager.analytics.setConversionData({
+          event: 'registration_failure',
+          timestamp: Date.now(),
+          error: error.message
+        });
+      }
+      
       toast.error(error.message || 'Registration failed, please try again');
     } finally {
       setIsSubmitting(false);
@@ -98,6 +180,16 @@ const CustomerRegisterPage = ({ embedded = false }) => {
           toast.error('Please complete all contact details');
           return;
         }
+      }
+      
+      // Save form progress to cookies
+      if (cookieManager.consent.hasConsent('preferences')) {
+        cookieManager.ux.setFormData('customer-registration', currentStepData);
+      }
+      
+      // Track step completion for analytics
+      if (cookieManager.consent.hasConsent('analytics')) {
+        cookieManager.analytics.trackPageView(`/register/customer/step-${currentStep + 1}`);
       }
       
       setCurrentStep(currentStep + 1);
@@ -359,16 +451,16 @@ const CustomerRegisterPage = ({ embedded = false }) => {
                           State/Region *
                         </label>
                         <select
-                          {...register('city', { required: 'State/Region is required' })}
+                          {...register('city', { required: 'City is required' })}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
                           defaultValue=""
                         >
-                          <option value="">Select State/Region</option>
-                          <option value="Central Region">Central Region</option>
-                          <option value="East Region">East Region</option>
-                          <option value="North Region">North Region</option>
-                          <option value="North-East Region">North-East Region</option>
-                          <option value="West Region">West Region</option>
+                          <option value="" disabled>Select your city</option>
+                          {singaporeCities.map((city) => (
+                            <option key={city} value={city}>
+                              {city}
+                            </option>
+                          ))}
                         </select>
                         {errors.city && (
                           <p className="text-red-500 text-sm mt-1 flex items-center">
@@ -384,17 +476,11 @@ const CustomerRegisterPage = ({ embedded = false }) => {
                         </label>
                         <input
                           type="text"
-                          {...register('country', { required: 'Country is required' })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors bg-gray-100"
+                          {...register('country')}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
                           value="Singapore"
                           readOnly
                         />
-                        {errors.country && (
-                          <p className="text-red-500 text-sm mt-1 flex items-center">
-                            <AlertCircle size={16} className="mr-1" />
-                            {errors.country.message}
-                          </p>
-                        )}
                       </div>
                     </div>
                   </div>

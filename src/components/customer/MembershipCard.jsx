@@ -39,7 +39,6 @@ const MembershipCard = () => {
     // Add window focus listener to refresh when user returns to page
     const handleFocus = () => {
       if (user) {
-        console.log('🔍 Window focused - refreshing membership status...');
         cachedApi.invalidateMembershipCache(user.id);
         fetchMembership();
       }

@@ -143,7 +143,9 @@ const MembershipPlans = () => {
           <div className="flex items-center">
             <Shield className="w-5 h-5 text-orange-500 mr-3 flex-shrink-0" />
             <span className="text-gray-700">
-              {tier.features.annualInspections === 1 ? 'Annual inspection' : `${tier.features.annualInspections} inspections/year`}
+              {Math.floor((tier.features.annualInspections || 0) / 12) === 1 
+                ? '1 monthly inspection' 
+                : `${Math.floor((tier.features.annualInspections || 0) / 12) || 1} monthly inspections`}
             </span>
           </div>
         ),

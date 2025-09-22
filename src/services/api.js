@@ -5,10 +5,6 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 const request = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
   
-  console.log('🔍 API Debug - Endpoint:', endpoint);
-  console.log('🔍 API Debug - Token exists:', !!token);
-  console.log('🔍 API Debug - Options:', options);
-  
   const config = {
     headers: {
       'Content-Type': 'application/json',
@@ -17,8 +13,6 @@ const request = async (endpoint, options = {}) => {
     },
     ...options,
   };
-
-  console.log('🔍 API Debug - Final config:', config);
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
@@ -99,8 +93,9 @@ export const api = {
     getCurrentUser: () => request('/auth/me'),
     
     // Refresh token
-    refreshToken: () => request('/auth/refresh', {
+    refreshToken: (refreshToken) => request('/auth/refresh', {
       method: 'POST',
+      body: JSON.stringify({ refreshToken }),
     }),
     
     // Logout
@@ -312,6 +307,12 @@ export const api = {
         return request(`/admin/vendors/${vendorId}/ratings?${queryString}`);
       },
     },
+
+    // Job verification for admin
+    verifyJobCompletion: (jobId, verificationData) => request(`/admin/jobs/${jobId}/verify`, {
+      method: 'PATCH',
+      body: JSON.stringify(verificationData),
+    }),
   },
   
   // Referral system - User side
@@ -537,6 +538,20 @@ export const api = {
     
     // Get customer details
     getCustomerDetails: (customerId) => request(`/vendor/customers/${customerId}`),
+
+    // Upload job completion photos
+    uploadCompletionPhotos: (photos) => {
+      const formData = new FormData();
+      photos.forEach((photo, index) => {
+        formData.append('photos', photo.file || photo);
+      });
+      return api.uploadFiles('/upload/completion-photos', formData);
+    },
+
+    // Upload single file for job completion
+    uploadFile: (formData) => {
+      return api.uploadFiles('/upload/vendor-file', formData);
+    },
   },
 
   // CMS related
@@ -697,6 +712,17 @@ export const apiUtils = {
   // Remove token
   removeToken: () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+  },
+  
+  // Set refresh token
+  setRefreshToken: (refreshToken) => {
+    localStorage.setItem('refreshToken', refreshToken);
+  },
+  
+  // Get refresh token
+  getRefreshToken: () => {
+    return localStorage.getItem('refreshToken');
   },
   
   // Check if token is valid
@@ -711,10 +737,46 @@ export const apiUtils = {
     }
   },
   
+  // Check if token is close to expiry (within 5 minutes)
+  isTokenExpiringSoon: (token) => {
+    if (!token) return true;
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const fiveMinutesFromNow = Date.now() + (5 * 60 * 1000);
+      return payload.exp * 1000 < fiveMinutesFromNow;
+    } catch (error) {
+      return true;
+    }
+  },
+  
+  // Attempt to refresh token automatically
+  refreshTokenIfNeeded: async () => {
+    const token = apiUtils.getToken();
+    const refreshToken = apiUtils.getRefreshToken();
+    
+    if (!token || !refreshToken) return false;
+    
+    if (apiUtils.isTokenExpiringSoon(token)) {
+      try {
+        const response = await api.auth.refreshToken(refreshToken);
+        apiUtils.setToken(response.token);
+        apiUtils.setRefreshToken(response.refreshToken);
+        return true;
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        apiUtils.removeToken();
+        return false;
+      }
+    }
+    
+    return true;
+  },
+  
   // Handle API errors
   handleError: (error) => {
     if (error.message.includes('401')) {
-      // Unauthorized, clear token and redirect to login page
+      // Unauthorized, clear tokens and redirect to login page
       apiUtils.removeToken();
       window.location.href = '/login';
     }

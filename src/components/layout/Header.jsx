@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 // import { useCart } from '../../contexts/CartContext'; // Hidden temporarily - cart disabled
 import { useLanguage } from '../../contexts/LanguageContext';
-import { User, Menu, X, Gift, MessageCircle } from 'lucide-react'; // Removed ShoppingCart - cart disabled
+import { User, Menu, X, Gift, MessageCircle } from 'lucide-react';
 import { cachedApi } from '../../utils/globalCache';
 
 // Global function to clear messages visited flag (can be called from anywhere)
@@ -40,22 +40,11 @@ const Header = () => {
   const navigation = [
     { name: t('home'), href: '/' },
     { name: t('services'), href: '/services' },
-    // { name: t('products'), href: '/products' }, // Hidden temporarily
-    // { name: 'Announcements', href: '/announcements' }, // Hidden temporarily
+    { name: 'Membership', href: user?.role === 'customer' ? '/membership/plans' : user?.role === 'vendor' ? '/vendor/membership' : '/membership/plans' },
     { name: 'FAQ', href: '/faq' },
-    { name: t('about'), href: '/about' },
-    { name: t('contact'), href: '/contact' },
+    { name: 'About Us', href: '/about' },
+    { name: 'Contact Us', href: '/contact' },
   ];
-
-  // Customer-specific navigation items (only show for customers)
-  const customerNavigation = user?.role === 'customer' ? [
-    { name: 'Membership', href: '/membership/plans', badge: 'Premium' }
-  ] : [];
-
-  // Vendor-specific navigation items (only show for vendors)
-  const vendorNavigation = user?.role === 'vendor' ? [
-    { name: 'Membership', href: '/vendor/membership', badge: 'Pro' }
-  ] : [];
 
   // Admin navigation items (only show for admin users)
   const adminNavigation = user?.role === 'admin' ? [
@@ -80,14 +69,10 @@ const Header = () => {
       return;
     }
 
-    console.log('🔍 Header fetchUnreadCount - User:', user.role, 'ID:', user.id);
-
     // Check if user has visited messages page - if so, don't bother fetching
     const hasVisitedMessages = localStorage.getItem(`header-messages-visited-${user.id}`) === 'true';
-    console.log('📍 Has visited messages flag:', hasVisitedMessages);
     
     if (hasVisitedMessages && !forceRefresh) {
-      console.log('⚠️ Skip fetch - user has visited messages page');
       setUnreadCount(0);
       return;
     }
@@ -100,31 +85,22 @@ const Header = () => {
     }
 
     try {
-      console.log('📡 Fetching unread count from API...');
-      
       // Use cached API call to prevent excessive requests
       const response = await cachedApi.getConversations(user.id, user.role, forceRefresh);
-      console.log(`${user.role === 'admin' ? '👑 Admin' : '👤 User'} response:`, response);
       
       const conversations = response.conversations || [];
       const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
-      
-      console.log('💬 Conversations:', conversations.length, 'Total unread:', totalUnread);
-      console.log('🔢 Individual unread counts:', conversations.map(c => ({ name: c.customer?.firstName || c.vendor?.firstName, unread: c.unreadCount })));
       
       // Update cache
       setCachedUnreadCount(totalUnread);
       setLastFetchTime(now);
       setUnreadCount(totalUnread);
       
-      console.log('✅ Header unread count set to:', totalUnread);
-      
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
       
       // Handle rate limiting specifically
       if (error.response?.status === 429) {
-        console.warn('⚠️ Rate limited - using cached value if available');
         if (cachedUnreadCount !== null) {
           setUnreadCount(cachedUnreadCount);
         }
@@ -154,7 +130,6 @@ const Header = () => {
   useEffect(() => {
     if (!user) return;
 
-    console.log('🚀 Header mounted for user:', user.role, 'ID:', user.id);
     // Clear visited flag on mount to ensure we fetch unread count
     clearMessagesVisitedFlag(user.id);
     fetchUnreadCount(true); // Force refresh on mount
@@ -190,7 +165,7 @@ const Header = () => {
       {/* Main Header */}
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20">
-          {/* Logo - Made bigger */}
+          {/* Logo */}
           <Link to="/" className="flex items-center">
             <img
               src="/logo.png"
@@ -213,43 +188,7 @@ const Header = () => {
                 {item.name}
               </Link>
             ))}
-            
-            {/* Customer Navigation */}
-            {customerNavigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`relative inline-flex items-center text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors pr-12 ${
-                  location.pathname.startsWith('/membership') ? 'text-orange-600 font-semibold' : ''
-                }`}
-              >
-                {item.name}
-                {item.badge && (
-                  <span className="absolute -top-4 right-4 bg-orange-100 text-orange-800 text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            ))}
-            
-            {/* Vendor Navigation */}
-            {vendorNavigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`relative inline-flex items-center text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors pr-12 ${
-                  location.pathname.startsWith('/vendor/membership') ? 'text-orange-600 font-semibold' : ''
-                }`}
-              >
-                {item.name}
-                {item.badge && (
-                  <span className="absolute -top-4 right-4 bg-orange-100 text-orange-800 text-[10px] px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            ))}
-            
+
             {/* Admin Navigation Dropdown */}
             {adminNavigation.map((item) => (
               <div key={item.name} className="relative group">
@@ -355,7 +294,6 @@ const Header = () => {
                       to={(user.role === 'vendor' || user.role === 'technician') ? '/vendor-dashboard' : '/dashboard'}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => {
-                        console.log('Dashboard link clicked. User role:', user.role);
                         setIsUserMenuOpen(false);
                       }}
                     >
@@ -370,14 +308,7 @@ const Header = () => {
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => setIsUserMenuOpen(false)}
                         >
-                          ⚙️ Manage Subscription
-                        </Link>
-                        <Link
-                          to="/membership/plans"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          👑 Membership Plans
+                          Manage Subscription
                         </Link>
                       </>
                     )}
@@ -388,22 +319,18 @@ const Header = () => {
                           to="/profile"
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => {
-                            console.log('Profile link clicked for customer');
                             setIsUserMenuOpen(false);
                           }}
                         >
-                          <User className="w-4 h-4 inline mr-2" />
                           {t('profile')}
                         </Link>
                         <Link
                           to="/referral"
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => {
-                            console.log('Referrals link clicked for customer');
                             setIsUserMenuOpen(false);
                           }}
                         >
-                          <Gift className="w-4 h-4 inline mr-2" />
                           Referrals
                         </Link>
                       </>
@@ -415,11 +342,9 @@ const Header = () => {
                           to="/profile"
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => {
-                            console.log('Profile link clicked for role:', user.role);
                             setIsUserMenuOpen(false);
                           }}
                         >
-                          <User className="w-4 h-4 inline mr-2" />
                           {t('profile')}
                         </Link>
                         <Link
@@ -427,7 +352,6 @@ const Header = () => {
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           onClick={() => setIsUserMenuOpen(false)}
                         >
-                          <Gift className="w-4 h-4 inline mr-2" />
                           {user.role === 'referral' ? 'Referral Dashboard' : 'Referrals'}
                         </Link>
                       </>
@@ -489,45 +413,6 @@ const Header = () => {
                   {item.name}
                 </Link>
               ))}
-              
-              {/* Customer Navigation - Mobile */}
-              {customerNavigation.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center justify-between text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors ${
-                    location.pathname.startsWith('/membership') ? 'text-orange-600 font-semibold' : ''
-                  }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {item.name}
-                  {item.badge && (
-                    <span className="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-full">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              ))}
-              
-              {/* Vendor Navigation - Mobile */}
-              {vendorNavigation.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center justify-between text-lg font-medium text-gray-700 hover:text-orange-600 transition-colors ${
-                    location.pathname.startsWith('/vendor/membership') ? 'text-orange-600 font-semibold' : ''
-                  }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {item.name}
-                  {item.badge && (
-                    <span className="bg-orange-100 text-orange-800 text-xs px-2 py-0.5 rounded-full">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              ))}
-              
               {!user && (
                 <div className="flex flex-col space-y-2 pt-4 border-t">
                   <Link
