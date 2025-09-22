@@ -1,28 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, 
-  Edit2, 
-  Trash2, 
-  Eye, 
-  EyeOff,
-  Save,
-  X,
+import {
   AlertTriangle,
+  BarChart3,
+  Clock,
+  Edit2,
+  Eye,
+  EyeOff,
+  FileText,
+  Grid,
   Info,
-  Zap,
-  TrendingUp,
+  List,
   Pin,
   PinOff,
-  FileText,
-  Upload,
-  Clock,
-  Users,
+  Plus,
+  Save,
   Search,
-  Grid,
-  List,
-  BarChart3
+  Trash2,
+  TrendingUp,
+  Upload,
+  Users,
+  X,
+  Zap
 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+
 import { useAuth } from '../../contexts/AuthContext';
 
 const AnnouncementManagement = () => {
@@ -670,7 +671,7 @@ const AnnouncementManagement = () => {
                           type="text"
                           value={formData.serviceAreas.join(', ')}
                           onChange={handleServiceAreasChange}
-                          placeholder="Kuala Lumpur, Selangor, Penang"
+                          placeholder="Tampines, Jurong East, Woodlands, Orchard"
                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                         />
                         <p className="text-xs text-gray-500 mt-1">Leave empty to target all areas, or specify areas separated by commas</p>

@@ -19,13 +19,13 @@ const ContactPage = () => {
     {
       icon: Phone,
       title: 'Phone Consultation',
-      details: ['+65 9123 4567', 'Monday to Sunday 8:00-22:00'],
+      details: ['+65 8861 31966', 'Monday to Friday: 9:00 AM - 6:00 PM'],
       color: 'bg-orange-600'
     },
     {
       icon: Mail,
       title: 'Email Consultation',
-      details: ['service@swiftfixpro.sg', 'Response within 24 hours'],
+      details: ['sales@swiftfixpro.com', 'Response within 24 hours'],
       color: 'bg-orange-600'
     },
     {
@@ -37,7 +37,7 @@ const ContactPage = () => {
     {
       icon: Clock,
       title: 'Working Hours',
-      details: ['Monday to Friday: 9:00-18:00', 'Saturday to Sunday: 10:00-16:00'],
+      details: ['Monday to Friday: 9:00 AM - 6:00 PM', 'Saturday: 9:00 AM - 1:00 PM', 'Sunday: Closed (Emergency services available)'],
       color: 'bg-orange-600'
     }
   ];
@@ -119,7 +119,7 @@ const ContactPage = () => {
                 Send Message
               </a>
               <a
-                href="tel:+6591234567"
+                href="tel:+6588613196"
                 className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-orange-600 transition-colors text-lg inline-flex items-center"
               >
                 <Phone className="mr-2 w-5 h-5" />
@@ -259,7 +259,7 @@ const ContactPage = () => {
                           }
                         })}
                         className="w-full px-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg transition-colors"
-                        placeholder="+65 9123 4567"
+                        placeholder="+65 8861 31966"
                       />
                       {errors.phone && (
                         <p className="text-red-500 text-sm mt-2">{errors.phone.message}</p>
@@ -449,18 +449,18 @@ const ContactPage = () => {
                 </p>
                 <div className="space-y-4">
                   <a
-                    href="tel:+6591234567"
+                    href="tel:+6588613196"
                     className="flex items-center gap-3 text-white hover:text-orange-200 transition-colors"
                   >
                     <Phone className="w-5 h-5" />
-                    <span className="font-medium">+65 9123 4567</span>
+                    <span className="font-medium">+65 8861 31966</span>
                   </a>
                   <a
-                    href="mailto:service@swiftfixpro.sg"
+                    href="mailto:sales@swiftfixpro.com"
                     className="flex items-center gap-3 text-white hover:text-orange-200 transition-colors"
                   >
                     <Mail className="w-5 h-5" />
-                    <span className="font-medium">service@swiftfixpro.sg</span>
+                    <span className="font-medium">sales@swiftfixpro.com</span>
                   </a>
                 </div>
               </div>

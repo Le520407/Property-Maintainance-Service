@@ -380,14 +380,14 @@ const AboutPage = () => {
               {
                 icon: Phone,
                 title: "Phone Consultation",
-                primary: "+65 9123 4567",
-                secondary: "Monday to Sunday 8:00-22:00",
+                primary: "+65 8861 31966",
+                secondary: "Monday to Friday: 9:00 AM - 6:00 PM",
                 color: "from-blue-500 to-blue-600"
               },
               {
                 icon: Mail,
-                title: "Email Consultation", 
-                primary: "service@swiftfixpro.sg",
+                title: "Email Consultation",
+                primary: "sales@swiftfixpro.com",
                 secondary: "Response within 24 hours",
                 color: "from-orange-500 to-orange-600"
               },

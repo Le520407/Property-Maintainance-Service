@@ -1,54 +1,27 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  MapPin, 
-  Calendar, 
-  DollarSign, 
-  FileText, 
-  Camera,
+import {
   AlertCircle,
+  Calendar,
+  Camera,
   CheckCircle,
+  Clock,
+  DollarSign,
+  FileText,
+  Mail,
+  MapPin,
+  Phone,
   Upload,
   Video,
   X
 } from 'lucide-react';
-import { api } from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
-import { SERVICE_CATEGORIES_SELECT_FORMAT } from '../constants/serviceCategories';
-import toast from 'react-hot-toast';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-// Singapore cities list
-const singaporeCities = [
-  'Central Singapore',
-  'Ang Mo Kio',
-  'Bedok',
-  'Bishan',
-  'Boon Lay',
-  'Bukit Batok',
-  'Bukit Merah',
-  'Bukit Panjang',
-  'Bukit Timah',
-  'Choa Chu Kang',
-  'Clementi',
-  'Geylang',
-  'Hougang',
-  'Jurong East',
-  'Jurong West',
-  'Kallang',
-  'Marine Parade',
-  'Novena',
-  'Pasir Ris',
-  'Punggol',
-  'Queenstown',
-  'Sembawang',
-  'Sengkang',
-  'Serangoon',
-  'Tampines',
-  'Toa Payoh',
-  'Woodlands',
-  'Yishun'
-];
+import { SERVICE_CATEGORIES_SELECT_FORMAT } from '../constants/serviceCategories';
+import { SINGAPORE_DISTRICTS } from '../constants/singaporeRegions';
+import { api } from '../services/api';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import { useAuth } from '../contexts/AuthContext';
 
 const OrderSubmissionPage = () => {
   const navigate = useNavigate();
@@ -906,12 +879,13 @@ const OrderSubmissionPage = () => {
                     <select
                       value={formData.location.city}
                       onChange={(e) => handleInputChange('location.city', e.target.value)}
+                      placeholder="e.g., Tampines, Jurong East, Orchard"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                     >
                       <option value="">Select Area</option>
-                      {singaporeCities.map((city) => (
-                        <option key={city} value={city}>
-                          {city}
+                      {SINGAPORE_DISTRICTS.map((district) => (
+                        <option key={district.value} value={district.value}>
+                          {district.label}
                         </option>
                       ))}
                     </select>
@@ -919,14 +893,20 @@ const OrderSubmissionPage = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Country *
+                      District/Region *
                     </label>
-                    <input
-                      type="text"
-                      value="Singapore"
-                      readOnly
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
-                    />
+                    <select
+                      value={formData.location.state}
+                      onChange={(e) => handleInputChange('location.state', e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
+                    >
+                      <option value="">Select District/Region</option>
+                      {SINGAPORE_DISTRICTS.map(district => (
+                        <option key={district.value} value={district.value}>
+                          {district.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
@@ -937,7 +917,9 @@ const OrderSubmissionPage = () => {
                       type="text"
                       value={formData.location.zipCode}
                       onChange={(e) => handleInputChange('location.zipCode', e.target.value)}
-                      placeholder="e.g., 81750"
+                      placeholder="e.g., 123456"
+                      pattern="[0-9]{6}"
+                      maxLength="6"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                     />
                   </div>

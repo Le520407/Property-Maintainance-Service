@@ -5,7 +5,6 @@ import CookieConsent from './components/common/CookieConsent';
 
 import AboutPage from './pages/AboutPage.jsx';
 import AgentAgreementPage from './pages/legal/AgentAgreementPage.jsx';
-import AgentRegisterPage from './pages/auth/AgentRegisterPage.jsx';
 import { AnimatePresence } from 'framer-motion';
 import AnnouncementManagement from './pages/admin/AnnouncementManagement.jsx';
 import AnnouncementsPage from './pages/AnnouncementsPage.jsx';
@@ -16,6 +15,7 @@ import BlogPage from './pages/BlogPage.jsx';
 import BookingPage from './pages/BookingPage.jsx';
 import CartPage from './pages/CartPage.jsx';
 import { CartProvider } from './contexts/CartContext';
+import CEAVerificationManagement from './pages/admin/CEAVerificationManagement.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
 import CompliancePage from './pages/legal/CompliancePage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
@@ -184,6 +184,16 @@ function App() {
                   </div>
                 </ProtectedRoute>
               } />
+              <Route path="/admin/cea-verification" element={
+                <ProtectedRoute requiredRole="admin">
+                  <div className="min-h-screen bg-gray-50">
+                    <Header />
+                    <main className="pt-24">
+                      <CEAVerificationManagement />
+                    </main>
+                  </div>
+                </ProtectedRoute>
+              } />
               
               {/* Main layout routes (with Header and Footer) */}
               <Route path="*" element={
@@ -214,7 +224,6 @@ function App() {
                       <Route path="/register-selection" element={<RegisterSelectionPage />} />
                       <Route path="/customer-register" element={<CustomerRegisterPage />} />
                       <Route path="/vendor-register" element={<VendorRegisterPage />} />
-                      <Route path="/agent-register" element={<AgentRegisterPage />} />
                       {/* Legacy route redirects */}
                       <Route path="/register" element={<CustomerRegisterPage />} />
                       <Route path="/booking" element={<BookingPage />} />
