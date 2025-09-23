@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, 
-  ChevronDown, 
-  ChevronUp, 
-  HelpCircle, 
-  ThumbsUp, 
+import {
+  Search,
+  ChevronDown,
+  ChevronUp,
+  HelpCircle,
+  ThumbsUp,
   ThumbsDown,
   Filter,
   MessageSquare,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  RefreshCw,
+  BarChart3,
+  Clock,
+  TrendingUp,
+  Eye,
+  Plus,
+  Download
 } from 'lucide-react';
 import { api } from '../services/api';
+import toast from 'react-hot-toast';
 
 const FAQPage = () => {
   const [faqs, setFaqs] = useState([]);
@@ -21,28 +29,56 @@ const FAQPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [expandedFaq, setExpandedFaq] = useState(null);
-  const [votedFaqs, setVotedFaqs] = useState(new Set()); // 跟踪已投票的FAQ
+  const [votedFaqs, setVotedFaqs] = useState(new Set());
 
-  // FAQ分类选项
+  // FAQ Statistics
+  const [stats, setStats] = useState({
+    totalFaqs: 0,
+    mostViewed: 0,
+    helpfulRating: 0,
+    totalViews: 0
+  });
+
+  // Category options matching order management style
   const categoryOptions = [
-    { value: '', label: 'All Categories' },
-    { value: 'general', label: 'General' },
-    { value: 'services', label: 'Services' },
-    { value: 'pricing', label: 'Pricing' },
-    { value: 'booking', label: 'Booking' },
-    { value: 'technical', label: 'Technical' },
-    { value: 'billing', label: 'Billing' }
+    { value: '', label: 'All Categories', icon: '📋' },
+    { value: 'general', label: 'General', icon: '💬' },
+    { value: 'services', label: 'Services', icon: '🔧' },
+    { value: 'pricing', label: 'Pricing', icon: '💰' },
+    { value: 'booking', label: 'Booking', icon: '📅' },
+    { value: 'technical', label: 'Technical', icon: '⚙️' },
+    { value: 'billing', label: 'Billing', icon: '🧾' }
   ];
 
-  // 获取FAQ数据
+  // Fetch FAQ data
   useEffect(() => {
     const fetchFAQs = async () => {
       try {
+        setLoading(true);
         const data = await api.get('/cms/faqs');
-        setFaqs(data);
-        setFilteredFaqs(data);
+
+        // Handle response safely
+        const faqData = data?.data || data || [];
+        setFaqs(faqData);
+        setFilteredFaqs(faqData);
+
+        // Calculate stats
+        const totalViews = faqData.reduce((sum, faq) => sum + (faq.views || 0), 0);
+        const totalHelpful = faqData.reduce((sum, faq) => sum + (faq.helpful?.yes || 0), 0);
+        const totalVotes = faqData.reduce((sum, faq) => sum + ((faq.helpful?.yes || 0) + (faq.helpful?.no || 0)), 0);
+
+        setStats({
+          totalFaqs: faqData.length,
+          mostViewed: Math.max(...faqData.map(faq => faq.views || 0), 0),
+          helpfulRating: totalVotes > 0 ? ((totalHelpful / totalVotes) * 100) : 0,
+          totalViews: totalViews
+        });
+
       } catch (error) {
         console.error('Error fetching FAQs:', error);
+        toast.error('Failed to load FAQs');
+        setFaqs([]);
+        setFilteredFaqs([]);
       } finally {
         setLoading(false);
       }
@@ -51,73 +87,67 @@ const FAQPage = () => {
     fetchFAQs();
   }, []);
 
-  // 筛选FAQ
+  // Filter FAQs
   useEffect(() => {
     let filtered = faqs;
 
-    // 按分类筛选
+    // Filter by category
     if (selectedCategory) {
       filtered = filtered.filter(faq => faq.category === selectedCategory);
     }
 
-    // 按搜索关键词筛选
+    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(faq => 
-        faq.question.toLowerCase().includes(query) ||
-        faq.answer.toLowerCase().includes(query) ||
-        faq.keywords.some(keyword => keyword.toLowerCase().includes(query))
+      filtered = filtered.filter(faq =>
+        faq.question?.toLowerCase().includes(query) ||
+        faq.answer?.toLowerCase().includes(query) ||
+        faq.keywords?.some(keyword => keyword.toLowerCase().includes(query))
       );
     }
 
     setFilteredFaqs(filtered);
   }, [faqs, selectedCategory, searchQuery]);
 
-  // 展开/折叠FAQ
+  // Toggle FAQ expansion
   const toggleFaq = (faqId) => {
     setExpandedFaq(expandedFaq === faqId ? null : faqId);
   };
 
-  // 投票功能
+  // Handle voting
   const handleVote = async (faqId, isHelpful) => {
-    // 防止重复投票
     if (votedFaqs.has(faqId)) {
       return;
     }
 
     try {
       const updatedFaq = await api.post(`/cms/faqs/${faqId}/vote`, { helpful: isHelpful });
-      
-      // 更新本地状态
-      setFaqs(prevFaqs => 
-        prevFaqs.map(faq => 
+
+      setFaqs(prevFaqs =>
+        prevFaqs.map(faq =>
           faq._id === faqId ? updatedFaq : faq
         )
       );
 
-      // 标记为已投票
       setVotedFaqs(prev => new Set(prev).add(faqId));
+      toast.success('Thank you for your feedback!');
     } catch (error) {
       console.error('Error voting on FAQ:', error);
+      toast.error('Failed to submit feedback');
     }
   };
 
-  // 按分类分组FAQ
-  const groupedFaqs = filteredFaqs.reduce((groups, faq) => {
-    const category = faq.category;
-    if (!groups[category]) {
-      groups[category] = [];
-    }
-    groups[category].push(faq);
-    return groups;
-  }, {});
+  // Refresh data
+  const refreshFaqs = () => {
+    window.location.reload();
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
-          <p className="mt-4 text-gray-600">Loading FAQs...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mb-4"></div>
+          <p className="text-gray-600 text-lg">Loading FAQs...</p>
         </div>
       </div>
     );
@@ -125,296 +155,352 @@ const FAQPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Modern Hero Section - Matching HomePage Style */}
-      <section className="relative overflow-hidden">
-        {/* Background with geometric patterns */}
-        <div className="absolute inset-0 bg-orange-600">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700"></div>
-          {/* Geometric shapes */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500 rounded-full opacity-20 transform translate-x-32 -translate-y-32"></div>
-          <div className="absolute bottom-0 left-0 w-80 h-80 bg-orange-700 rounded-full opacity-30 transform -translate-x-24 translate-y-24"></div>
-          <div className="absolute top-1/2 left-1/4 w-64 h-64 bg-white opacity-5 rounded-full"></div>
-          <div className="absolute top-1/4 right-1/3 w-48 h-48 bg-orange-400 rounded-full opacity-10 transform rotate-45"></div>
+      {/* Hero Header Section - Matching Order Management Style */}
+      <section className="relative bg-gradient-to-r from-orange-600 to-orange-800 text-white py-20">
+        <div className="absolute inset-0 bg-black opacity-10"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">FAQ Management</h1>
+              <p className="text-xl text-orange-100 max-w-2xl">
+                Find answers to common questions about our services, booking process, and more
+              </p>
+              {stats.totalFaqs > 0 && (
+                <div className="flex items-center mt-4 px-4 py-3 bg-orange-800 bg-opacity-80 text-orange-100 rounded-lg backdrop-blur-sm inline-flex">
+                  <HelpCircle className="w-5 h-5 mr-3" />
+                  <span className="font-semibold">
+                    {stats.totalFaqs} FAQ{stats.totalFaqs !== 1 ? 's' : ''} available to help you
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={refreshFaqs}
+                className="flex items-center px-6 py-3 bg-white text-orange-600 rounded-lg hover:bg-orange-50 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+              >
+                <RefreshCw className="w-5 h-5 mr-2" />
+                Refresh
+              </button>
+
+              <button
+                onClick={() => window.print()}
+                className="flex items-center px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
+              >
+                <Download className="w-5 h-5 mr-2" />
+                Export
+              </button>
+            </div>
+          </div>
         </div>
-        
-        <div className="relative container mx-auto px-4 py-24">
-          <div className="max-w-4xl mx-auto text-center text-white">
+      </section>
+
+      {/* Stats Section - Matching Order Management Style */}
+      <section className="py-8 bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6 }}
-              className="mb-6"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200"
             >
-              <span className="inline-block px-4 py-2 bg-orange-500 bg-opacity-30 rounded-full text-orange-100 text-sm font-medium mb-4 backdrop-blur-sm">
-                Help & Support
-              </span>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-600">Total FAQs</p>
+                  <p className="text-2xl font-bold text-blue-900">{stats.totalFaqs}</p>
+                </div>
+                <div className="p-3 bg-blue-500 rounded-lg">
+                  <HelpCircle className="w-6 h-6 text-white" />
+                </div>
+              </div>
             </motion.div>
-            
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-4xl md:text-6xl font-bold mb-6 leading-tight"
-            >
-              Frequently Asked
-              <span className="block text-orange-200">Questions</span>
-            </motion.h1>
-            
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-              className="text-xl text-orange-100 max-w-3xl mx-auto mb-10 leading-relaxed"
-            >
-              Find answers to common questions about our services, booking process, pricing, 
-              and everything you need to know about Swift Fix Pro.
-            </motion.p>
-            
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.6 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+              transition={{ delay: 0.1 }}
+              className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200"
             >
-              <a
-                href="#search"
-                className="bg-white text-orange-600 px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-flex items-center text-lg"
-              >
-                <Search className="mr-2 w-5 h-5" />
-                Search FAQs
-              </a>
-              <a
-                href="/contact"
-                className="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-orange-600 transition-colors text-lg"
-              >
-                Contact Support
-              </a>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-600">Total Views</p>
+                  <p className="text-2xl font-bold text-green-900">{stats.totalViews.toLocaleString()}</p>
+                </div>
+                <div className="p-3 bg-green-500 rounded-lg">
+                  <Eye className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-600">Helpful Rating</p>
+                  <p className="text-2xl font-bold text-purple-900">{stats.helpfulRating.toFixed(1)}%</p>
+                </div>
+                <div className="p-3 bg-purple-500 rounded-lg">
+                  <ThumbsUp className="w-6 h-6 text-white" />
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 border border-orange-200"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-orange-600">Most Viewed</p>
+                  <p className="text-2xl font-bold text-orange-900">{stats.mostViewed}</p>
+                </div>
+                <div className="p-3 bg-orange-500 rounded-lg">
+                  <TrendingUp className="w-6 h-6 text-white" />
+                </div>
+              </div>
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Enhanced Search and Filter Section */}
-      <section id="search" className="py-12 bg-white shadow-sm">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
-              <div className="flex flex-col md:flex-row gap-6">
-                {/* Enhanced Search Box */}
-                <div className="flex-1 relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Search for answers..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="block w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg"
-                  />
+      {/* Search and Filter Section */}
+      <section className="py-8 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6">
+            <div className="flex flex-col lg:flex-row gap-4 items-center">
+              {/* Search Box */}
+              <div className="flex-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
                 </div>
-
-                {/* Enhanced Category Filter */}
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Filter className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="pl-12 pr-8 py-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none bg-white text-lg min-w-[200px]"
-                  >
-                    {categoryOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <input
+                  type="text"
+                  placeholder="Search FAQs..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-lg"
+                />
               </div>
-              
-              {/* Search Results Info */}
-              <div className="mt-6 flex items-center justify-between text-sm text-gray-600">
-                <div>
-                  Showing {filteredFaqs.length} of {faqs.length} questions
-                  {searchQuery && <span className="font-medium"> for "{searchQuery}"</span>}
-                  {selectedCategory && <span className="font-medium"> in {categoryOptions.find(cat => cat.value === selectedCategory)?.label}</span>}
+
+              {/* Category Filter */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Filter className="h-5 w-5 text-gray-400" />
                 </div>
-                {(searchQuery || selectedCategory) && (
-                  <button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedCategory('');
-                    }}
-                    className="text-orange-600 hover:text-orange-700 font-medium"
-                  >
-                    Clear filters
-                  </button>
-                )}
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="pl-12 pr-8 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent appearance-none bg-white text-lg min-w-[200px]"
+                >
+                  {categoryOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.icon} {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Clear Filters */}
+              {(searchQuery || selectedCategory) && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedCategory('');
+                  }}
+                  className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 font-medium"
+                >
+                  <Filter className="w-4 h-4" />
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Results Info */}
+            <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+              <div>
+                Showing <span className="font-semibold text-gray-900">{filteredFaqs.length}</span> of <span className="font-semibold text-gray-900">{faqs.length}</span> FAQs
+                {searchQuery && <span className="font-medium"> for "{searchQuery}"</span>}
+                {selectedCategory && <span className="font-medium"> in {categoryOptions.find(cat => cat.value === selectedCategory)?.label}</span>}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* FAQ内容 */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            {filteredFaqs.length > 0 ? (
-              <div className="space-y-8">
-                {/* 如果没有搜索，按分类显示 */}
-                {!searchQuery && !selectedCategory ? (
-                  categoryOptions.slice(1).map(category => {
-                    const categoryFaqs = groupedFaqs[category.value] || [];
-                    if (categoryFaqs.length === 0) return null;
+      {/* FAQ Content */}
+      <section className="py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {filteredFaqs.length > 0 ? (
+            <div className="space-y-6">
+              {/* Group by category if no search/filter */}
+              {!searchQuery && !selectedCategory ? (
+                categoryOptions.slice(1).map(category => {
+                  const categoryFaqs = filteredFaqs.filter(faq => faq.category === category.value);
+                  if (categoryFaqs.length === 0) return null;
 
-                    return (
-                      <motion.div
-                        key={category.value}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-lg shadow-md overflow-hidden"
-                      >
-                        {/* 分类头部 */}
-                        <div className="bg-gray-50 px-6 py-4 border-b">
-                          <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                            <HelpCircle className="w-5 h-5 mr-2 text-orange-600" />
-                            {category.label}
-                            <span className="ml-2 text-sm font-normal text-gray-500">
-                              ({categoryFaqs.length} question{categoryFaqs.length !== 1 ? 's' : ''})
-                            </span>
-                          </h2>
-                        </div>
-
-                        {/* FAQ列表 */}
-                        <div className="divide-y">
-                          {categoryFaqs.map((faq) => (
-                              <div key={faq._id} className="px-6 py-4">
-                                <button
-                                  onClick={() => toggleFaq(faq._id)}
-                                  className="w-full flex items-center justify-between text-left hover:text-orange-600 transition-colors"
-                                >
-                                  <h3 className="text-lg font-medium text-gray-900 pr-4">
-                                    {faq.question}
-                                  </h3>
-                                  {expandedFaq === faq._id ? (
-                                    <ChevronUp className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                                  ) : (
-                                    <ChevronDown className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                                  )}
-                                </button>
-
-                                <AnimatePresence>
-                                  {expandedFaq === faq._id && (
-                                    <motion.div
-                                      initial={{ opacity: 0, height: 0 }}
-                                      animate={{ opacity: 1, height: 'auto' }}
-                                      exit={{ opacity: 0, height: 0 }}
-                                      transition={{ duration: 0.3 }}
-                                      className="mt-4"
-                                    >
-                                      <div className="prose prose-gray max-w-none">
-                                        <p className="text-gray-600 leading-relaxed whitespace-pre-line">
-                                          {faq.answer}
-                                        </p>
-                                      </div>
-
-                                      {/* 投票和统计 */}
-                                      <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
-                                        <div className="flex items-center gap-4">
-                                          <span className="text-sm text-gray-500">Was this helpful?</span>
-                                          
-                                          {votedFaqs.has(faq._id) ? (
-                                            <div className="flex items-center gap-2 text-sm text-green-600">
-                                              <CheckCircle className="w-4 h-4" />
-                                              Thanks for your feedback!
-                                            </div>
-                                          ) : (
-                                            <div className="flex gap-2">
-                                              <button
-                                                onClick={() => handleVote(faq._id, true)}
-                                                className="flex items-center gap-1 px-3 py-1 text-sm text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                              >
-                                                <ThumbsUp className="w-4 h-4" />
-                                                Yes ({faq.helpful?.yes || 0})
-                                              </button>
-                                              <button
-                                                onClick={() => handleVote(faq._id, false)}
-                                                className="flex items-center gap-1 px-3 py-1 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                              >
-                                                <ThumbsDown className="w-4 h-4" />
-                                                No ({faq.helpful?.no || 0})
-                                              </button>
-                                            </div>
-                                          )}
-                                        </div>
-
-                                        <div className="text-xs text-gray-400">
-                                          {faq.views || 0} views
-                                        </div>
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            ))}
-                        </div>
-                      </motion.div>
-                    );
-                  })
-                ) : (
-                  // 搜索结果显示
-                  <div className="bg-white rounded-lg shadow-md divide-y">
-                    {filteredFaqs.map((faq, index) => (
-                      <motion.div
-                        key={faq._id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="px-6 py-4"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">
-                            {categoryOptions.find(cat => cat.value === faq.category)?.label}
+                  return (
+                    <motion.div
+                      key={category.value}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden"
+                    >
+                      {/* Category Header */}
+                      <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+                        <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+                          <span className="mr-3 text-2xl">{category.icon}</span>
+                          {category.label}
+                          <span className="ml-3 px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
+                            {categoryFaqs.length}
                           </span>
-                        </div>
+                        </h2>
+                      </div>
 
-                        <button
-                          onClick={() => toggleFaq(faq._id)}
-                          className="w-full flex items-center justify-between text-left hover:text-orange-600 transition-colors"
-                        >
-                          <h3 className="text-lg font-medium text-gray-900 pr-4">
-                            {faq.question}
-                          </h3>
-                          {expandedFaq === faq._id ? (
-                            <ChevronUp className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                          ) : (
-                            <ChevronDown className="w-5 h-5 text-gray-500 flex-shrink-0" />
-                          )}
-                        </button>
-
-                        <AnimatePresence>
-                          {expandedFaq === faq._id && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.3 }}
-                              className="mt-4"
+                      {/* FAQ List */}
+                      <div className="divide-y divide-gray-200">
+                        {categoryFaqs.map((faq, index) => (
+                          <motion.div
+                            key={faq._id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="px-6 py-6 hover:bg-gray-50 transition-colors"
+                          >
+                            <button
+                              onClick={() => toggleFaq(faq._id)}
+                              className="w-full flex items-center justify-between text-left group"
                             >
+                              <h3 className="text-lg font-medium text-gray-900 pr-4 group-hover:text-orange-600 transition-colors">
+                                {faq.question}
+                              </h3>
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm text-gray-500">{faq.views || 0} views</span>
+                                {expandedFaq === faq._id ? (
+                                  <ChevronUp className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                                ) : (
+                                  <ChevronDown className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                                )}
+                              </div>
+                            </button>
+
+                            <AnimatePresence>
+                              {expandedFaq === faq._id && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.3 }}
+                                  className="mt-6"
+                                >
+                                  <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                                    <div className="prose prose-gray max-w-none">
+                                      <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                                        {faq.answer}
+                                      </p>
+                                    </div>
+
+                                    {/* Voting Section */}
+                                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-300">
+                                      <div className="flex items-center gap-4">
+                                        <span className="text-sm font-medium text-gray-600">Was this helpful?</span>
+
+                                        {votedFaqs.has(faq._id) ? (
+                                          <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
+                                            <CheckCircle className="w-4 h-4" />
+                                            Thanks for your feedback!
+                                          </div>
+                                        ) : (
+                                          <div className="flex gap-2">
+                                            <button
+                                              onClick={() => handleVote(faq._id, true)}
+                                              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors border border-gray-300 hover:border-green-300"
+                                            >
+                                              <ThumbsUp className="w-4 h-4" />
+                                              Yes ({faq.helpful?.yes || 0})
+                                            </button>
+                                            <button
+                                              onClick={() => handleVote(faq._id, false)}
+                                              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-gray-300 hover:border-red-300"
+                                            >
+                                              <ThumbsDown className="w-4 h-4" />
+                                              No ({faq.helpful?.no || 0})
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  );
+                })
+              ) : (
+                // Search Results Display
+                <div className="bg-white rounded-xl shadow-lg border border-gray-100 divide-y divide-gray-200">
+                  {filteredFaqs.map((faq, index) => (
+                    <motion.div
+                      key={faq._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="px-6 py-6 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="inline-flex items-center px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
+                          {categoryOptions.find(cat => cat.value === faq.category)?.icon}
+                          {categoryOptions.find(cat => cat.value === faq.category)?.label}
+                        </span>
+                        <span className="text-sm text-gray-500">{faq.views || 0} views</span>
+                      </div>
+
+                      <button
+                        onClick={() => toggleFaq(faq._id)}
+                        className="w-full flex items-center justify-between text-left group"
+                      >
+                        <h3 className="text-lg font-medium text-gray-900 pr-4 group-hover:text-orange-600 transition-colors">
+                          {faq.question}
+                        </h3>
+                        {expandedFaq === faq._id ? (
+                          <ChevronUp className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                        )}
+                      </button>
+
+                      <AnimatePresence>
+                        {expandedFaq === faq._id && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="mt-6"
+                          >
+                            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
                               <div className="prose prose-gray max-w-none">
-                                <p className="text-gray-600 leading-relaxed whitespace-pre-line">
+                                <p className="text-gray-700 leading-relaxed whitespace-pre-line">
                                   {faq.answer}
                                 </p>
                               </div>
 
-                              <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
+                              <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-300">
                                 <div className="flex items-center gap-4">
-                                  <span className="text-sm text-gray-500">Was this helpful?</span>
-                                  
+                                  <span className="text-sm font-medium text-gray-600">Was this helpful?</span>
+
                                   {votedFaqs.has(faq._id) ? (
-                                    <div className="flex items-center gap-2 text-sm text-green-600">
+                                    <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
                                       <CheckCircle className="w-4 h-4" />
                                       Thanks for your feedback!
                                     </div>
@@ -422,14 +508,14 @@ const FAQPage = () => {
                                     <div className="flex gap-2">
                                       <button
                                         onClick={() => handleVote(faq._id, true)}
-                                        className="flex items-center gap-1 px-3 py-1 text-sm text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors border border-gray-300 hover:border-green-300"
                                       >
                                         <ThumbsUp className="w-4 h-4" />
                                         Yes ({faq.helpful?.yes || 0})
                                       </button>
                                       <button
                                         onClick={() => handleVote(faq._id, false)}
-                                        className="flex items-center gap-1 px-3 py-1 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-gray-300 hover:border-red-300"
                                       >
                                         <ThumbsDown className="w-4 h-4" />
                                         No ({faq.helpful?.no || 0})
@@ -437,132 +523,72 @@ const FAQPage = () => {
                                     </div>
                                   )}
                                 </div>
-
-                                <div className="text-xs text-gray-400">
-                                  {faq.views || 0} views
-                                </div>
                               </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              // 无结果状态
-              <div className="text-center py-12">
-                <Search className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-gray-900 mb-2">No FAQs Found</h3>
-                <p className="text-gray-600 mb-6">
-                  {searchQuery || selectedCategory
-                    ? "No FAQs match your search criteria. Try adjusting your search terms or category filter."
-                    : "No FAQs are available at the moment."
-                  }
-                </p>
-                {(searchQuery || selectedCategory) && (
-                  <button
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSelectedCategory('');
-                    }}
-                    className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-                  >
-                    Clear Filters
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            // No Results State
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-12 text-center">
+              <HelpCircle className="w-20 h-20 text-gray-300 mx-auto mb-6" />
+              <h3 className="text-2xl font-semibold text-gray-900 mb-4">No FAQs Found</h3>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                {searchQuery || selectedCategory
+                  ? "No FAQs match your search criteria. Try adjusting your search terms or category filter."
+                  : "No FAQs are available at the moment. Check back soon for helpful information."
+                }
+              </p>
+              {(searchQuery || selectedCategory) && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedCategory('');
+                  }}
+                  className="px-8 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Enhanced Support Section */}
-      <section className="py-20 bg-white relative overflow-hidden">
-        {/* Geometric Background Elements */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 right-10 w-32 h-32 bg-orange-200 rounded-full opacity-20"></div>
-          <div className="absolute bottom-20 left-10 w-40 h-40 bg-orange-100 rounded-full opacity-30"></div>
-          <div className="absolute top-1/3 left-1/4 w-6 h-6 bg-orange-500 rotate-45 opacity-30"></div>
-        </div>
-
-        <div className="container mx-auto px-4 text-center relative z-10">
+      {/* Contact Support Section */}
+      <section className="py-16 bg-gradient-to-r from-orange-50 to-orange-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="max-w-4xl mx-auto"
           >
-            <div className="mb-16">
-              <span className="inline-block px-4 py-2 bg-orange-500 bg-opacity-10 rounded-full text-orange-600 text-sm font-medium mb-6">
-                Need More Help?
-              </span>
+            <div className="bg-white rounded-2xl shadow-xl border border-orange-200 p-8">
               <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                 <MessageSquare className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">
                 Still Have Questions?
               </h2>
-              <p className="text-xl text-gray-600 mb-10 max-w-3xl mx-auto">
+              <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
                 Can't find what you're looking for? Our customer support team is here to help you with any questions or concerns.
               </p>
-            </div>
 
-            {/* Enhanced CTA Section */}
-            <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-2xl p-8 text-white shadow-2xl">
-              <h3 className="text-2xl font-bold mb-4">Get Instant Support</h3>
-              <p className="text-orange-100 mb-8 text-lg">
-                Our expert team is available 24/7 to assist you with any questions
-              </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button className="bg-white text-orange-600 px-8 py-4 rounded-xl font-semibold hover:bg-gray-50 transition-colors duration-300 shadow-lg hover:shadow-xl flex items-center justify-center gap-2">
+                <button className="flex items-center justify-center gap-2 px-8 py-4 bg-orange-600 text-white rounded-xl font-semibold hover:bg-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
                   <MessageSquare className="w-5 h-5" />
                   Contact Support
                 </button>
-                <button className="border-2 border-white text-white px-8 py-4 rounded-xl font-semibold hover:bg-white hover:text-orange-600 transition-colors duration-300 flex items-center justify-center gap-2">
+                <button className="flex items-center justify-center gap-2 px-8 py-4 border-2 border-orange-600 text-orange-600 rounded-xl font-semibold hover:bg-orange-600 hover:text-white transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
                   <ArrowRight className="w-5 h-5" />
                   Request Callback
                 </button>
               </div>
-            </div>
-
-            {/* Additional Support Options */}
-            <div className="grid md:grid-cols-3 gap-8 mt-16">
-              {[
-                {
-                  icon: "📧",
-                  title: "Email Support",
-                  description: "Get detailed help via email",
-                  action: "Send Email"
-                },
-                {
-                  icon: "💬",
-                  title: "Live Chat",
-                  description: "Chat with our support team",
-                  action: "Start Chat"
-                },
-                {
-                  icon: "📞",
-                  title: "Phone Support",
-                  description: "Speak directly with an expert",
-                  action: "Call Now"
-                }
-              ].map((option, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-gray-50 rounded-xl p-6 hover:bg-white hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="text-4xl mb-4">{option.icon}</div>
-                  <h4 className="text-lg font-semibold text-gray-900 mb-2">{option.title}</h4>
-                  <p className="text-gray-600 mb-4">{option.description}</p>
-                  <button className="text-orange-600 font-medium hover:text-orange-700 transition-colors">
-                    {option.action} →
-                  </button>
-                </motion.div>
-              ))}
             </div>
           </motion.div>
         </div>

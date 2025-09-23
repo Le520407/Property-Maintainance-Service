@@ -18,6 +18,9 @@ import CartPage from './pages/CartPage.jsx';
 import { CartProvider } from './contexts/CartContext';
 import CEAVerificationManagement from './pages/admin/CEAVerificationManagement.jsx';
 import CheckoutPage from './pages/CheckoutPage.jsx';
+import EventsPage from './pages/EventsPage.jsx';
+import EventDetailsPage from './pages/EventDetailsPage.jsx';
+import EventManagement from './pages/admin/EventManagement.jsx';
 import CompliancePage from './pages/legal/CompliancePage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
 import CustomerDashboard from './pages/customer/CustomerDashboard.jsx';
@@ -195,6 +198,16 @@ function App() {
                   </div>
                 </ProtectedRoute>
               } />
+              <Route path="/admin/events" element={
+                <ProtectedRoute requiredRole="admin">
+                  <div className="min-h-screen bg-gray-50">
+                    <Header />
+                    <main className="pt-24">
+                      <EventManagement />
+                    </main>
+                  </div>
+                </ProtectedRoute>
+              } />
               
               {/* Main layout routes (with Header and Footer) */}
               <Route path="*" element={
@@ -210,6 +223,8 @@ function App() {
                       <Route path="/announcements" element={<AnnouncementsPage />} />
                       <Route path="/faq" element={<FAQPage />} />
                       <Route path="/pricing" element={<PricingPage />} />
+                      <Route path="/events" element={<EventsPage />} />
+                      <Route path="/events/:id" element={<EventDetailsPage />} />
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/contact" element={<ContactPage />} />
                       

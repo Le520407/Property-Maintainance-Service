@@ -40,6 +40,7 @@ const Header = () => {
   const navigation = [
     { name: t('home'), href: '/' },
     { name: t('services'), href: '/services' },
+    { name: 'Events', href: '/events' },
     { name: 'Membership', href: user?.role === 'customer' ? '/membership/plans' : user?.role === 'vendor' ? '/vendor/membership' : '/membership/plans' },
     { name: 'FAQ', href: '/faq' },
     { name: 'About Us', href: '/about' },
@@ -52,6 +53,7 @@ const Header = () => {
       { name: 'Homepage Management', href: '/admin/homepage' },
       { name: 'Order Management', href: '/admin/orders' },
       { name: 'User Management', href: '/admin/users' },
+      { name: 'Event Management', href: '/admin/events' },
       { name: 'CEA Verification', href: '/admin/cea-verification' },
       // { name: 'Announcement Management', href: '/admin/announcements' }, // Hidden temporarily
       { name: 'FAQ Management', href: '/admin/faqs' },

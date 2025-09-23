@@ -18,6 +18,12 @@ if (!fs.existsSync(orderAttachmentsDir)) {
   fs.mkdirSync(orderAttachmentsDir, { recursive: true });
 }
 
+// 确保活动图片上传目录存在
+const eventImagesDir = path.join(__dirname, '../uploads/event-images');
+if (!fs.existsSync(eventImagesDir)) {
+  fs.mkdirSync(eventImagesDir, { recursive: true });
+}
+
 // 配置 multer
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -78,6 +84,37 @@ const orderAttachmentUpload = multer({
     fileSize: 50 * 1024 * 1024, // 50MB limit for videos
   },
   fileFilter: orderAttachmentFilter
+});
+
+// 配置 multer for event images
+const eventImageStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, eventImagesDir);
+  },
+  filename: function (req, file, cb) {
+    // 生成唯一文件名：时间戳 + 随机数 + 原文件扩展名
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, 'event-' + uniqueSuffix + ext);
+  }
+});
+
+// 文件过滤器 for event images (only images)
+const eventImageFilter = (req, file, cb) => {
+  // 检查文件类型 - 只允许图片
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed!'), false);
+  }
+};
+
+const eventImageUpload = multer({
+  storage: eventImageStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit for event images
+  },
+  fileFilter: eventImageFilter
 });
 
 // 博客图片上传路由
@@ -229,7 +266,7 @@ router.post('/vendor-file', auth, orderAttachmentUpload.single('file'), (req, re
       file: `/uploads/order-attachments/${req.file.filename}`,
       serverFilename: req.file.filename
     };
-    
+
     res.status(200).json({
       message: 'File uploaded successfully',
       ...uploadedFile
@@ -238,6 +275,37 @@ router.post('/vendor-file', auth, orderAttachmentUpload.single('file'), (req, re
   } catch (error) {
     console.error('Vendor file upload error:', error);
     res.status(500).json({ message: 'Failed to upload file' });
+  }
+});
+
+// Event image upload route
+router.post('/image', auth, eventImageUpload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file uploaded' });
+    }
+
+    // Only admins can upload event images
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin privileges required to upload event images' });
+    }
+
+    // Return uploaded image information
+    const imageUrl = `/uploads/event-images/${req.file.filename}`;
+
+    res.status(200).json({
+      message: 'Event image uploaded successfully',
+      imageUrl: imageUrl,
+      url: imageUrl, // Alternative property name for compatibility
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    });
+
+  } catch (error) {
+    console.error('Event image upload error:', error);
+    res.status(500).json({ message: 'Failed to upload event image' });
   }
 });
 

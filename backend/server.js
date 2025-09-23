@@ -26,6 +26,7 @@ const hitpayRoutes = require('./routes/hitpay');
 const imageRoutes = require('./routes/images');
 const cartRoutes = require('./routes/cart');
 const tacRoutes = require('./routes/tacAuth');
+const eventRoutes = require('./routes/events');
 
 const app = express();
 
@@ -96,6 +97,7 @@ app.use('/api/orders', require('./routes/orders'));
 app.use('/api/cart', cartRoutes);
 app.use('/api/images', imageRoutes);
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/events', eventRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {
