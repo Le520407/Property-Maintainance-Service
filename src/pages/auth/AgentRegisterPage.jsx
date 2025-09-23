@@ -60,11 +60,11 @@ const AgentRegisterPage = ({ embedded = false }) => {
         toast.error('Please validate your CEA registration number first');
         return;
       }
-      fieldsToValidate = ['ceaRegistrationNumber'];
+      fieldsToValidate = ['ceaRegistrationNumber', 'ceaExpiryDate'];
     } else if (currentStep === 2) {
       fieldsToValidate = ['firstName', 'lastName'];
     } else if (currentStep === 3) {
-      fieldsToValidate = ['email', 'phone', 'address'];
+      fieldsToValidate = ['email', 'phone'];
     }
     
     const isValid = await trigger(fieldsToValidate);
@@ -284,6 +284,27 @@ const AgentRegisterPage = ({ embedded = false }) => {
                       </a>
                     </p>
                   </div>
+
+                  {/* CEA Expiry Date */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      CEA Registration Expiry Date *
+                    </label>
+                    <input
+                      type="date"
+                      {...register('ceaExpiryDate', { 
+                        required: 'CEA expiry date is required' 
+                      })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                    {errors.ceaExpiryDate && (
+                      <p className="text-red-500 text-sm mt-1">{errors.ceaExpiryDate.message}</p>
+                    )}
+                    <p className="text-gray-500 text-xs mt-1">
+                      Enter the expiry date of your CEA registration
+                    </p>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -382,21 +403,6 @@ const AgentRegisterPage = ({ embedded = false }) => {
                     />
                     {errors.phone && (
                       <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Address *
-                    </label>
-                    <textarea
-                      {...register('address', { required: 'Address is required' })}
-                      rows="3"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      placeholder="Enter your full address"
-                    />
-                    {errors.address && (
-                      <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>
                     )}
                   </div>
                 </div>

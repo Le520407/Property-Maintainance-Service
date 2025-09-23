@@ -2,172 +2,99 @@
 
 ## Introduction
 
-At Swift Fix Pro Property Maintenance Service, we are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website and services.
+SwiftFixPro Pte. Ltd. (“SwiftFixPro”, “we”, “our”, or “us”) respects your privacy and is committed to protecting your personal data in compliance with the Personal Data Protection Act 2012 of Singapore, including its amendments up to 2023 (“PDPA”).
+This Privacy Policy explains how we collect, use, disclose, store, and safeguard your personal data when you use our platform, website, or mobile application (“Services”).
+By accessing or using our Services, you agree to the practices described in this Privacy Policy.
 
-## 1. Information We Collect
+
+## 1. Personal Data We Collect
 
 ### Personal Information
 
-- Name, email address, and phone number
-- Billing and shipping addresses
-- Payment information (processed securely by third parties)
-- Profile information and preferences
+    - We may collect the following types of information:<br>
+    - Identity & Contact Data: Name, NRIC/FIN/Passport (only where legally required), address, email, phone.<br>
+    - Account Data: Login details, profile information, referral codes.<br>
+    - Transaction Data: Payment information, service bookings, wallet credits, invoices.<br>
+    - Location Data: Service address, GPS data when you use location-based features.<br>
+    - Service Data: Requests, work orders, feedback, ratings, photos of service outcomes.<br>
+    - Device & Usage Data: IP address, device identifiers, cookies, app logs.<br>
+    - Sensitive Data (optional): Elderly care or IoT camera data, only with explicit opt-in consent.
 
-### Service Information
 
-- Property details and maintenance history
-- Service requests and job details
-- Communication records with service providers
-- Photos and documents related to services
+## 2. How We Collect Your Data
 
-### Technical Information
+    - Directly from you when you register, book services, or contact us.<br>
+    - Automatically via your device (cookies, analytics, IoT integrations).<br>
+    - Through referrals when someone introduces you with your consent.<br>
+    - From third parties such as payment processors, vendors, or analytics providers.<br>
 
-- IP address and device information
-- Browser type and operating system
-- Usage patterns and preferences
-- Cookies and similar tracking technologies
 
-## 2. How We Use Your Information
+## 3. Consent
 
-We use your information to provide, maintain, and improve our services:
+    - By using our services, you have given us consent of use on your information. <br>
+    - You may withdraw consent at any time by contacting Swiftfixpro. Withdrawing consent may affect your use of certain Services.
 
-### Service Delivery
 
-- Process and fulfill service requests
-- Match you with qualified service providers
-- Facilitate communication and scheduling
-- Process payments and billing
+## 4. Data Breach Notification
 
-### Communication
+    If a data breach:<br>
+            - is likely to cause significant harm, or <br>
+            - involves 500 or more individuals, <br>
+    we will notify the Personal Data Protection Commission (PDPC) and affected individuals no later than 3 calendar days after confirming the breach.
 
-- Send service updates and notifications
-- Respond to customer inquiries
-- Provide customer support
-- Send marketing communications (with consent)
 
-### Improvement
+## 5. Correction, and Deletion of your personal data
 
-- Analyze usage patterns and preferences
-- Improve our services and user experience
-- Develop new features and services
-- Conduct research and analytics
+You may request: <br>
+    - Correction if your data is inaccurate or incomplete. <br>
+    - Deletion or anonymisation of data when it is no longer required. <br> 
+We will respond to verified requests within 30 calendar days.
 
-### Legal & Security
 
-- Comply with legal obligations
-- Prevent fraud and ensure security
-- Protect our rights and interests
-- Resolve disputes and enforce agreements
+## 6. Disclosure to Third Parties
 
-## 3. Information Sharing
+We may share personal data with: <br>
+    - Service vendors, contractors, and technicians. <br>
+    - Payment processors and financial institutions. <br>
+    - Advertising/analytics providers. <br>
+    - Government agencies or regulators when legally required. <br>
+When transferring data outside Singapore, we ensure the recipient provides comparable protection as required under the PDPA (e.g. contractual safeguards, audits).
 
-We may share your information in the following circumstances:
 
-### Service Providers
+## 7. Security
 
-We share necessary information with qualified maintenance professionals to fulfill your service requests.
+We implement appropriate security measures, including: <br>
+    - Encryption in transit and at rest. <br>
+    - Multi-factor authentication for admin access. <br>
+    - Role-based access controls. <br>
+    - Regular audits, vulnerability scans, and penetration testing.
 
-### Business Partners
+## 8. NRIC and National Identifiers
 
-We may share information with trusted partners who help us operate our platform and provide services.
+We do not collect or retain full NRIC/FIN/Passport numbers except where required by law or necessary to verify identity to a high degree of fidelity. Where feasible, we use alternatives such as masked IDs or tokenised identifiers.
 
-### Legal Requirements
 
-We may disclose information when required by law or to protect our rights and the safety of others.
+## 9. Marketing and Do Not Call (DNC)
 
-## 4. Data Security
+    - Marketing communications are sent only with your consent. <br>
+    - We comply with the Do Not Call Registry under Singapore law. <br>
+    - You can opt out at any time via unsubscribe links or by contacting us. <br>
 
-We implement appropriate technical and organizational measures to protect your personal information:
+## 10. Cookies
 
-### Technical Safeguards
+We use cookies and similar technologies for functionality, analytics, and personalization. You may disable cookies in your browser/app settings, but some features may not work.
 
-- SSL/TLS encryption for data transmission
-- Secure servers and databases
-- Regular security updates and patches
-- Access controls and authentication
 
-### Organizational Measures
+## 11. Changes to this Policy
 
-- Employee training on data protection
-- Limited access on a need-to-know basis
-- Regular security audits and assessments
-- Incident response procedures
+We may update this Privacy Policy from time to time. When changes are material, we will notify you via email, app notification, or website update. Continued use of our Services indicates acceptance of the updated policy.
 
-## 5. Data Retention
+## 12. Governing Law
 
-We retain your personal information only as long as necessary for the purposes outlined in this policy:
-
-### Retention Periods
-
-- Account information: While your account is active plus 3 years
-- Service records: 7 years for warranty and legal purposes
-- Payment information: As required by financial regulations
-- Marketing preferences: Until you opt out or request deletion
-
-## 6. Your Privacy Rights
-
-You have the following rights regarding your personal information:
-
-### Access & Portability
-
-- Request access to your personal data
-- Receive a copy of your information
-- Transfer data to another service
-
-### Correction & Deletion
-
-- Correct inaccurate information
-- Request deletion of your data
-- Restrict processing of your data
-
-### Communication Preferences
-
-- Opt out of marketing communications
-- Manage notification preferences
-- Withdraw consent where applicable
-
-### Legal Protections
-
-- Object to processing of your data
-- File complaints with authorities
-- Seek legal remedies
-
-## 7. Cookies & Tracking Technologies
-
-We use cookies and similar technologies to enhance your experience:
-
-### Essential Cookies
-
-Required for the website to function properly, including authentication and security features.
-
-### Analytics Cookies
-
-Help us understand how visitors interact with our website to improve user experience.
-
-### Marketing Cookies
-
-Used to deliver relevant advertisements and track the effectiveness of our marketing campaigns.
-
-## 8. Policy Updates
-
-We may update this Privacy Policy from time to time to reflect changes in our practices or legal requirements.
-
-### How We Notify You
-
-- Email notification for significant changes
-- Website banner for 30 days after update
-- Updated "Last Modified" date at the top of this policy
-- In-app notifications for material changes
-
-## 9. Contact Us
-
-If you have questions about this Privacy Policy or want to exercise your rights:
-
-- **Privacy Officer:** privacy@swiftfixpro.com
-- **Phone:** +65 1234 5678
+This Privacy Policy is governed by the laws of Singapore.
 
 ---
 
-**Last updated:** September 8, 2025
+**Last updated:** September 23, 2025
 
 *We are committed to protecting your privacy and will continue to update our practices to meet the highest standards.*

@@ -26,8 +26,7 @@ const CEAVerificationManagement = () => {
   const [loadingTools, setLoadingTools] = useState(false);
   const [verificationForm, setVerificationForm] = useState({
     status: '',
-    notes: '',
-    expiryDate: ''
+    notes: ''
   });
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -102,8 +101,7 @@ const CEAVerificationManagement = () => {
     setSelectedAgent(agent);
     setVerificationForm({
       status: agent.ceaVerificationStatus || 'PENDING_MANUAL_VERIFICATION',
-      notes: agent.ceaVerificationNotes || '',
-      expiryDate: agent.ceaExpiryDate ? agent.ceaExpiryDate.split('T')[0] : ''
+      notes: agent.ceaVerificationNotes || ''
     });
     setShowVerificationModal(true);
   };
@@ -120,10 +118,7 @@ const CEAVerificationManagement = () => {
     }
 
     try {
-      await api.put(`/admin/agents/${selectedAgent._id}/cea-verification`, {
-        ...verificationForm,
-        expiryDate: verificationForm.expiryDate || null
-      });
+      await api.put(`/admin/agents/${selectedAgent._id}/cea-verification`, verificationForm);
       
       toast.success('CEA verification updated successfully');
       setShowVerificationModal(false);
@@ -566,18 +561,6 @@ const CEAVerificationManagement = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Registration Expiry Date (Optional)
-                    </label>
-                    <input
-                      type="date"
-                      value={verificationForm.expiryDate}
-                      onChange={(e) => setVerificationForm({...verificationForm, expiryDate: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Verification Notes
                     </label>
                     <textarea
@@ -587,6 +570,9 @@ const CEAVerificationManagement = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Add verification notes..."
                     />
+                    <p className="text-gray-500 text-xs mt-1">
+                      Note: CEA expiry date is now collected during agent registration and cannot be modified here.
+                    </p>
                   </div>
 
                   <div className="flex justify-end space-x-3 pt-4">

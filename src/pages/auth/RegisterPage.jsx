@@ -170,15 +170,26 @@ const RegisterPage = () => {
         navigate('/login');
       } else {
         // Customer and referral registration
-        const result = await registerUser({
+        const userData = {
           name: `${data.firstName} ${data.lastName}`,
           email: data.email,
           password: data.password,
           phone: data.phone,
-          address: data.address,
           role: accountType,
           referralCode: data.referralCode
-        });
+        };
+
+        // Add address only for customers
+        if (accountType === 'customer') {
+          userData.address = data.address;
+        }
+
+        // Add CEA expiry date for property agents
+        if (accountType === 'referral' && data.ceaExpiryDate) {
+          userData.ceaExpiryDate = data.ceaExpiryDate;
+        }
+        
+        const result = await registerUser(userData);
         
         if (result.success) {
           toast.success(`${accountType === 'referral' ? 'Agent' : 'Customer'} registration successful!`);
@@ -630,6 +641,29 @@ const RegisterPage = () => {
                           <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
                         )}
                       </div>
+
+                      {/* CEA Expiry Date for Property Agents */}
+                      {accountType === 'referral' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            CEA Registration Expiry Date *
+                          </label>
+                          <input
+                            type="date"
+                            {...register('ceaExpiryDate', { 
+                              required: accountType === 'referral' ? 'CEA expiry date is required' : false 
+                            })}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            min={new Date().toISOString().split('T')[0]}
+                          />
+                          {errors.ceaExpiryDate && (
+                            <p className="text-red-500 text-sm mt-1">{errors.ceaExpiryDate.message}</p>
+                          )}
+                          <p className="text-gray-500 text-xs mt-1">
+                            Enter the expiry date of your CEA registration
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Referral Code for Referral agents */}
@@ -653,6 +687,94 @@ const RegisterPage = () => {
                         </p>
                       </div>
                     )}
+
+                    {/* Password Section for Non-Customers */}
+                    <div className="mt-8">
+                      <h3 className="text-lg font-semibold mb-4 flex items-center">
+                        <Shield className="mr-2" />
+                        Account Security
+                      </h3>
+                      
+                      <div className="grid md:grid-cols-1 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Password *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              {...register('password', { 
+                                required: 'Password is required',
+                                minLength: {
+                                  value: 6,
+                                  message: 'Password must be at least 6 characters'
+                                }
+                              })}
+                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                              placeholder="Create a strong password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                          </div>
+                          {errors.password && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center">
+                              <AlertCircle size={16} className="mr-1" />
+                              {errors.password.message}
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Confirm Password *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              {...register('confirmPassword', { 
+                                required: 'Please confirm your password',
+                                validate: value => value === password || 'Passwords do not match'
+                              })}
+                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                              placeholder="Confirm your password"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                          </div>
+                          {errors.confirmPassword && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center">
+                              <AlertCircle size={16} className="mr-1" />
+                              {errors.confirmPassword.message}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Password Requirements */}
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <h4 className="text-sm font-medium text-gray-700 mb-2">Password Requirements:</h4>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li className={`flex items-center ${password && password.length >= 6 ? 'text-green-600' : ''}`}>
+                              <CheckCircle size={16} className={`mr-2 ${password && password.length >= 6 ? 'text-green-600' : 'text-gray-300'}`} />
+                              At least 6 characters long
+                            </li>
+                            <li className={`flex items-center ${password && /[A-Za-z]/.test(password) && /\d/.test(password) ? 'text-green-600' : ''}`}>
+                              <CheckCircle size={16} className={`mr-2 ${password && /[A-Za-z]/.test(password) && /\d/.test(password) ? 'text-green-600' : 'text-gray-300'}`} />
+                              Contains letters and numbers
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </>
               )}
