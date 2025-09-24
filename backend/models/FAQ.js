@@ -14,7 +14,16 @@ const faqSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['general', 'services', 'pricing', 'booking', 'technical', 'billing']
+    enum: [
+      'general', 
+      'account', 
+      'agent-program', 
+      'cea-verification', 
+      'privacy-cookies', 
+      'payments', 
+      'technical', 
+      'contact-support'
+    ]
   },
   isActive: {
     type: Boolean,
@@ -30,6 +39,14 @@ const faqSchema = new mongoose.Schema({
     trim: true,
     lowercase: true
   }],
+  // FAQ的唯一标识符，用于前端路由和引用
+  slug: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true
+  },
   // 点击统计，了解哪些问题最常被查看
   views: {
     type: Number,
