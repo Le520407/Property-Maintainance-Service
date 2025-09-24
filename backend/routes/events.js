@@ -437,11 +437,21 @@ router.post('/:id/attendance', authenticateToken, async (req, res) => {
 // Upload event image (admin only)
 router.post('/:id/image', authenticateToken, upload.single('image'), async (req, res) => {
   try {
+    console.log('Event image upload request received:', {
+      eventId: req.params.id,
+      userRole: req.user.role,
+      hasFile: !!req.file,
+      file: req.file,
+      bodyKeys: Object.keys(req.body),
+      headers: req.headers['content-type']
+    });
+
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Admin access required' });
     }
 
     if (!req.file) {
+      console.log('No file found in request');
       return res.status(400).json({ message: 'No image file provided' });
     }
 
@@ -460,6 +470,48 @@ router.post('/:id/image', authenticateToken, upload.single('image'), async (req,
     });
   } catch (error) {
     console.error('Upload image error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Delete event image (admin only)
+router.delete('/:id/image', authenticateToken, async (req, res) => {
+  try {
+    console.log('Event image delete request received:', {
+      eventId: req.params.id,
+      userRole: req.user.role
+    });
+
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Remove image reference from database
+    const oldImageUrl = event.imageUrl;
+    event.imageUrl = null;
+    await event.save();
+
+    // Optionally delete the physical file (commented out for safety)
+    // if (oldImageUrl) {
+    //   const fs = require('fs');
+    //   const path = require('path');
+    //   const filename = oldImageUrl.replace('/uploads/events/', '');
+    //   const filePath = path.join(__dirname, '../uploads/events/', filename);
+    //   fs.unlink(filePath, (err) => {
+    //     if (err) console.error('File deletion error:', err);
+    //   });
+    // }
+
+    res.json({
+      message: 'Image deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete image error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 });

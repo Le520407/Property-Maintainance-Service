@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -31,11 +31,7 @@ const EventDetailsPage = () => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedback, setFeedback] = useState({ rating: 5, comment: '' });
 
-  useEffect(() => {
-    fetchEventDetails();
-  }, [id]);
-
-  const fetchEventDetails = async () => {
+  const fetchEventDetails = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get(`/events/${id}`);
@@ -54,7 +50,11 @@ const EventDetailsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
+
+  useEffect(() => {
+    fetchEventDetails();
+  }, [fetchEventDetails]);
 
   const handleRegister = async () => {
     if (!user) {
@@ -208,16 +208,6 @@ const EventDetailsPage = () => {
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-orange-800 rounded-full opacity-30 transform -translate-x-24 translate-y-24"></div>
         </div>
 
-        {/* Optional Event Image Overlay */}
-        {event.imageUrl && (
-          <div className="absolute inset-0">
-            <img
-              src={event.imageUrl}
-              alt={event.title}
-              className="w-full h-full object-cover opacity-30"
-            />
-          </div>
-        )}
 
         {/* Content */}
         <div className="relative flex items-center h-full">
@@ -284,6 +274,18 @@ const EventDetailsPage = () => {
                 {/* Description */}
                 <div className="mb-8">
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">About This Event</h2>
+
+                  {/* Event Image */}
+                  {event.imageUrl && (
+                    <div className="mb-6">
+                      <img
+                        src={event.imageUrl}
+                        alt={event.title}
+                        className="w-full h-64 object-cover rounded-lg shadow-md"
+                      />
+                    </div>
+                  )}
+
                   <div className="prose prose-gray max-w-none">
                     <p className="text-gray-700 leading-relaxed whitespace-pre-line">
                       {event.description}

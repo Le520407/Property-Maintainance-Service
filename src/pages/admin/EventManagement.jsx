@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -113,13 +113,7 @@ const EventManagement = () => {
     { value: 'completed', label: 'Completed', color: 'bg-blue-100 text-blue-800' }
   ];
 
-  useEffect(() => {
-    if (user?.role === 'admin') {
-      fetchEvents();
-    }
-  }, [user, filters]);
-
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     try {
       setLoading(true);
       const queryParams = new URLSearchParams();
@@ -162,7 +156,13 @@ const EventManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      fetchEvents();
+    }
+  }, [user, fetchEvents]);
 
   const resetForm = () => {
     setFormData({
@@ -198,7 +198,9 @@ const EventManagement = () => {
   };
 
   // Image upload function
-  const uploadImage = async (file) => {
+  const uploadImage = async (file, eventId = null) => {
+    console.log('uploadImage called with:', { file, fileType: typeof file, fileName: file?.name, eventId });
+
     if (!file) {
       throw new Error('No file provided for upload');
     }
@@ -206,9 +208,14 @@ const EventManagement = () => {
     const formData = new FormData();
     formData.append('image', file);
 
+    // Debug FormData contents
+    console.log('FormData contents:', [...formData.entries()]);
+
     try {
-      // Don't set Content-Type manually - axios will set it automatically with boundary
-      const response = await api.post('/upload/image', formData);
+      // For event images, use the events endpoint if eventId is provided
+      const endpoint = eventId ? `/events/${eventId}/image` : '/images/upload';
+      console.log('Uploading to endpoint:', endpoint);
+      const response = await api.uploadFiles(endpoint, formData);
       return response.imageUrl || response.url;
     } catch (error) {
       console.error('Image upload error:', error);
@@ -219,6 +226,41 @@ const EventManagement = () => {
       }
       throw new Error('Failed to upload image');
     }
+  };
+
+  // Delete image function
+  const deleteImage = async (eventId) => {
+    console.log('deleteImage called for event:', eventId);
+
+    try {
+      const response = await api.delete(`/events/${eventId}/image`);
+      console.log('Delete image response:', response);
+
+      // Clear the image preview and file
+      setImageFile(null);
+      setImagePreview(null);
+
+      // Update the selected event to remove imageUrl
+      if (selectedEvent && selectedEvent._id === eventId) {
+        setSelectedEvent({ ...selectedEvent, imageUrl: null });
+      }
+
+      // Refresh events list
+      fetchEvents();
+
+      toast.success('Image deleted successfully');
+      return true;
+    } catch (error) {
+      console.error('Delete image error:', error);
+      toast.error(error.message || 'Failed to delete image');
+      return false;
+    }
+  };
+
+  // Remove image preview (for newly selected images)
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
   };
 
   const handleImageChange = (e) => {
@@ -245,11 +287,6 @@ const EventManagement = () => {
     }
   };
 
-  const removeImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    setFormData(prev => ({ ...prev, imageUrl: '' }));
-  };
 
   const handleCreate = async () => {
     try {
@@ -293,10 +330,12 @@ const EventManagement = () => {
       let finalFormData = { ...formData };
 
       // Upload new image if selected
+      console.log('handleEdit: About to check imageFile:', { imageFile, selectedEventId: selectedEvent?._id });
       if (imageFile) {
+        console.log('handleEdit: imageFile found, starting upload...');
         setUploading(true);
         try {
-          const imageUrl = await uploadImage(imageFile);
+          const imageUrl = await uploadImage(imageFile, selectedEvent?._id);
           finalFormData.imageUrl = imageUrl;
         } catch (error) {
           console.error('Image upload error details:', error);
@@ -899,26 +938,36 @@ const EventManagement = () => {
                       Event Image
                     </h3>
                     <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-                      {imagePreview ? (
+                      {imagePreview || selectedEvent?.imageUrl ? (
                         <div className="space-y-4">
                           <div className="relative">
                             <img
-                              src={imagePreview}
+                              src={imagePreview || selectedEvent?.imageUrl}
                               alt="Event preview"
                               className="w-full h-48 object-cover rounded-lg border border-gray-300"
                             />
-                            <button
-                              onClick={removeImage}
-                              className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                              title="Remove image"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
+                            {imagePreview ? (
+                              <button
+                                onClick={removeImage}
+                                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                title="Remove new image"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => deleteImage(selectedEvent._id)}
+                                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                title="Delete current image"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                           <div className="flex items-center gap-4">
                             <label className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors cursor-pointer">
                               <Upload className="w-4 h-4 mr-2" />
-                              Change Image
+                              {selectedEvent?.imageUrl && !imagePreview ? 'Change Image' : 'Replace Image'}
                               <input
                                 type="file"
                                 accept="image/*"
@@ -927,7 +976,7 @@ const EventManagement = () => {
                               />
                             </label>
                             <p className="text-sm text-gray-600">
-                              {imageFile ? 'New image selected' : 'Current image'}
+                              {imagePreview ? 'New image selected' : 'Current image'}
                             </p>
                           </div>
                         </div>
