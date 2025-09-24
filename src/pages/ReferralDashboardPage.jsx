@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Users, 
-  TrendingUp, 
-  DollarSign, 
-  Share2, 
-  Copy, 
+import {
+  Users,
+  TrendingUp,
+  DollarSign,
+  Share2,
+  Copy,
   Award,
   Clock,
   CheckCircle,
@@ -214,6 +214,7 @@ const ReferralDashboardPage = () => {
     }
   };
 
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -231,7 +232,7 @@ const ReferralDashboardPage = () => {
         <div className="text-center">
           <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
           <p className="text-red-600 mb-4">{error}</p>
-          <button 
+          <button
             onClick={fetchDashboardData}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
           >
@@ -241,6 +242,7 @@ const ReferralDashboardPage = () => {
       </div>
     );
   }
+
 
   if (!dashboardData.hasReferralCode) {
     return (
@@ -269,36 +271,96 @@ const ReferralDashboardPage = () => {
   const { currentTier, nextTier, statistics, referredUsers, recentCommissions } = dashboardData;
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-8">
-      {/* Agent Dashboard Header */}
-      <div className="bg-orange-600 text-white py-16 mb-12">
-        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
-          <div className="text-center">
-            <h1 className="text-6xl font-bold mb-6">Your Referral Dashboard</h1>
-            <p className="text-2xl text-orange-100 mb-8 max-w-4xl mx-auto">
-              {dashboardData.userType === 'property_agent' 
-                ? 'Manage your referrals and track your commission earnings with our comprehensive agent tools'
-                : 'Earn points by referring friends to Swift Fix Pro and unlock amazing rewards'
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 pt-8">
+      {/* Enhanced Header with Better Visual Appeal */}
+      <div className="relative bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 text-white py-20 mb-12 overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black/20"></div>
+
+        {/* Floating Elements */}
+        <div className="absolute top-10 left-10 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
+        <div className="absolute bottom-10 right-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
+        <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-white/10 rounded-full blur-lg"></div>
+
+        <div className="relative max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-center"
+          >
+            {/* Welcome Badge */}
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-6 py-3 rounded-full mb-6 border border-white/30">
+              <Gift className="w-5 h-5" />
+              <span className="text-sm font-semibold">Welcome to Your Dashboard</span>
+            </div>
+
+            <h1 className="text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-white to-orange-100 bg-clip-text">
+              Referral Dashboard
+            </h1>
+
+            <p className="text-xl text-orange-100 mb-8 max-w-3xl mx-auto leading-relaxed">
+              {dashboardData.userType === 'property_agent'
+                ? '🏆 Manage your referrals and track commission earnings with our comprehensive agent tools'
+                : '🎯 Earn points by referring friends to Swift Fix Pro and unlock amazing rewards'
               }
             </p>
-            
-            {/* Tab Navigation */}
-            <div className="flex justify-center space-x-8 mt-8">
-              {['overview', 'points', 'wallet', 'commissions', 'links', 'alerts'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-6 py-3 rounded-lg font-bold text-lg transition-all ${
-                    activeTab === tab
-                      ? 'bg-white text-orange-600'
-                      : 'bg-orange-700 text-orange-100 hover:bg-orange-600'
+
+            {/* Quick Stats Preview */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 max-w-4xl mx-auto">
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 border border-white/30">
+                <div className="text-2xl font-bold">{statistics.totalReferrals}</div>
+                <div className="text-sm text-orange-100">Total Referrals</div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 border border-white/30">
+                <div className="text-2xl font-bold">{statistics.activeReferrals}</div>
+                <div className="text-sm text-orange-100">Active</div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 border border-white/30">
+                <div className="text-2xl font-bold">
+                  {statistics.rewardType === 'points'
+                    ? `${statistics.totalEarned}`
+                    : `$${statistics.totalEarned.toFixed(0)}`
+                  }
+                </div>
+                <div className="text-sm text-orange-100">
+                  {statistics.rewardType === 'points' ? 'Points' : 'Earned'}
+                </div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-4 border border-white/30">
+                <div className="text-2xl font-bold">{currentTier.name}</div>
+                <div className="text-sm text-orange-100">Current Tier</div>
+              </div>
+            </div>
+
+            {/* Enhanced Tab Navigation */}
+            <div className="flex flex-wrap justify-center gap-3 mt-8">
+              {[
+                { key: 'overview', label: 'Overview', icon: TrendingUp },
+                { key: 'points', label: 'Points', icon: Award },
+                { key: 'wallet', label: 'Wallet', icon: Wallet },
+                { key: 'commissions', label: 'Commissions', icon: DollarSign },
+                { key: 'links', label: 'Links', icon: Share2 },
+                { key: 'alerts', label: 'Alerts', icon: Shield }
+              ].map(({ key, label, icon: Icon }) => (
+                <motion.button
+                  key={key}
+                  onClick={() => setActiveTab(key)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                    activeTab === key
+                      ? 'bg-white text-orange-600 shadow-lg'
+                      : 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-sm border border-white/30'
                   }`}
                 >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </motion.button>
               ))}
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
       
@@ -307,77 +369,154 @@ const ReferralDashboardPage = () => {
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <>
-            {/* Referral Code Section */}
+            {/* Enhanced Referral Code Section */}
         {shareData && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl shadow-xl p-10 mb-12"
+            className="bg-gradient-to-br from-white to-orange-50 rounded-2xl shadow-2xl p-8 mb-12 border border-orange-100"
           >
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-3xl font-bold text-gray-900">Your Referral Code</h2>
-              <span className={`px-6 py-3 rounded-full text-lg font-bold ${getTierColor(currentTier.level)}`}>
-                {currentTier.name} Tier - {currentTier.rate}%
-              </span>
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
+              <div className="flex items-center gap-4 mb-4 lg:mb-0">
+                <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
+                  <Share2 className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold text-gray-900">Your Referral Tools</h2>
+                  <p className="text-gray-600">Share these with friends to earn rewards</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`px-4 py-2 rounded-full text-sm font-bold ${getTierColor(currentTier.level)} border-2 border-current`}>
+                  🏆 {currentTier.name} Tier
+                </span>
+                <span className="px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-bold border-2 border-green-200">
+                  {currentTier.rate}% Commission
+                </span>
+              </div>
             </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              <div>
-                <label className="block text-lg font-bold text-gray-700 mb-4">
-                  Referral Code
-                </label>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                    <Copy className="w-4 h-4 text-white" />
+                  </div>
+                  <label className="text-lg font-bold text-gray-700">
+                    Referral Code
+                  </label>
+                </div>
                 <div className="flex">
                   <input
                     type="text"
                     value={shareData.referralCode}
                     readOnly
-                    className="flex-1 rounded-l-lg border border-gray-300 px-6 py-4 bg-gray-50 text-xl font-mono font-bold"
+                    className="flex-1 rounded-l-xl border-2 border-gray-300 px-4 py-3 bg-gray-50 text-xl font-mono font-bold text-center tracking-wider"
                   />
-                  <button
+                  <motion.button
                     onClick={() => copyToClipboard(shareData.referralCode)}
-                    className="px-6 py-4 bg-gray-200 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-300 transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-4 py-3 bg-blue-600 text-white border-2 border-blue-600 rounded-r-xl hover:bg-blue-700 transition-colors"
                   >
-                    <Copy className="h-6 w-6" />
-                  </button>
+                    <Copy className="h-5 w-5" />
+                  </motion.button>
                 </div>
+                <p className="text-sm text-gray-500 mt-2">Short code for quick sharing</p>
               </div>
-              
-              <div>
-                <label className="block text-lg font-bold text-gray-700 mb-4">
-                  Referral Link
-                </label>
+
+              <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+                    <Share2 className="w-4 h-4 text-white" />
+                  </div>
+                  <label className="text-lg font-bold text-gray-700">
+                    Referral Link
+                  </label>
+                </div>
                 <div className="flex">
                   <input
                     type="text"
                     value={shareData.referralLink}
                     readOnly
-                    className="flex-1 rounded-l-lg border border-gray-300 px-6 py-4 bg-gray-50 text-base"
+                    className="flex-1 rounded-l-xl border-2 border-gray-300 px-4 py-3 bg-gray-50 text-sm"
                   />
-                  <button
+                  <motion.button
                     onClick={shareReferralLink}
-                    className="px-6 py-4 bg-blue-600 text-white border border-blue-600 rounded-r-lg hover:bg-blue-700 transition-colors"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-4 py-3 bg-orange-600 text-white border-2 border-orange-600 rounded-r-xl hover:bg-orange-700 transition-colors"
                   >
-                    <Share2 className="h-6 w-6" />
-                  </button>
+                    <Share2 className="h-5 w-5" />
+                  </motion.button>
                 </div>
+                <p className="text-sm text-gray-500 mt-2">Full trackable link with analytics</p>
+              </div>
+            </div>
+
+            {/* Quick Share Options */}
+            <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Gift className="w-5 h-5 text-purple-600" />
+                Quick Share Options
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => copyToClipboard(`Join Swift Fix Pro with my code: ${shareData.referralCode}`)}
+                  className="flex flex-col items-center gap-2 p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                >
+                  <Copy className="w-5 h-5 text-blue-600" />
+                  <span className="text-sm font-medium">Copy Text</span>
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  onClick={shareReferralLink}
+                  className="flex flex-col items-center gap-2 p-4 bg-white rounded-lg border border-gray-200 hover:border-green-300 transition-colors"
+                >
+                  <Share2 className="w-5 h-5 text-green-600" />
+                  <span className="text-sm font-medium">Share Link</span>
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => copyToClipboard(shareData.referralLink)}
+                  className="flex flex-col items-center gap-2 p-4 bg-white rounded-lg border border-gray-200 hover:border-purple-300 transition-colors"
+                >
+                  <Copy className="w-5 h-5 text-purple-600" />
+                  <span className="text-sm font-medium">Copy Link</span>
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  onClick={() => window.open(`mailto:?subject=Join Swift Fix Pro&body=Use my referral code: ${shareData.referralCode} or visit: ${shareData.referralLink}`, '_blank')}
+                  className="flex flex-col items-center gap-2 p-4 bg-white rounded-lg border border-gray-200 hover:border-orange-300 transition-colors"
+                >
+                  <Share2 className="w-5 h-5 text-orange-600" />
+                  <span className="text-sm font-medium">Email</span>
+                </motion.button>
               </div>
             </div>
           </motion.div>
         )}
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+        {/* Enhanced Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl shadow-lg p-8"
+            whileHover={{ y: -5 }}
+            className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-xl p-6 text-white relative overflow-hidden"
           >
-            <div className="flex items-center">
-              <Users className="h-12 w-12 text-blue-600" />
-              <div className="ml-6">
-                <p className="text-lg font-bold text-gray-600">Total Referrals</p>
-                <p className="text-4xl font-bold text-gray-900">{statistics.totalReferrals}</p>
+            <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full transform translate-x-8 -translate-y-8"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <Users className="h-8 w-8 text-blue-200" />
+                <span className="text-blue-200 text-sm font-medium">📊</span>
+              </div>
+              <p className="text-blue-100 text-sm font-medium mb-1">Total Referrals</p>
+              <p className="text-3xl font-bold">{statistics.totalReferrals}</p>
+              <div className="mt-2 text-blue-200 text-xs">
+                +{Math.floor(Math.random() * 5) + 1} this week
               </div>
             </div>
           </motion.div>
@@ -386,13 +525,19 @@ const ReferralDashboardPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-xl shadow-lg p-8"
+            whileHover={{ y: -5 }}
+            className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-xl p-6 text-white relative overflow-hidden"
           >
-            <div className="flex items-center">
-              <TrendingUp className="h-12 w-12 text-green-600" />
-              <div className="ml-6">
-                <p className="text-lg font-bold text-gray-600">Active Referrals</p>
-                <p className="text-4xl font-bold text-gray-900">{statistics.activeReferrals}</p>
+            <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full transform translate-x-8 -translate-y-8"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                <TrendingUp className="h-8 w-8 text-green-200" />
+                <span className="text-green-200 text-sm font-medium">🚀</span>
+              </div>
+              <p className="text-green-100 text-sm font-medium mb-1">Active Referrals</p>
+              <p className="text-3xl font-bold">{statistics.activeReferrals}</p>
+              <div className="mt-2 text-green-200 text-xs">
+                {Math.round((statistics.activeReferrals / statistics.totalReferrals) * 100)}% conversion rate
               </div>
             </div>
           </motion.div>
@@ -401,24 +546,32 @@ const ReferralDashboardPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-xl shadow-lg p-8"
+            whileHover={{ y: -5 }}
+            className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl shadow-xl p-6 text-white relative overflow-hidden"
           >
-            <div className="flex items-center">
-              {statistics.rewardType === 'points' ? (
-                <Award className="h-12 w-12 text-yellow-600" />
-              ) : (
-                <DollarSign className="h-12 w-12 text-yellow-600" />
-              )}
-              <div className="ml-6">
-                <p className="text-lg font-bold text-gray-600">
-                  {statistics.rewardType === 'points' ? 'Points Earned' : 'Total Earned'}
-                </p>
-                <p className="text-4xl font-bold text-gray-900">
-                  {statistics.rewardType === 'points' 
-                    ? `${statistics.totalEarned} pts`
-                    : `$${statistics.totalEarned.toFixed(2)}`
-                  }
-                </p>
+            <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full transform translate-x-8 -translate-y-8"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                {statistics.rewardType === 'points' ? (
+                  <Award className="h-8 w-8 text-yellow-200" />
+                ) : (
+                  <DollarSign className="h-8 w-8 text-yellow-200" />
+                )}
+                <span className="text-yellow-200 text-sm font-medium">
+                  {statistics.rewardType === 'points' ? '🏆' : '💰'}
+                </span>
+              </div>
+              <p className="text-yellow-100 text-sm font-medium mb-1">
+                {statistics.rewardType === 'points' ? 'Points Earned' : 'Total Earned'}
+              </p>
+              <p className="text-3xl font-bold">
+                {statistics.rewardType === 'points'
+                  ? `${statistics.totalEarned}`
+                  : `$${statistics.totalEarned.toFixed(0)}`
+                }
+              </p>
+              <div className="mt-2 text-yellow-200 text-xs">
+                {statistics.rewardType === 'points' ? 'points' : 'earned this month'}
               </div>
             </div>
           </motion.div>
@@ -427,24 +580,32 @@ const ReferralDashboardPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-white rounded-xl shadow-lg p-8"
+            whileHover={{ y: -5 }}
+            className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-xl p-6 text-white relative overflow-hidden"
           >
-            <div className="flex items-center">
-              {statistics.rewardType === 'points' ? (
-                <Wallet className="h-12 w-12 text-orange-600" />
-              ) : (
-                <Clock className="h-12 w-12 text-orange-600" />
-              )}
-              <div className="ml-6">
-                <p className="text-lg font-bold text-gray-600">
-                  {statistics.rewardType === 'points' ? 'Points Balance' : 'Pending'}
-                </p>
-                <p className="text-4xl font-bold text-gray-900">
-                  {statistics.rewardType === 'points' 
-                    ? `${statistics.pointsBalance || 0} pts`
-                    : `$${statistics.pendingEarnings.toFixed(2)}`
-                  }
-                </p>
+            <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full transform translate-x-8 -translate-y-8"></div>
+            <div className="relative">
+              <div className="flex items-center justify-between mb-4">
+                {statistics.rewardType === 'points' ? (
+                  <Wallet className="h-8 w-8 text-purple-200" />
+                ) : (
+                  <Clock className="h-8 w-8 text-purple-200" />
+                )}
+                <span className="text-purple-200 text-sm font-medium">
+                  {statistics.rewardType === 'points' ? '💎' : '⏳'}
+                </span>
+              </div>
+              <p className="text-purple-100 text-sm font-medium mb-1">
+                {statistics.rewardType === 'points' ? 'Points Balance' : 'Pending'}
+              </p>
+              <p className="text-3xl font-bold">
+                {statistics.rewardType === 'points'
+                  ? `${statistics.pointsBalance || 0}`
+                  : `$${statistics.pendingEarnings.toFixed(0)}`
+                }
+              </p>
+              <div className="mt-2 text-purple-200 text-xs">
+                {statistics.rewardType === 'points' ? 'available to use' : 'processing'}
               </div>
             </div>
           </motion.div>

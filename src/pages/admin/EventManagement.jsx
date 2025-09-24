@@ -386,7 +386,7 @@ const EventManagement = () => {
         <div className="absolute inset-0 bg-black opacity-10"></div>
         <div className="absolute inset-0 bg-gradient-to-br from-transparent to-black opacity-20"></div>
 
-        <div className="relative container mx-auto px-6 py-16">
+        <div className="relative container mx-auto px-6 py-16 pt-8">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
             <div className="flex-1">
               <motion.div

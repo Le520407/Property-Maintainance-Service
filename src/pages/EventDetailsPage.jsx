@@ -212,7 +212,7 @@ const EventDetailsPage = () => {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600"></div>
+          <div className="w-full h-full bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700"></div>
         )}
 
         {/* Overlay */}
