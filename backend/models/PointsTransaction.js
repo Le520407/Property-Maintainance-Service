@@ -46,7 +46,7 @@ const pointsTransactionSchema = new mongoose.Schema({
   },
   relatedModel: {
     type: String,
-    enum: ['Order', 'Subscription', 'Referral', 'User'],
+    enum: ['Order', 'Subscription', 'Referral', 'User', 'Voucher'],
     default: null
   },
   metadata: {

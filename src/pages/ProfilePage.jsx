@@ -125,7 +125,7 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-8">
+    <div className="min-h-screen bg-gray-50 ">
       {/* Header */}
       <div className="bg-orange-600 text-white py-16 mb-12">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">

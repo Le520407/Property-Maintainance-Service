@@ -49,6 +49,7 @@ const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,6 +71,18 @@ const UserManagement = () => {
     description: '',
     campaign: ''
   });
+
+  // Points management states
+  const [showPointsModal, setShowPointsModal] = useState(false);
+  const [pointsModalUser, setPointsModalUser] = useState(null);
+  const [pointsHistory, setPointsHistory] = useState([]);
+  const [pointsForm, setPointsForm] = useState({
+    points: '',
+    reason: '',
+    type: 'ADMIN_ADJUSTMENT'
+  });
+  const [pointsLoading, setPointsLoading] = useState(false);
+  const [adjustingPoints, setAdjustingPoints] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -155,7 +168,7 @@ const UserManagement = () => {
       
       if (selectedRole) params.append('role', selectedRole);
       if (selectedStatus) params.append('status', selectedStatus);
-      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
 
       const response = await fetch(`http://localhost:5000/api/admin/users?${params.toString()}`, {
         headers: {
@@ -238,6 +251,116 @@ const UserManagement = () => {
     toast.success('Copied to clipboard!');
   };
 
+  // Points management functions
+  const openPointsModal = (userData) => {
+    console.log('openPointsModal called with:', userData);
+
+    // Immediately open modal and set user data
+    setPointsModalUser(userData);
+    setShowPointsModal(true);
+    setPointsForm({
+      points: '',
+      reason: '',
+      type: 'ADMIN_ADJUSTMENT'
+    });
+
+    console.log('Modal state set to true');
+
+    // Start loading state for data fetching only
+    setPointsLoading(true);
+
+    // Fetch points history for this user in the background
+    const fetchPointsData = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/api/admin/users/${userData._id}/points`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setPointsHistory(data.data.recentTransactions || []);
+          // Update user data with latest points balance
+          setPointsModalUser(prev => ({
+            ...prev,
+            ...data.data.user
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching points data:', error);
+        toast.error('Failed to load points data');
+      } finally {
+        setPointsLoading(false);
+      }
+    };
+
+    fetchPointsData();
+  };
+
+  const adjustUserPoints = async (e) => {
+    e.preventDefault();
+
+    if (!pointsForm.points || !pointsForm.reason) {
+      toast.error('Points amount and reason are required');
+      return;
+    }
+
+    const pointsValue = parseInt(pointsForm.points);
+    if (isNaN(pointsValue) || pointsValue === 0) {
+      toast.error('Please enter a valid points amount');
+      return;
+    }
+
+    setAdjustingPoints(true);
+    try {
+      const response = await fetch(`http://localhost:5000/api/admin/users/${pointsModalUser._id}/points/adjust`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          points: pointsValue,
+          reason: pointsForm.reason,
+          type: pointsForm.type
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(data.message);
+
+        // Update the user's points balance in the modal
+        setPointsModalUser(prev => ({
+          ...prev,
+          pointsBalance: data.data.newBalance
+        }));
+
+        // Refresh points history
+        await openPointsModal({ ...pointsModalUser, pointsBalance: data.data.newBalance });
+
+        // Reset form
+        setPointsForm({
+          points: '',
+          reason: '',
+          type: 'ADMIN_ADJUSTMENT'
+        });
+
+        // Refresh users list to show updated points
+        fetchUsers();
+      } else {
+        const error = await response.json();
+        toast.error(error.message);
+      }
+    } catch (error) {
+      console.error('Error adjusting points:', error);
+      toast.error('Failed to adjust points');
+    } finally {
+      setAdjustingPoints(false);
+    }
+  };
+
   // 获取统计数据
   const fetchStats = async () => {
     try {
@@ -256,12 +379,21 @@ const UserManagement = () => {
     }
   };
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   useEffect(() => {
     if (user?.role === 'admin') {
       fetchUsers();
       fetchStats();
     }
-  }, [user, currentPage, selectedRole, selectedStatus, searchQuery]);
+  }, [user, currentPage, selectedRole, selectedStatus, debouncedSearch]);
 
   // Fetch invite codes when the invite codes section is shown
   useEffect(() => {
@@ -621,6 +753,12 @@ const UserManagement = () => {
             {userData.city}, {userData.country}
           </div>
         )}
+        {userData.role === 'customer' && typeof userData.pointsBalance !== 'undefined' && (
+          <div className="flex items-center text-gray-600 text-sm">
+            <Star className="w-4 h-4 mr-2" />
+            {userData.pointsBalance || 0} points available
+          </div>
+        )}
       </div>
 
       {userData.role === 'vendor' && (
@@ -756,8 +894,8 @@ const UserManagement = () => {
         </span>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-        {userData.status === 'PENDING' ? (
+      {userData.status === 'PENDING' && (
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
           <div className="flex space-x-2">
             <button
               onClick={() => updateUserStatus(userData._id, 'ACTIVE')}
@@ -774,61 +912,87 @@ const UserManagement = () => {
               Reject
             </button>
           </div>
-        ) : (
-          <div className="flex space-x-2">
+        </div>
+      )}
+
+      {/* Action Buttons Section */}
+      <div className="border-t border-gray-100 pt-4 mt-4">
+        <div className="flex flex-wrap gap-2 justify-between items-center">
+          <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => updateUserStatus(userData._id, userData.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE')}
-              className={`flex items-center px-3 py-2 rounded-lg transition-colors text-sm ${
-                userData.status === 'ACTIVE'
-                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                  : 'bg-green-100 text-green-700 hover:bg-green-200'
-              }`}
+              onClick={() => startEditUser(userData)}
+              className="flex items-center px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
             >
-              {userData.status === 'ACTIVE' ? (
-                <>
-                  <UserX className="w-4 h-4 mr-1" />
-                  Suspend
-                </>
-              ) : (
-                <>
-                  <UserCheck className="w-4 h-4 mr-1" />
-                  Activate
-                </>
-              )}
+              <Edit2 className="w-4 h-4 mr-1" />
+              Edit User
             </button>
+
+            {userData.role === 'customer' && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log('Points button clicked for user:', userData.firstName);
+                  openPointsModal(userData);
+                }}
+                className="flex items-center px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium"
+              >
+                <Gift className="w-4 h-4 mr-1" />
+                Manage Points
+              </button>
+            )}
+
+            {userData.role === 'vendor' && (
+              <button
+                onClick={() => {
+                  console.log('Managing vendor data for:', userData._id);
+                  toast.success(`Opening vendor management for ${userData.firstName} ${userData.lastName}`);
+                }}
+                className="flex items-center px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
+              >
+                <Settings className="w-4 h-4 mr-1" />
+                Vendor Settings
+              </button>
+            )}
           </div>
-        )}
-        
-        <div className="flex items-center space-x-2">
-          <button 
-            onClick={() => startEditUser(userData)}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-            title="Edit user"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          {userData.role === 'vendor' && (
-            <button
-              onClick={() => {
-                // Navigate to vendor management or show vendor details modal
-                console.log('Managing vendor data for:', userData._id);
-                toast.success(`Opening vendor management for ${userData.firstName} ${userData.lastName}`);
-                // TODO: Implement vendor management modal or navigation
-              }}
-              className="p-2 text-purple-600 hover:text-purple-800 rounded-lg hover:bg-purple-50"
-              title="Manage vendor data"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-          )}
-          {user.isSuper && (
-            <button
-              onClick={() => deleteUser(userData._id)}
-              className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
+
+          <div className="flex gap-2">
+            {/* Status Change Button */}
+            {userData.ceaNumberStatus !== 'PENDING' && (
+              <button
+                onClick={() => updateUserStatus(userData._id, userData.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE')}
+                className={`flex items-center px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+                  userData.status === 'ACTIVE'
+                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                }`}
+              >
+                {userData.status === 'ACTIVE' ? (
+                  <>
+                    <UserX className="w-4 h-4 mr-1" />
+                    Suspend
+                  </>
+                ) : (
+                  <>
+                    <UserCheck className="w-4 h-4 mr-1" />
+                    Activate
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Delete Button (Super Admin Only) */}
+            {user.isSuper && (
+              <button
+                onClick={() => deleteUser(userData._id)}
+                className="flex items-center px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Delete
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -1051,8 +1215,13 @@ const UserManagement = () => {
                   placeholder="Search users by name, email, or phone..."
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className="block w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                 />
+                {searchQuery !== debouncedSearch && (
+                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1648,9 +1817,311 @@ const UserManagement = () => {
                 </motion.div>
               </div>
             )}
+
+            {/* Points Management Modal */}
+            <AnimatePresence>
+              {showPointsModal && pointsModalUser && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+                >
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+                  >
+                    <div className="p-6">
+                      <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center">
+                          <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4">
+                            <Gift className="w-6 h-6 text-purple-600" />
+                          </div>
+                          <div>
+                            <h2 className="text-2xl font-bold text-gray-900">Points Management</h2>
+                            <p className="text-gray-600">{pointsModalUser.firstName} {pointsModalUser.lastName}</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setShowPointsModal(false)}
+                          className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                        >
+                          <XCircle className="w-6 h-6" />
+                        </button>
+                      </div>
+
+                      {/* Current Points Balance */}
+                      <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-6 mb-6">
+                        <div className="text-center">
+                          <div className="text-4xl font-bold text-purple-600 mb-2">
+                            {pointsModalUser.pointsBalance || 0}
+                          </div>
+                          <div className="text-purple-600 font-medium">Available Points</div>
+                          {pointsModalUser.totalPointsEarned && (
+                            <div className="text-sm text-purple-500 mt-1">
+                              Total Earned: {pointsModalUser.totalPointsEarned} •
+                              Total Redeemed: {pointsModalUser.totalPointsRedeemed || 0}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Points Adjustment Form */}
+                      <form onSubmit={adjustUserPoints} className="mb-6">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Adjust Points</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Points Amount *
+                            </label>
+                            <input
+                              type="number"
+                              value={pointsForm.points}
+                              onChange={(e) => setPointsForm(prev => ({ ...prev, points: e.target.value }))}
+                              placeholder="Enter points (+ to add, - to subtract)"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              Use positive numbers to add points, negative to subtract
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Adjustment Type
+                            </label>
+                            <select
+                              value={pointsForm.type}
+                              onChange={(e) => setPointsForm(prev => ({ ...prev, type: e.target.value }))}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            >
+                              <option value="ADMIN_ADJUSTMENT">Admin Adjustment</option>
+                              <option value="BONUS_POINTS">Bonus Points</option>
+                              <option value="COMPENSATION">Compensation</option>
+                              <option value="CORRECTION">Correction</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Reason *
+                          </label>
+                          <textarea
+                            value={pointsForm.reason}
+                            onChange={(e) => setPointsForm(prev => ({ ...prev, reason: e.target.value }))}
+                            placeholder="Explain why you're adjusting points..."
+                            rows={3}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={adjustingPoints}
+                          className="w-full bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                          {adjustingPoints && (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          )}
+                          {adjustingPoints ? 'Adjusting Points...' : 'Adjust Points'}
+                        </button>
+                      </form>
+
+                      {/* Recent Points History */}
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Activity</h3>
+                        {pointsLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                            <span className="ml-3 text-gray-600">Loading transaction history...</span>
+                          </div>
+                        ) : pointsHistory.length > 0 ? (
+                          <div className="space-y-3 max-h-64 overflow-y-auto">
+                            {pointsHistory.map((transaction, index) => (
+                              <div key={index} className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+                                <div className="flex-1">
+                                  <div className="flex items-center">
+                                    <div className={`w-3 h-3 rounded-full mr-3 ${
+                                      transaction.type === 'EARNED_REFERRAL' ? 'bg-green-500' :
+                                      transaction.type === 'ADMIN_ADJUSTMENT' ? 'bg-purple-500' :
+                                      transaction.type === 'REDEEMED_DISCOUNT' ? 'bg-orange-500' :
+                                      'bg-gray-500'
+                                    }`}></div>
+                                    <div>
+                                      <div className="text-sm font-medium text-gray-900">
+                                        {transaction.description}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {new Date(transaction.createdAt).toLocaleDateString()} • {transaction.type.replace('_', ' ')}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className={`text-sm font-semibold ${
+                                  transaction.points > 0 ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                  {transaction.points > 0 ? '+' : ''}{transaction.points} pts
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8">
+                            <Gift className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                            <p className="text-gray-500 text-sm">No points activity yet</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>
+
+      {/* Points Management Modal - Moved outside tab content */}
+      {showPointsModal && pointsModalUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999]">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center">
+                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4">
+                    <Gift className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Points Management</h2>
+                    <p className="text-gray-600">{pointsModalUser.firstName} {pointsModalUser.lastName}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPointsModal(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Current Points Balance */}
+              <div className="bg-purple-50 rounded-xl p-6 mb-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-purple-600 font-medium">Current Balance</p>
+                    <p className="text-3xl font-bold text-purple-800">
+                      {pointsModalUser.pointsBalance || 0} points
+                    </p>
+                  </div>
+                  <div className="text-purple-500">
+                    <Award className="w-12 h-12" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Add/Deduct Points Form */}
+              <form onSubmit={adjustUserPoints} className="bg-gray-50 rounded-xl p-6 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Adjust Points</h3>
+
+                <div className="grid md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Points Amount</label>
+                    <input
+                      type="number"
+                      value={pointsForm.points}
+                      onChange={(e) => setPointsForm(prev => ({ ...prev, points: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Enter points (+ or -)"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Use negative numbers to deduct points</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Transaction Type</label>
+                    <select
+                      value={pointsForm.type}
+                      onChange={(e) => setPointsForm(prev => ({ ...prev, type: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="ADMIN_ADJUSTMENT">Admin Adjustment</option>
+                      <option value="BONUS">Bonus</option>
+                      <option value="PENALTY">Penalty</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Reason</label>
+                  <textarea
+                    value={pointsForm.reason}
+                    onChange={(e) => setPointsForm(prev => ({ ...prev, reason: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    rows="3"
+                    placeholder="Enter reason for points adjustment..."
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={adjustingPoints}
+                  className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {adjustingPoints ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <DollarSign className="w-5 h-5 mr-2" />
+                  )}
+                  {adjustingPoints ? 'Processing...' : 'Adjust Points'}
+                </button>
+              </form>
+
+              {/* Points History */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Transactions</h3>
+
+                {pointsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                  </div>
+                ) : pointsHistory.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Clock className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>No transaction history found</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {pointsHistory.map((transaction) => (
+                      <div key={transaction._id} className="flex items-center justify-between p-4 bg-white rounded-lg border">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">{transaction.description}</p>
+                          <p className="text-sm text-gray-500">
+                            {new Date(transaction.createdAt).toLocaleDateString()} • {transaction.type}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-bold ${
+                            transaction.points > 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {transaction.points > 0 ? '+' : ''}{transaction.points}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Balance: {transaction.newBalance}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -25,6 +25,7 @@ import {
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
+import VoucherExchange from '../components/VoucherExchange';
 
 const ReferralPage = () => {
   const { user } = useAuth();
@@ -52,6 +53,7 @@ const ReferralPage = () => {
   const [showShareModal, setShowShareModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [activeTab, setActiveTab] = useState('overview');
   
   // Only redirect referral users (property agents) to their dashboard
   useEffect(() => {
@@ -574,55 +576,225 @@ const ReferralPage = () => {
                     </motion.div>
                   )}
 
-                  {/* Quick Actions */}
+                  {/* Tab Navigation */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8 }}
-                    className="bg-white rounded-xl shadow-xl p-8"
+                    transition={{ delay: 0.7 }}
+                    className="bg-white rounded-xl shadow-xl mb-8"
                   >
-                    <h3 className="text-2xl font-bold text-gray-900 mb-6">Quick Actions</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <button
-                        onClick={() => setShowShareModal(true)}
-                        className="flex items-center justify-center px-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold"
-                      >
-                        <Share2 className="w-5 h-5 mr-2" />
-                        Share on Social
-                      </button>
-                      <button
-                        onClick={copyReferralLink}
-                        className="flex items-center justify-center px-6 py-4 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-bold"
-                      >
-                        <Copy className="w-5 h-5 mr-2" />
-                        Copy Link
-                      </button>
-                      <button
-                        onClick={() => copyToClipboard(referralData.referralCode)}
-                        className="flex items-center justify-center px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold"
-                      >
-                        <Copy className="w-5 h-5 mr-2" />
-                        Copy Code
-                      </button>
+                    <div className="border-b border-gray-200">
+                      <nav className="flex space-x-8 px-8">
+                        <button
+                          onClick={() => setActiveTab('overview')}
+                          className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === 'overview'
+                              ? 'border-orange-500 text-orange-600'
+                              : 'border-transparent text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          <Star className="inline w-4 h-4 mr-2" />
+                          Overview
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('vouchers')}
+                          className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === 'vouchers'
+                              ? 'border-orange-500 text-orange-600'
+                              : 'border-transparent text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          <Gift className="inline w-4 h-4 mr-2" />
+                          Voucher Exchange
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('actions')}
+                          className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                            activeTab === 'actions'
+                              ? 'border-orange-500 text-orange-600'
+                              : 'border-transparent text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          <Share2 className="inline w-4 h-4 mr-2" />
+                          Share & Actions
+                        </button>
+                      </nav>
                     </div>
 
-                    {/* How It Works */}
-                    <div className="mt-8 p-6 bg-gray-50 rounded-lg">
-                      <h4 className="text-lg font-bold text-gray-900 mb-4">How It Works</h4>
-                      <div className="space-y-3 text-sm text-gray-600">
-                        <div className="flex items-start">
-                          <span className="inline-block w-6 h-6 bg-orange-100 text-orange-600 rounded-full text-center text-xs font-medium mr-3 mt-0.5">1</span>
-                          <span>Share your referral code or link with friends</span>
+                    <div className="p-8">
+                      {activeTab === 'overview' && (
+                        <div className="space-y-8">
+                          {/* Performance Stats */}
+                          <div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-6">Performance Overview</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                              <div className="text-center p-6 bg-blue-50 rounded-lg">
+                                <div className="text-3xl font-bold text-blue-600">{referralData.statistics?.totalReferrals || 0}</div>
+                                <div className="text-lg text-gray-600">Total Referrals</div>
+                              </div>
+                              <div className="text-center p-6 bg-green-50 rounded-lg">
+                                <div className="text-3xl font-bold text-green-600">{referralData.statistics?.activeReferrals || 0}</div>
+                                <div className="text-lg text-gray-600">Active Referrals</div>
+                              </div>
+                              <div className="text-center p-6 bg-orange-50 rounded-lg">
+                                <div className="text-3xl font-bold text-orange-600">{referralData.currentTier?.name || 'Bronze'}</div>
+                                <div className="text-lg text-gray-600">Current Tier</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Points Summary */}
+                          <div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-6">Points Summary</h3>
+                            <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg p-6">
+                              <div className="space-y-4">
+                                <div className="flex justify-between">
+                                  <span className="text-lg text-gray-600">Total Points Earned</span>
+                                  <span className="font-bold text-gray-900 text-lg">{referralData.stats?.totalPoints || 0} pts</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-lg text-gray-600">Pending Points</span>
+                                  <span className="font-bold text-yellow-600 text-lg">{referralData.stats?.pendingPoints || 0} pts</span>
+                                </div>
+                                <hr />
+                                <div className="flex justify-between">
+                                  <span className="text-lg text-gray-600">Available Points</span>
+                                  <span className="font-bold text-green-600 text-lg">
+                                    {referralData.stats?.pointsBalance || 0} pts
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="mt-6 p-4 bg-orange-100 rounded-lg">
+                                <h4 className="text-lg font-bold text-orange-800 mb-2">💰 Redeem Your Points</h4>
+                                <p className="text-sm text-orange-600 mb-3">
+                                  Exchange your points for discount vouchers!
+                                </p>
+                                <button
+                                  onClick={() => setActiveTab('vouchers')}
+                                  className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors font-medium"
+                                >
+                                  Exchange Points
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Recent Activity */}
+                          <div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-6">Recent Activity</h3>
+                            {recentActivity.length > 0 ? (
+                              <div className="space-y-4">
+                                {recentActivity.slice(0, 5).map((activity, index) => {
+                                  const isPointsTransaction = activity.type === 'EARNED_REFERRAL' || activity.points;
+                                  const referredUserName = isPointsTransaction
+                                    ? activity.metadata?.referredUser
+                                    : activity.referredUser;
+
+                                  return (
+                                    <div key={index} className="flex items-center justify-between py-3 border-b last:border-b-0">
+                                      <div className="flex items-center">
+                                        <div className={`w-3 h-3 rounded-full mr-3 ${
+                                          isPointsTransaction
+                                            ? (activity.status === 'COMPLETED' ? 'bg-green-500' : 'bg-yellow-500')
+                                            : (activity.status === 'PAID' ? 'bg-green-500' :
+                                               activity.status === 'APPROVED' ? 'bg-blue-500' : 'bg-yellow-500')
+                                        }`}></div>
+                                        <div>
+                                          <div className="text-sm font-medium text-gray-900">
+                                            {isPointsTransaction
+                                              ? `🎉 Earned ${activity.points} points from ${referredUserName?.firstName || 'Unknown'} ${referredUserName?.lastName || 'User'}`
+                                              : `Points from ${activity.referredUser?.firstName} ${activity.referredUser?.lastName}`
+                                            }
+                                          </div>
+                                          <div className="text-xs text-gray-500">
+                                            {isPointsTransaction && activity.description
+                                              ? activity.description
+                                              : new Date(activity.createdAt).toLocaleDateString()
+                                            }
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="text-sm font-semibold text-green-600">
+                                        +{isPointsTransaction ? activity.points : activity.commissionAmount} pts
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="text-center py-8">
+                                <div className="text-gray-400 mb-2">📊</div>
+                                <div className="text-sm text-gray-600">No activity yet</div>
+                                <div className="text-xs text-gray-500">Start referring friends to see activity here</div>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-start">
-                          <span className="inline-block w-6 h-6 bg-orange-100 text-orange-600 rounded-full text-center text-xs font-medium mr-3 mt-0.5">2</span>
-                          <span>They sign up and make their first purchase</span>
+                      )}
+
+                      {activeTab === 'vouchers' && (
+                        <VoucherExchange onVoucherCreated={(voucher) => {
+                          toast.success(`Voucher ${voucher.code} created successfully!`);
+                          // Optionally refresh referral data to update points balance
+                          loadReferralData();
+                        }} />
+                      )}
+
+                      {activeTab === 'actions' && (
+                        <div className="space-y-8">
+                          {/* Quick Actions */}
+                          <div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-6">Share Your Referral</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <button
+                                onClick={() => setShowShareModal(true)}
+                                className="flex items-center justify-center px-6 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold"
+                              >
+                                <Share2 className="w-5 h-5 mr-2" />
+                                Share on Social
+                              </button>
+                              <button
+                                onClick={copyReferralLink}
+                                className="flex items-center justify-center px-6 py-4 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-bold"
+                              >
+                                <Copy className="w-5 h-5 mr-2" />
+                                Copy Link
+                              </button>
+                              <button
+                                onClick={() => copyToClipboard(referralData.referralCode)}
+                                className="flex items-center justify-center px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold"
+                              >
+                                <Copy className="w-5 h-5 mr-2" />
+                                Copy Code
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* How It Works */}
+                          <div className="p-6 bg-gray-50 rounded-lg">
+                            <h4 className="text-lg font-bold text-gray-900 mb-4">How It Works</h4>
+                            <div className="space-y-3 text-sm text-gray-600">
+                              <div className="flex items-start">
+                                <span className="inline-block w-6 h-6 bg-orange-100 text-orange-600 rounded-full text-center text-xs font-medium mr-3 mt-0.5">1</span>
+                                <span>Share your referral code or link with friends</span>
+                              </div>
+                              <div className="flex items-start">
+                                <span className="inline-block w-6 h-6 bg-orange-100 text-orange-600 rounded-full text-center text-xs font-medium mr-3 mt-0.5">2</span>
+                                <span>They sign up and make their first purchase</span>
+                              </div>
+                              <div className="flex items-start">
+                                <span className="inline-block w-6 h-6 bg-orange-100 text-orange-600 rounded-full text-center text-xs font-medium mr-3 mt-0.5">3</span>
+                                <span>You earn {referralData.currentTier?.points || 20} points when they complete their first order</span>
+                              </div>
+                              <div className="flex items-start">
+                                <span className="inline-block w-6 h-6 bg-orange-100 text-orange-600 rounded-full text-center text-xs font-medium mr-3 mt-0.5">4</span>
+                                <span>Exchange points for discount vouchers on your future services</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex items-start">
-                          <span className="inline-block w-6 h-6 bg-orange-100 text-orange-600 rounded-full text-center text-xs font-medium mr-3 mt-0.5">3</span>
-                          <span>You earn {referralData.currentTier?.points || 20} points when they complete their first order</span>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </motion.div>
                 </div>

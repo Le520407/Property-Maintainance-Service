@@ -6,6 +6,8 @@ const Job = require('../models/Job');
 const Rating = require('../models/Rating');
 const { Referral, Commission, Payout, COMMISSION_RATES } = require('../models/Referral');
 const InviteCode = require('../models/InviteCode');
+const PointsTransaction = require('../models/PointsTransaction');
+const Voucher = require('../models/Voucher');
 const { authenticateToken: auth } = require('../middleware/auth');
 const referralService = require('../services/referralService');
 
@@ -2210,6 +2212,366 @@ router.get('/vendors/:vendorId/evidence-report', auth, async (req, res) => {
 
   } catch (error) {
     console.error('Get vendor evidence report error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ==================== POINTS MANAGEMENT ROUTES ====================
+
+// Get user points summary
+router.get('/users/:userId/points', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const userId = req.params.userId;
+    const user = await User.findById(userId).select('firstName lastName email pointsBalance totalPointsEarned totalPointsRedeemed');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Get points history
+    const pointsHistory = await PointsTransaction.getUserHistory(userId, { limit: 20 });
+
+    // Get points summary
+    const pointsSummary = await PointsTransaction.getUserSummary(userId);
+
+    res.json({
+      success: true,
+      data: {
+        user,
+        summary: pointsSummary,
+        recentTransactions: pointsHistory
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user points error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Manually adjust user points (Admin)
+router.post('/users/:userId/points/adjust', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { points, reason, type = 'ADMIN_ADJUSTMENT' } = req.body;
+    const userId = req.params.userId;
+
+    if (!points || !reason) {
+      return res.status(400).json({ message: 'Points amount and reason are required' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if deduction would result in negative balance
+    if (points < 0 && user.pointsBalance + points < 0) {
+      return res.status(400).json({
+        message: 'Insufficient points balance',
+        currentBalance: user.pointsBalance,
+        requested: Math.abs(points)
+      });
+    }
+
+    // Create admin adjustment transaction
+    const result = points > 0
+      ? await user.addPoints(points, `Admin adjustment: ${reason}`, {
+          type,
+          metadata: { adminId: req.user._id, adminEmail: req.user.email }
+        })
+      : await user.deductPoints(Math.abs(points), `Admin adjustment: ${reason}`, {
+          type,
+          metadata: { adminId: req.user._id, adminEmail: req.user.email }
+        });
+
+    res.json({
+      success: true,
+      message: `Successfully ${points > 0 ? 'added' : 'deducted'} ${Math.abs(points)} points`,
+      data: {
+        previousBalance: result.newBalance - points,
+        newBalance: result.newBalance,
+        pointsAdjusted: points,
+        reason,
+        transactionId: result.transactionId
+      }
+    });
+
+  } catch (error) {
+    console.error('Adjust user points error:', error);
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Get all points transactions (Admin)
+router.get('/points/transactions', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('view_analytics')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const {
+      page = 1,
+      limit = 20,
+      type,
+      status,
+      userId,
+      startDate,
+      endDate,
+      search
+    } = req.query;
+
+    let query = {};
+
+    if (type) query.type = type;
+    if (status) query.status = status;
+    if (userId) query.user = userId;
+
+    if (startDate && endDate) {
+      query.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+
+    let transactions = await PointsTransaction.find(query)
+      .populate('user', 'firstName lastName email')
+      .populate('metadata.referredUser', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    // Apply search filter if provided
+    if (search) {
+      const searchTerm = search.toLowerCase();
+      transactions = transactions.filter(transaction =>
+        transaction.user?.firstName?.toLowerCase().includes(searchTerm) ||
+        transaction.user?.lastName?.toLowerCase().includes(searchTerm) ||
+        transaction.user?.email?.toLowerCase().includes(searchTerm) ||
+        transaction.description?.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    const total = await PointsTransaction.countDocuments(query);
+
+    // Get transaction statistics
+    const stats = await PointsTransaction.aggregate([
+      {
+        $group: {
+          _id: '$type',
+          count: { $sum: 1 },
+          totalPoints: { $sum: '$points' }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: transactions,
+      pagination: {
+        current: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit)),
+        total
+      },
+      stats: stats.reduce((acc, stat) => {
+        acc[stat._id] = {
+          count: stat.count,
+          totalPoints: stat.totalPoints
+        };
+        return acc;
+      }, {})
+    });
+
+  } catch (error) {
+    console.error('Get points transactions error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get points system statistics (Admin Dashboard)
+router.get('/points/stats', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('view_analytics')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Get overall points statistics
+    const overallStats = await User.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalUsers: { $sum: 1 },
+          totalPointsBalance: { $sum: '$pointsBalance' },
+          totalPointsEarned: { $sum: '$totalPointsEarned' },
+          totalPointsRedeemed: { $sum: '$totalPointsRedeemed' },
+          usersWithPoints: {
+            $sum: { $cond: [{ $gt: ['$pointsBalance', 0] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    // Get transaction stats by type
+    const transactionStats = await PointsTransaction.aggregate([
+      {
+        $group: {
+          _id: '$type',
+          count: { $sum: 1 },
+          totalPoints: { $sum: '$points' }
+        }
+      }
+    ]);
+
+    // Get recent activity
+    const recentActivity = await PointsTransaction.find()
+      .populate('user', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    // Get top point earners
+    const topEarners = await User.find({ totalPointsEarned: { $gt: 0 } })
+      .select('firstName lastName email totalPointsEarned pointsBalance')
+      .sort({ totalPointsEarned: -1 })
+      .limit(10);
+
+    // Get voucher exchange statistics
+    const voucherStats = await Voucher.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalVouchers: { $sum: 1 },
+          totalPointsSpent: { $sum: '$pointsCost' },
+          totalDiscountValue: {
+            $sum: {
+              $reduce: {
+                input: '$usedBy',
+                initialValue: 0,
+                in: { $add: ['$$value', '$$this.discountAmount'] }
+              }
+            }
+          }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        overview: overallStats[0] || {
+          totalUsers: 0,
+          totalPointsBalance: 0,
+          totalPointsEarned: 0,
+          totalPointsRedeemed: 0,
+          usersWithPoints: 0
+        },
+        transactionsByType: transactionStats.reduce((acc, stat) => {
+          acc[stat._id] = {
+            count: stat.count,
+            totalPoints: stat.totalPoints
+          };
+          return acc;
+        }, {}),
+        recentActivity,
+        topEarners,
+        voucherStats: voucherStats[0] || {
+          totalVouchers: 0,
+          totalPointsSpent: 0,
+          totalDiscountValue: 0
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get points stats error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Bulk points adjustment (Admin)
+router.post('/points/bulk-adjust', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { userIds, points, reason, type = 'ADMIN_ADJUSTMENT' } = req.body;
+
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ message: 'User IDs array is required' });
+    }
+
+    if (!points || !reason) {
+      return res.status(400).json({ message: 'Points amount and reason are required' });
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (const userId of userIds) {
+      try {
+        const user = await User.findById(userId);
+        if (!user) {
+          errors.push({ userId, error: 'User not found' });
+          continue;
+        }
+
+        // Check if deduction would result in negative balance
+        if (points < 0 && user.pointsBalance + points < 0) {
+          errors.push({
+            userId,
+            error: 'Insufficient points balance',
+            currentBalance: user.pointsBalance
+          });
+          continue;
+        }
+
+        const result = points > 0
+          ? await user.addPoints(points, `Bulk admin adjustment: ${reason}`, {
+              type,
+              metadata: { adminId: req.user._id, adminEmail: req.user.email, bulkOperation: true }
+            })
+          : await user.deductPoints(Math.abs(points), `Bulk admin adjustment: ${reason}`, {
+              type,
+              metadata: { adminId: req.user._id, adminEmail: req.user.email, bulkOperation: true }
+            });
+
+        results.push({
+          userId,
+          userName: `${user.firstName} ${user.lastName}`,
+          previousBalance: result.newBalance - points,
+          newBalance: result.newBalance,
+          pointsAdjusted: points
+        });
+
+      } catch (error) {
+        errors.push({ userId, error: error.message });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Bulk adjustment completed: ${results.length} successful, ${errors.length} failed`,
+      data: {
+        successful: results,
+        failed: errors,
+        summary: {
+          total: userIds.length,
+          successful: results.length,
+          failed: errors.length,
+          totalPointsAdjusted: results.length * points
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Bulk points adjustment error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
