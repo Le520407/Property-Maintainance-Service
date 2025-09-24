@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Gift, Menu, MessageCircle, ShoppingCart, User, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+
+import { cachedApi } from '../../utils/globalCache';
 import { useAuth } from '../../contexts/AuthContext';
 // import { useCart } from '../../contexts/CartContext'; // Hidden temporarily - cart disabled
 import { useLanguage } from '../../contexts/LanguageContext';
-import { User, Menu, X, Gift, MessageCircle } from 'lucide-react';
-import { cachedApi } from '../../utils/globalCache';
 
 // Global function to clear messages visited flag (can be called from anywhere)
 export const clearMessagesVisitedFlag = (userId) => {

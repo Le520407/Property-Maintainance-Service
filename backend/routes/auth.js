@@ -17,10 +17,12 @@ router.post('/register', async (req, res) => {
       email, 
       password, 
       phone, 
+      address,
       city, 
       country, 
       role = 'CUSTOMER',
-      referralCode
+      referralCode,
+      ceaExpiryDate
     } = req.body;
 
     // Validation
@@ -47,8 +49,8 @@ router.post('/register', async (req, res) => {
       referralData = referral;
     }
 
-    // Create user
-    const user = await User.create({
+    // Prepare user data
+    const userData = {
       firstName,
       lastName,
       fullName: `${firstName} ${lastName}`,
@@ -60,7 +62,20 @@ router.post('/register', async (req, res) => {
       role: role.toLowerCase(),
       referredBy: referralData ? referralData.referrer : null,
       referralCode: (referralCode && role.toLowerCase() !== 'vendor') ? referralCode.toUpperCase() : null
-    });
+    };
+
+    // Add address only for customers
+    if (role.toLowerCase() === 'customer' && address) {
+      userData.address = address;
+    }
+
+    // Add CEA expiry date for property agents
+    if (role.toLowerCase() === 'referral' && ceaExpiryDate) {
+      userData.ceaExpiryDate = new Date(ceaExpiryDate);
+    }
+
+    // Create user
+    const user = await User.create(userData);
 
     // Apply referral if valid
     if (referralData) {
@@ -131,7 +146,8 @@ router.post('/register-agent', async (req, res) => {
       address,
       city,
       country,
-      ceaRegistrationNumber
+      ceaRegistrationNumber,
+      ceaExpiryDate
     } = req.body;
 
     // Validation
@@ -207,7 +223,7 @@ router.post('/register-agent', async (req, res) => {
     }
 
     // Create referral agent user (pending approval)
-    const user = await User.create({
+    const userData = {
       firstName,
       lastName,
       fullName: `${firstName} ${lastName}`,
@@ -229,7 +245,14 @@ router.post('/register-agent', async (req, res) => {
       referralUserType: 'property_agent',
       rewardType: 'money',
       canExchangePointsForMoney: true
-    });
+    };
+
+    // Add CEA expiry date if provided
+    if (ceaExpiryDate) {
+      userData.ceaExpiryDate = new Date(ceaExpiryDate);
+    }
+
+    const user = await User.create(userData);
 
     // Create CEA verification record for reference with fraud detection
     const verificationRecord = ceaVerificationService.createVerificationRecord({

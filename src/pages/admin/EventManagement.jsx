@@ -199,18 +199,24 @@ const EventManagement = () => {
 
   // Image upload function
   const uploadImage = async (file) => {
+    if (!file) {
+      throw new Error('No file provided for upload');
+    }
+
     const formData = new FormData();
     formData.append('image', file);
 
     try {
-      const response = await api.post('/upload/image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      // Don't set Content-Type manually - axios will set it automatically with boundary
+      const response = await api.post('/upload/image', formData);
       return response.imageUrl || response.url;
     } catch (error) {
       console.error('Image upload error:', error);
+
+      // Re-throw the original error to preserve error details
+      if (error.response) {
+        throw new Error(error.response.data?.message || 'Upload failed');
+      }
       throw new Error('Failed to upload image');
     }
   };
@@ -256,7 +262,16 @@ const EventManagement = () => {
           const imageUrl = await uploadImage(imageFile);
           finalFormData.imageUrl = imageUrl;
         } catch (error) {
-          toast.error('Failed to upload image. Event will be created without image.');
+          console.error('Image upload error details:', error);
+          if (error.message.includes('Admin privileges required')) {
+            toast.error('Admin privileges required to upload event images. Please login as admin.');
+          } else if (error.response?.status === 403) {
+            toast.error('Permission denied. Only admins can upload event images.');
+          } else if (error.response?.status === 401) {
+            toast.error('Authentication failed. Please login again.');
+          } else {
+            toast.error('Failed to upload image. Event will be created without image.');
+          }
         } finally {
           setUploading(false);
         }
@@ -284,7 +299,16 @@ const EventManagement = () => {
           const imageUrl = await uploadImage(imageFile);
           finalFormData.imageUrl = imageUrl;
         } catch (error) {
-          toast.error('Failed to upload new image. Event will be updated with existing image.');
+          console.error('Image upload error details:', error);
+          if (error.message.includes('Admin privileges required')) {
+            toast.error('Admin privileges required to upload event images. Please login as admin.');
+          } else if (error.response?.status === 403) {
+            toast.error('Permission denied. Only admins can upload event images.');
+          } else if (error.response?.status === 401) {
+            toast.error('Authentication failed. Please login again.');
+          } else {
+            toast.error('Failed to upload new image. Event will be updated with existing image.');
+          }
         } finally {
           setUploading(false);
         }

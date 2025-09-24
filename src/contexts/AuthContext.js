@@ -182,17 +182,28 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await api.auth.register({
+      const registrationData = {
         firstName: userData.name.split(' ')[0],
         lastName: userData.name.split(' ').slice(1).join(' ') || '',
         email: userData.email,
         phone: userData.phone,
         password: userData.password,
-        role: 'customer',
-        address: userData.address,
-        country: 'Malaysia',
+        role: userData.role || 'customer',
+        country: 'Singapore',
         referralCode: userData.referralCode
-      });
+      };
+
+      // Add address only for customers
+      if (userData.role === 'customer' && userData.address) {
+        registrationData.address = userData.address;
+      }
+
+      // Add CEA expiry date for property agents
+      if (userData.role === 'referral' && userData.ceaExpiryDate) {
+        registrationData.ceaExpiryDate = userData.ceaExpiryDate;
+      }
+
+      const response = await api.auth.register(registrationData);
       
       // 保存token
       apiUtils.setToken(response.token);

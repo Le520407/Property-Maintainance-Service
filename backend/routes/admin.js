@@ -1485,6 +1485,121 @@ router.get('/agents/:agentId', auth, async (req, res) => {
   }
 });
 
+// Get agent verification tools and security analysis
+router.get('/agents/:agentId/verification-tools', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('manage_users')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const agent = await User.findById(req.params.agentId).select('-password');
+    if (!agent || agent.role !== 'referral') {
+      return res.status(404).json({ message: 'Agent not found' });
+    }
+
+    // Simple security analysis
+    const warnings = [];
+    let riskLevel = 'LOW';
+
+    // Check email domain
+    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i;
+    if (!gmailRegex.test(agent.email)) {
+      warnings.push('Non-Gmail email address');
+      riskLevel = 'HIGH';
+    }
+
+    // Check CEA verification status
+    if (!agent.ceaRegistrationNumber) {
+      warnings.push('No CEA registration number');
+      riskLevel = 'HIGH';
+    }
+
+    if (agent.ceaVerificationStatus !== 'VERIFIED') {
+      warnings.push('CEA verification pending');
+      if (riskLevel === 'LOW') riskLevel = 'MEDIUM';
+    }
+
+    // Simple verification data
+    const verificationData = {
+      agent: {
+        name: `${agent.firstName} ${agent.lastName}`,
+        email: agent.email,
+        ceaNumber: agent.ceaRegistrationNumber,
+        riskLevel,
+        warnings,
+        verificationStatus: agent.ceaVerificationStatus
+      },
+      quickActions: {
+        ceaSearch: {
+          url: `https://eservices.cea.gov.sg/aceas/public-register/`,
+          description: 'Verify CEA Registration'
+        },
+        googleSearch: {
+          url: `https://www.google.com/search?q="${agent.firstName} ${agent.lastName}" property agent singapore`,
+          description: 'Search Agent Information'
+        }
+      },
+      verificationTools: {
+        verificationSteps: [
+          {
+            step: 1,
+            title: 'Check CEA Registration',
+            description: 'Verify the agent\'s CEA number is valid and active',
+            action: 'Search CEA public register',
+            checkpoints: [
+              'CEA number exists and is active',
+              'Name matches registration'
+            ]
+          },
+          {
+            step: 2,
+            title: 'Verify Email Domain',
+            description: 'Ensure agent uses Gmail for security',
+            action: 'Check email domain',
+            checkpoints: [
+              'Email uses @gmail.com domain'
+            ]
+          },
+          {
+            step: 3,
+            title: 'Final Approval',
+            description: 'Complete verification process',
+            action: 'Approve or reject agent',
+            checkpoints: [
+              'All checks completed',
+              'Ready for decision'
+            ]
+          }
+        ],
+        recommendations: []
+      }
+    };
+
+    // Add simple recommendations
+    if (!gmailRegex.test(agent.email)) {
+      verificationData.verificationTools.recommendations.push({
+        priority: 'HIGH',
+        action: 'Require Gmail Address',
+        description: 'Agent must use Gmail before verification'
+      });
+    }
+
+    if (!agent.ceaRegistrationNumber) {
+      verificationData.verificationTools.recommendations.push({
+        priority: 'HIGH',
+        action: 'CEA Number Required',
+        description: 'Agent must provide valid CEA number'
+      });
+    }
+
+    res.json(verificationData);
+
+  } catch (error) {
+    console.error('Get verification tools error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Update agent status
 router.patch('/agents/:agentId/status', auth, async (req, res) => {
   try {

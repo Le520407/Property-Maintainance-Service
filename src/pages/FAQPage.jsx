@@ -110,21 +110,50 @@ const FAQPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700">
+        <div className="absolute inset-0">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-orange-400 rounded-full opacity-20 transform translate-x-32 -translate-y-32"></div>
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-orange-800 rounded-full opacity-30 transform -translate-x-24 translate-y-24"></div>
+        </div>
+
+        <div className="relative container mx-auto px-4 py-24">
+          <div className="max-w-4xl mx-auto text-center text-white">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6 }}
+              className="mb-6"
+            >
+              <span className="inline-block px-4 py-2 bg-orange-500 bg-opacity-30 rounded-full text-orange-100 text-sm font-medium mb-4 backdrop-blur-sm">
+                Help Center
+              </span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.1 }}
+              className="text-4xl md:text-6xl font-bold mb-6 leading-tight"
+            >
+              Frequently Asked
+              <span className="block text-orange-200">Questions</span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="text-xl text-orange-100 max-w-3xl mx-auto mb-10 leading-relaxed"
+            >
+              Find answers to common questions about Swift Fix Pro services, agent program, and more.
+              Get the help you need to make the most of our platform.
+            </motion.p>
+          </div>
+        </div>
+      </section>
+
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Frequently Asked Questions
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Find answers to common questions about Swift Fix Pro services, agent program, and more
-          </p>
-        </motion.div>
 
         {/* Search Bar */}
         <motion.div

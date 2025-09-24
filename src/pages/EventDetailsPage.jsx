@@ -5,13 +5,10 @@ import {
   Calendar,
   MapPin,
   Clock,
-  Users,
   Star,
   Tag,
   CheckCircle,
   X,
-  Heart,
-  Share2,
   Download,
   ExternalLink,
   AlertCircle,
@@ -204,22 +201,26 @@ const EventDetailsPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="relative h-96 overflow-hidden">
-        {event.imageUrl ? (
-          <img
-            src={event.imageUrl}
-            alt={event.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700"></div>
+      <section className="relative h-96 overflow-hidden bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700">
+        {/* Decorative Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-orange-400 rounded-full opacity-20 transform translate-x-32 -translate-y-32"></div>
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-orange-800 rounded-full opacity-30 transform -translate-x-24 translate-y-24"></div>
+        </div>
+
+        {/* Optional Event Image Overlay */}
+        {event.imageUrl && (
+          <div className="absolute inset-0">
+            <img
+              src={event.imageUrl}
+              alt={event.title}
+              className="w-full h-full object-cover opacity-30"
+            />
+          </div>
         )}
 
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-black bg-opacity-50"></div>
-
         {/* Content */}
-        <div className="absolute inset-0 flex items-center">
+        <div className="relative flex items-center h-full">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl">
               <motion.div
@@ -420,21 +421,65 @@ const EventDetailsPage = () => {
                   </div>
                 )}
 
+                {/* Registration Deadline Warning */}
+                {canUserRegister() && (
+                  <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Clock className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-medium text-orange-800 mb-1">Registration Deadline</p>
+                        <p className="text-orange-700">{formatDate(event.registrationDeadline)}</p>
+                        <p className="text-orange-600">{formatTime(event.registrationDeadline)}</p>
+                        <p className="text-orange-600 mt-1 text-xs">
+                          {(() => {
+                            const deadline = new Date(event.registrationDeadline);
+                            const now = new Date();
+                            const diffTime = deadline - now;
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+
+                            if (diffDays > 1) return `${diffDays} days remaining`;
+                            if (diffHours > 1) return `${diffHours} hours remaining`;
+                            return 'Deadline approaching soon!';
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Action Buttons */}
                 <div className="space-y-3">
                   {canUserRegister() && (
-                    <button
-                      onClick={handleRegister}
-                      disabled={registering}
-                      className="w-full bg-orange-600 text-white py-3 px-4 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {registering ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      ) : (
-                        <UserPlus className="w-4 h-4" />
-                      )}
-                      {registering ? 'Registering...' : 'Register for Event'}
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        onClick={handleRegister}
+                        disabled={registering}
+                        className="w-full bg-orange-600 text-white py-4 px-4 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 font-semibold text-lg shadow-lg"
+                      >
+                        {registering ? (
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        ) : (
+                          <UserPlus className="w-5 h-5" />
+                        )}
+                        {registering ? 'Registering...' : 'Register Now'}
+                      </button>
+                      <div className="text-center">
+                        <p className="text-xs text-gray-500">
+                          By registering, you agree to attend the event
+                        </p>
+                        {event.availableSpots <= 5 && event.availableSpots > 0 && (
+                          <p className="text-xs text-red-600 font-medium mt-1">
+                            Only {event.availableSpots} spots left!
+                          </p>
+                        )}
+                        {event.availableSpots === 0 && (
+                          <p className="text-xs text-red-600 font-medium mt-1">
+                            Event is full - you'll be added to waitlist
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   )}
 
                   {canUserCancelRegistration() && (
@@ -463,26 +508,84 @@ const EventDetailsPage = () => {
                   )}
                 </div>
 
-                {/* Event Stats */}
-                <div className="mt-6 pt-6 border-t space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Capacity</span>
-                    <span className="font-semibold">{event.capacity} people</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Registered</span>
-                    <span className="font-semibold">{event.attendees.length} people</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Available</span>
-                    <span className="font-semibold text-green-600">{event.availableSpots} spots</span>
-                  </div>
-                  {event.cpdPoints > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">CPD Points</span>
-                      <span className="font-semibold text-blue-600">{event.cpdPoints} points</span>
+                {/* Event Capacity Progress */}
+                <div className="mt-6 pt-6 border-t">
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Event Capacity</span>
+                      <span className="text-sm text-gray-600">
+                        {event.attendees.length} / {event.capacity} registered
+                      </span>
                     </div>
-                  )}
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          (event.attendees.length / event.capacity) >= 0.9
+                            ? 'bg-red-500'
+                            : (event.attendees.length / event.capacity) >= 0.7
+                            ? 'bg-yellow-500'
+                            : 'bg-green-500'
+                        }`}
+                        style={{
+                          width: `${Math.min(100, (event.attendees.length / event.capacity) * 100)}%`,
+                        }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>0</span>
+                      <span>{Math.round((event.attendees.length / event.capacity) * 100)}% full</span>
+                      <span>{event.capacity}</span>
+                    </div>
+                  </div>
+
+                  {/* Event Stats */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Available Spots</span>
+                      <span className={`font-semibold ${
+                        event.availableSpots === 0
+                          ? 'text-red-600'
+                          : event.availableSpots <= 5
+                          ? 'text-orange-600'
+                          : 'text-green-600'
+                      }`}>
+                        {event.availableSpots} spots
+                      </span>
+                    </div>
+
+                    {event.waitlist && event.waitlist.length > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Waitlist</span>
+                        <span className="font-semibold text-yellow-600">{event.waitlist.length} people</span>
+                      </div>
+                    )}
+
+                    {event.cpdPoints > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">CPD Points</span>
+                        <span className="font-semibold text-blue-600">{event.cpdPoints} points</span>
+                      </div>
+                    )}
+
+                    {eventStatus === 'completed' && event.analytics.totalAttendance > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Attendance Rate</span>
+                        <span className="font-semibold text-purple-600">
+                          {Math.round((event.analytics.totalAttendance / event.attendees.length) * 100)}%
+                        </span>
+                      </div>
+                    )}
+
+                    {event.analytics.averageRating > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Rating</span>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                          <span className="font-semibold">{event.analytics.averageRating.toFixed(1)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -496,6 +599,29 @@ const EventDetailsPage = () => {
                       <p className="font-medium text-gray-900">Date & Time</p>
                       <p className="text-gray-600">{formatDate(event.startDate)}</p>
                       <p className="text-gray-600">{formatTime(event.startDate)} - {formatTime(event.endDate)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Clock className="w-5 h-5 text-orange-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-gray-900">Registration Deadline</p>
+                      <p className="text-gray-600">{formatDate(event.registrationDeadline)}</p>
+                      <p className="text-gray-600">{formatTime(event.registrationDeadline)}</p>
+                      <p className="text-sm text-orange-600 font-medium">
+                        {(() => {
+                          const deadline = new Date(event.registrationDeadline);
+                          const now = new Date();
+                          const diffTime = deadline - now;
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+
+                          if (diffTime <= 0) return 'Registration closed';
+                          if (diffDays > 1) return `${diffDays} days remaining`;
+                          if (diffHours > 1) return `${diffHours} hours remaining`;
+                          return 'Closing soon!';
+                        })()}
+                      </p>
                     </div>
                   </div>
 

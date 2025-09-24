@@ -78,17 +78,45 @@ router.get('/', async (req, res) => {
       if (endDate) filters.startDate.$lte = new Date(endDate);
     }
 
-    // Get events based on user role
-    const events = await Event.getEventsByRole(userRole, filters)
+    // Build complete filters for the user role
+    let roleFilters = {};
+    let statusFilter = {};
+
+    switch (userRole) {
+      case 'admin':
+        roleFilters = {}; // Admin can see all events
+        statusFilter = {}; // Admin can see all statuses
+        break;
+      case 'vendor':
+      case 'technician':
+        roleFilters = { visibility: { $in: ['public', 'vendor_only'] } };
+        statusFilter = { status: 'published' };
+        break;
+      case 'referral':
+        roleFilters = { visibility: { $in: ['public', 'agent_only'] } };
+        statusFilter = { status: 'published' };
+        break;
+      case 'customer':
+        roleFilters = { visibility: { $in: ['public', 'customer_only'] } };
+        statusFilter = { status: 'published' };
+        break;
+      default:
+        roleFilters = { visibility: 'public' };
+        statusFilter = { status: 'published' };
+    }
+
+    // Combine all filters
+    const allFilters = { ...roleFilters, ...statusFilter, ...filters };
+
+    // Get events with pagination
+    const events = await Event.find(allFilters)
+      .populate('organizer', 'firstName lastName email')
+      .sort({ startDate: 1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 
-    // Count total events based on user role
-    let countFilter = { ...filters };
-    if (userRole !== 'admin') {
-      countFilter.status = 'published';
-    }
-    const total = await Event.countDocuments(countFilter);
+    // Count total events with same filters
+    const total = await Event.countDocuments(allFilters);
 
     res.json({
       events,

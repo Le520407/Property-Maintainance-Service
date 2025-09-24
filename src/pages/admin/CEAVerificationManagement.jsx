@@ -1,13 +1,11 @@
 import {
   AlertTriangle,
   CheckCircle,
-  CheckSquare,
   Clock,
   Edit3,
   ExternalLink,
   Eye,
   Filter,
-  Link,
   Search,
   Shield,
   XCircle
@@ -28,8 +26,7 @@ const CEAVerificationManagement = () => {
   const [loadingTools, setLoadingTools] = useState(false);
   const [verificationForm, setVerificationForm] = useState({
     status: '',
-    notes: '',
-    expiryDate: ''
+    notes: ''
   });
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -104,8 +101,7 @@ const CEAVerificationManagement = () => {
     setSelectedAgent(agent);
     setVerificationForm({
       status: agent.ceaVerificationStatus || 'PENDING_MANUAL_VERIFICATION',
-      notes: agent.ceaVerificationNotes || '',
-      expiryDate: agent.ceaExpiryDate ? agent.ceaExpiryDate.split('T')[0] : ''
+      notes: agent.ceaVerificationNotes || ''
     });
     setShowVerificationModal(true);
   };
@@ -122,10 +118,7 @@ const CEAVerificationManagement = () => {
     }
 
     try {
-      await api.put(`/admin/agents/${selectedAgent._id}/cea-verification`, {
-        ...verificationForm,
-        expiryDate: verificationForm.expiryDate || null
-      });
+      await api.put(`/admin/agents/${selectedAgent._id}/cea-verification`, verificationForm);
       
       toast.success('CEA verification updated successfully');
       setShowVerificationModal(false);
@@ -143,7 +136,7 @@ const CEAVerificationManagement = () => {
     
     try {
       const response = await api.get(`/admin/agents/${agent._id}/verification-tools`);
-      setVerificationTools(response.data);
+      setVerificationTools(response);
     } catch (error) {
       console.error('Error fetching verification tools:', error);
       toast.error('Failed to load verification tools');
@@ -568,18 +561,6 @@ const CEAVerificationManagement = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Registration Expiry Date (Optional)
-                    </label>
-                    <input
-                      type="date"
-                      value={verificationForm.expiryDate}
-                      onChange={(e) => setVerificationForm({...verificationForm, expiryDate: e.target.value})}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Verification Notes
                     </label>
                     <textarea
@@ -589,6 +570,9 @@ const CEAVerificationManagement = () => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Add verification notes..."
                     />
+                    <p className="text-gray-500 text-xs mt-1">
+                      Note: CEA expiry date is now collected during agent registration and cannot be modified here.
+                    </p>
                   </div>
 
                   <div className="flex justify-end space-x-3 pt-4">
@@ -639,38 +623,39 @@ const CEAVerificationManagement = () => {
                     <p className="mt-2 text-gray-600">Loading verification tools...</p>
                   </div>
                 ) : verificationTools ? (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {/* Agent Info */}
                     <div className="bg-gray-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-lg mb-2">Agent Information</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-600">Name</p>
-                          <p className="font-medium">{verificationTools.agent.name}</p>
+                      <h4 className="font-medium text-lg mb-3">Agent Information</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Name:</span>
+                          <span className="font-medium">{verificationTools.agent.name}</span>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-600">CEA Number</p>
-                          <p className="font-mono font-medium">{verificationTools.agent.ceaNumber}</p>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">CEA Number:</span>
+                          <span className="font-mono">{verificationTools.agent.ceaNumber || 'Not provided'}</span>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Email</p>
-                          <p className="font-medium">{verificationTools.agent.email}</p>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Email:</span>
+                          <span className="font-medium">{verificationTools.agent.email}</span>
                         </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Risk Level</p>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Status:</span>
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
                             verificationTools.agent.riskLevel === 'HIGH' ? 'bg-red-100 text-red-800' :
                             verificationTools.agent.riskLevel === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
                             'bg-green-100 text-green-800'
                           }`}>
-                            {verificationTools.agent.riskLevel}
+                            {verificationTools.agent.riskLevel} Risk
                           </span>
                         </div>
                       </div>
+                      
                       {verificationTools.agent.warnings.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-sm text-gray-600 mb-1">Security Warnings</p>
-                          <ul className="text-sm text-red-600">
+                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                          <p className="text-sm font-medium text-red-800 mb-1">Issues Found:</p>
+                          <ul className="text-sm text-red-700">
                             {verificationTools.agent.warnings.map((warning, index) => (
                               <li key={index}>• {warning}</li>
                             ))}
@@ -681,82 +666,41 @@ const CEAVerificationManagement = () => {
 
                     {/* Quick Actions */}
                     <div className="bg-blue-50 p-4 rounded-lg">
-                      <h4 className="font-semibold text-lg mb-3">Quick Verification Links</h4>
+                      <h4 className="font-medium text-lg mb-3">Verification Links</h4>
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">CEA Public Register</p>
-                            <p className="text-sm text-gray-600">Official CEA database search</p>
-                          </div>
-                          <a
-                            href={verificationTools.quickActions.ceaSearch.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200"
-                          >
-                            <ExternalLink size={16} className="mr-1" />
-                            Search CEA
-                          </a>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">Google Search</p>
-                            <p className="text-sm text-gray-600">Find additional information online</p>
-                          </div>
-                          <a
-                            href={verificationTools.quickActions.googleSearch.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200"
-                          >
-                            <ExternalLink size={16} className="mr-1" />
-                            Google Search
-                          </a>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">LinkedIn Search</p>
-                            <p className="text-sm text-gray-600">Verify professional background</p>
-                          </div>
-                          <a
-                            href={verificationTools.quickActions.linkedinSearch.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-                          >
-                            <ExternalLink size={16} className="mr-1" />
-                            LinkedIn
-                          </a>
-                        </div>
+                        <a
+                          href={verificationTools.quickActions.ceaSearch.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full inline-flex items-center justify-center px-4 py-2 border border-blue-600 text-sm font-medium rounded-md text-blue-600 bg-white hover:bg-blue-50"
+                        >
+                          <ExternalLink size={16} className="mr-2" />
+                          {verificationTools.quickActions.ceaSearch.description}
+                        </a>
+                        <a
+                          href={verificationTools.quickActions.googleSearch.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full inline-flex items-center justify-center px-4 py-2 border border-green-600 text-sm font-medium rounded-md text-green-600 bg-white hover:bg-green-50"
+                        >
+                          <ExternalLink size={16} className="mr-2" />
+                          {verificationTools.quickActions.googleSearch.description}
+                        </a>
                       </div>
                     </div>
 
-                    {/* Verification Steps */}
+                    {/* Simple Checklist */}
                     <div className="bg-white border p-4 rounded-lg">
-                      <h4 className="font-semibold text-lg mb-3">Verification Checklist</h4>
-                      <div className="space-y-4">
+                      <h4 className="font-medium text-lg mb-3">Verification Steps</h4>
+                      <div className="space-y-3">
                         {verificationTools.verificationTools.verificationSteps.map((step) => (
-                          <div key={step.step} className="border-l-4 border-blue-500 pl-4">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <h5 className="font-medium text-gray-900">
-                                  Step {step.step}: {step.title}
-                                  {step.critical && <span className="text-red-500 ml-1">*</span>}
-                                </h5>
-                                <p className="text-sm text-gray-600 mt-1">{step.description}</p>
-                                <p className="text-sm font-medium text-blue-600 mt-1">{step.action}</p>
-                              </div>
+                          <div key={step.step} className="flex items-start space-x-3">
+                            <div className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-800 rounded-full flex items-center justify-center text-sm font-medium">
+                              {step.step}
                             </div>
-                            <div className="mt-2">
-                              <p className="text-xs font-medium text-gray-700 mb-1">Checkpoints:</p>
-                              <ul className="text-xs text-gray-600 space-y-1">
-                                {step.checkpoints.map((checkpoint, index) => (
-                                  <li key={index} className="flex items-center">
-                                    <CheckSquare size={12} className="mr-2 text-gray-400" />
-                                    {checkpoint}
-                                  </li>
-                                ))}
-                              </ul>
+                            <div>
+                              <h5 className="font-medium text-gray-900">{step.title}</h5>
+                              <p className="text-sm text-gray-600">{step.description}</p>
                             </div>
                           </div>
                         ))}
@@ -765,27 +709,15 @@ const CEAVerificationManagement = () => {
 
                     {/* Recommendations */}
                     {verificationTools.verificationTools.recommendations.length > 0 && (
-                      <div className="bg-yellow-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-lg mb-3">Verification Recommendations</h4>
+                      <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                        <h4 className="font-medium text-lg mb-3">Action Required</h4>
                         <div className="space-y-2">
                           {verificationTools.verificationTools.recommendations.map((rec, index) => (
-                            <div key={index} className={`p-2 rounded border-l-4 ${
-                              rec.priority === 'CRITICAL' ? 'border-red-500 bg-red-50' :
-                              rec.priority === 'HIGH' ? 'border-orange-500 bg-orange-50' :
-                              'border-yellow-500 bg-yellow-50'
-                            }`}>
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="font-medium text-gray-900">{rec.action}</p>
-                                  <p className="text-sm text-gray-600">{rec.description}</p>
-                                </div>
-                                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                  rec.priority === 'CRITICAL' ? 'bg-red-100 text-red-800' :
-                                  rec.priority === 'HIGH' ? 'bg-orange-100 text-orange-800' :
-                                  'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                  {rec.priority}
-                                </span>
+                            <div key={index} className="flex items-start space-x-2">
+                              <AlertTriangle size={16} className="text-yellow-600 mt-0.5" />
+                              <div>
+                                <p className="font-medium text-yellow-800">{rec.action}</p>
+                                <p className="text-sm text-yellow-700">{rec.description}</p>
                               </div>
                             </div>
                           ))}
