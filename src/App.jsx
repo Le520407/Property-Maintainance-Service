@@ -36,6 +36,7 @@ import HomepageManagement from './pages/admin/HomepageManagement.jsx';
 import JobDetailsPage from './pages/jobs/JobDetailsPage.jsx';
 import { LanguageProvider } from './contexts/LanguageContext.js';
 import LoginPage from './pages/auth/LoginPage.jsx';
+import GoogleRegistrationPage from './pages/auth/GoogleRegistrationPage.jsx';
 import MembershipDashboard from './components/customer/MembershipDashboard.jsx';
 import MembershipPlans from './components/customer/MembershipPlans.jsx';
 import MembershipSuccess from './pages/MembershipSuccess.jsx';
@@ -127,12 +128,21 @@ import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
 
 function App() {
   return (
+<<<<<<< HEAD
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || "demo-client-id"}>
       <LanguageProvider>
         <AuthProvider>
         <SessionManager />
         <MessagesProvider>
           <CartProvider>
+=======
+    <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
+      <LanguageProvider>
+        <AuthProvider>
+          <SessionManager />
+          <MessagesProvider>
+            <CartProvider>
+>>>>>>> origin/Anas
           <AnimatePresence mode="wait">
             <Routes>
               {/* Dashboard and Admin routes (full-page layout) */}
@@ -260,6 +270,7 @@ function App() {
                       <Route path="/agent-agreement" element={<AgentAgreementPage />} />
                       
                       <Route path="/login" element={<LoginPage />} />
+                      <Route path="/google-registration" element={<GoogleRegistrationPage />} />
                       <Route path="/register-selection" element={<RegisterSelectionPage />} />
                       <Route path="/customer-register" element={<CustomerRegisterPage />} />
                       <Route path="/vendor-register" element={<VendorRegisterPage />} />

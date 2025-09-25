@@ -21,7 +21,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import cookieManager from '../../utils/cookieManager';
 import { api } from '../../services/api';
 
-const AgentRegisterPage = ({ embedded = false }) => {
+const AgentRegisterPage = ({ embedded = false, googleData = null }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -30,8 +30,15 @@ const AgentRegisterPage = ({ embedded = false }) => {
   const [codeValidated, setCodeValidated] = useState(false);
 
   const navigate = useNavigate();
-  const { register: registerUser } = useAuth();
-  const { register, handleSubmit, formState: { errors }, trigger, watch, setValue } = useForm();
+  const { register: registerUser, completeGoogleRegistration } = useAuth();
+  const { register, handleSubmit, formState: { errors }, trigger, watch, setValue } = useForm({
+    defaultValues: googleData ? {
+      firstName: googleData.given_name || '',
+      lastName: googleData.family_name || '',
+      email: googleData.email || '',
+      profilePicture: googleData.picture || ''
+    } : {}
+  });
 
   const password = watch('password');
   const ceaRegistrationNumber = watch('ceaRegistrationNumber');
@@ -168,36 +175,64 @@ const AgentRegisterPage = ({ embedded = false }) => {
         });
       }
 
-      const result = await registerUser({
-        name: `${data.firstName} ${data.lastName}`,
-        email: data.email,
-        password: data.password,
-        phone: data.phone,
-        address: data.address,
-        role: 'referral', // Agent role in backend
-        ceaRegistrationNumber: data.ceaRegistrationNumber
-      });
+      if (googleData) {
+        // Google OAuth registration
+        const registrationData = {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          address: data.address,
+          role: 'referral',
+          ceaRegistrationNumber: data.ceaRegistrationNumber
+        };
+        
 
-      if (result.success) {
-        // Clear saved form data on successful registration
-        if (cookieManager.consent.hasConsent('preferences')) {
-          cookieManager.ux.removeFormData('agent-registration');
-        }
+        await completeGoogleRegistration(registrationData);
         
         // Track successful registration
         if (cookieManager.consent.hasConsent('analytics')) {
           cookieManager.analytics.setConversionData({
             event: 'agent_registration_success',
             timestamp: Date.now(),
-            userId: result.user?.id,
             role: 'referral'
           });
         }
         
-        toast.success('Agent registration successful! Please verify your email.');
+        toast.success('Agent registration successful! Welcome to your dashboard.');
         navigate('/dashboard');
       } else {
-        toast.error(result.error || 'Registration failed');
+        // Regular registration
+        const result = await registerUser({
+          name: `${data.firstName} ${data.lastName}`,
+          email: data.email,
+          password: data.password,
+          phone: data.phone,
+          address: data.address,
+          role: 'referral', // Agent role in backend
+          ceaRegistrationNumber: data.ceaRegistrationNumber
+        });
+
+        if (result.success) {
+          // Clear saved form data on successful registration
+          if (cookieManager.consent.hasConsent('preferences')) {
+            cookieManager.ux.removeFormData('agent-registration');
+          }
+          
+          // Track successful registration
+          if (cookieManager.consent.hasConsent('analytics')) {
+            cookieManager.analytics.setConversionData({
+              event: 'agent_registration_success',
+              timestamp: Date.now(),
+              userId: result.user?.id,
+              role: 'referral'
+            });
+          }
+          
+          toast.success('Agent registration successful! Please verify your email.');
+          navigate('/dashboard');
+        } else {
+          toast.error(result.error || 'Registration failed');
+        }
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -485,6 +520,29 @@ const AgentRegisterPage = ({ embedded = false }) => {
                   Contact Information
                 </h2>
 
+                {/* Google Account Banner */}
+                {googleData && (
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      {googleData.picture && (
+                        <img 
+                          src={googleData.picture} 
+                          alt="Google Profile" 
+                          className="w-10 h-10 rounded-full"
+                        />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-blue-800">
+                          Continuing with Google Account
+                        </p>
+                        <p className="text-sm text-blue-600">
+                          {googleData.email}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -501,8 +559,9 @@ const AgentRegisterPage = ({ embedded = false }) => {
                             message: 'Please enter a valid email address'
                           }
                         })}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                        className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors ${googleData ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                         placeholder="Enter your email address"
+                        readOnly={!!googleData}
                       />
                     </div>
                     {errors.email && (

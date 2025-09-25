@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Users, Building, UserPlus, ArrowRight, Star, ChevronLeft, CheckCircle } from 'lucide-react';
 
@@ -10,6 +10,10 @@ import AgentRegisterPage from './AgentRegisterPage';
 
 const RegisterSelectionPage = () => {
   const [selectedUserType, setSelectedUserType] = useState(null);
+  const location = useLocation();
+  
+  // Get Google data from navigation state
+  const googleData = location.state?.googleData;
 
   const userTypes = [
     {
@@ -57,6 +61,28 @@ const RegisterSelectionPage = () => {
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Select the type of account that best fits your needs
             </p>
+            
+            {/* Google Login Info Banner */}
+            {googleData && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="mt-6 max-w-md mx-auto"
+              >
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center space-x-3">
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <div className="text-left">
+                    <p className="text-sm font-medium text-green-800">
+                      Google Account Connected
+                    </p>
+                    <p className="text-xs text-green-600 mt-1">
+                      {googleData.email}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         </div>
       </section>
@@ -149,7 +175,7 @@ const RegisterSelectionPage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6 }}
                 >
-                  <CustomerRegisterPage embedded={true} />
+                  <CustomerRegisterPage embedded={true} googleData={googleData} />
                 </motion.div>
               )}
 
@@ -159,7 +185,7 @@ const RegisterSelectionPage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6 }}
                 >
-                  <VendorRegisterPage embedded={true} />
+                  <VendorRegisterPage embedded={true} googleData={googleData} />
                 </motion.div>
               )}
 
@@ -169,7 +195,7 @@ const RegisterSelectionPage = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6 }}
                 >
-                  <AgentRegisterPage />
+                  <AgentRegisterPage googleData={googleData} />
                 </motion.div>
               )}
 
