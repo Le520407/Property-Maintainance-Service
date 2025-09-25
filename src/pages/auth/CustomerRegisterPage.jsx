@@ -19,13 +19,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import cookieManager from '../../utils/cookieManager';
 import toast from 'react-hot-toast';
 
-const CustomerRegisterPage = ({ embedded = false }) => {
+const CustomerRegisterPage = ({ embedded = false, googleData = null }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [searchParams] = useSearchParams();
-  const { register: registerUser } = useAuth();
+  const { register: registerUser, completeGoogleRegistration } = useAuth();
   const navigate = useNavigate();
 
   // Singapore cities list
@@ -66,7 +66,16 @@ const CustomerRegisterPage = ({ embedded = false }) => {
     watch,
     setValue,
     formState: { errors }
-  } = useForm();
+  } = useForm({
+    defaultValues: googleData ? {
+      firstName: googleData.firstName || '',
+      lastName: googleData.lastName || '',
+      email: googleData.email || '',
+      country: 'Singapore'
+    } : {
+      country: 'Singapore'
+    }
+  });
 
   const password = watch('password');
 
@@ -113,17 +122,32 @@ const CustomerRegisterPage = ({ embedded = false }) => {
         });
       }
       
-      const result = await registerUser({
-        name: `${data.firstName} ${data.lastName}`,
-        email: data.email,
-        password: data.password,
-        phone: data.phone,
-        address: data.address,
-        city: data.city,
-        country: 'Singapore',
-        role: 'customer',
-        referralCode: data.referralCode
-      });
+      let result;
+      
+      if (googleData) {
+        // Google OAuth registration
+        result = await completeGoogleRegistration(googleData, {
+          phone: data.phone,
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          zipCode: data.zipCode,
+          country: data.country || 'Singapore'
+        });
+      } else {
+        // Regular registration
+        result = await registerUser({
+          name: `${data.firstName} ${data.lastName}`,
+          email: data.email,
+          password: data.password,
+          phone: data.phone,
+          address: data.address,
+          city: data.city,
+          country: 'Singapore',
+          role: 'customer',
+          referralCode: data.referralCode
+        });
+      }
       
       if (result.success) {
         // Clear saved form data on successful registration
@@ -390,8 +414,9 @@ const CustomerRegisterPage = ({ embedded = false }) => {
                                 message: 'Invalid email address'
                               }
                             })}
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
+                            className={`w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors ${googleData ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                             placeholder="Enter your email address"
+                            readOnly={!!googleData}
                           />
                         </div>
                         {errors.email && (

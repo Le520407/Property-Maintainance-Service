@@ -17,16 +17,18 @@ const GoogleAuthButton = ({ className = "", disabled = false }) => {
       
       // Call the googleLogin method from AuthContext with the ID token
       const result = await googleLogin(idToken);
+      console.log('Google login result:', result);
       
-      if (result.success) {
-        toast.success('Google login successful!');
-        navigate('/');
-      } else if (result.requiresRegistration) {
+      if (result.requiresRegistration) {
         // New user needs to complete registration
         toast.success('Please complete your registration');
-        navigate('/google-registration', { 
+        navigate('/register-selection', { 
           state: { googleData: result.googleData } 
         });
+      } else if (result.success) {
+        // Existing user login successful
+        toast.success('Google login successful!');
+        navigate('/');
       } else {
         toast.error(result.error || 'Google login failed');
       }

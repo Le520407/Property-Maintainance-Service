@@ -25,7 +25,9 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
+    required: function() {
+      return this.authProvider === 'local';
+    },
     minlength: 6
   },
   phone: {
@@ -65,6 +67,26 @@ const userSchema = new mongoose.Schema({
   avatar: {
     type: String,
     default: null
+  },
+  
+  // OAuth fields
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
+  },
+  googleId: {
+    type: String,
+    sparse: true,
+    unique: true
+  },
+  profilePicture: {
+    type: String,
+    default: null
+  },
+  isEmailVerified: {
+    type: Boolean,
+    default: false
   },
   
   // Customer specific fields

@@ -56,9 +56,13 @@ app.use(cors({
     'https://www.swiftfixpro.com',
     'https://swiftfixpro.com',
     'http://www.swiftfixpro.com',
-    'http://swiftfixpro.com'
+    'http://swiftfixpro.com',
+    'https://accounts.google.com',
+    'https://oauth2.googleapis.com'
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept']
 }));
 app.use(morgan('combined'));
 app.use(limiter);

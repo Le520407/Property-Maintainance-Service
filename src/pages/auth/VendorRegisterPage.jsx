@@ -20,8 +20,9 @@ import { api } from '../../services/api';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
+import { useAuth } from '../../contexts/AuthContext';
 
-const VendorRegisterPage = ({ embedded = false }) => {
+const VendorRegisterPage = ({ embedded = false, googleData = null }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,13 +61,22 @@ const VendorRegisterPage = ({ embedded = false }) => {
     'Yishun'
   ];
 
+  const { completeGoogleRegistration } = useAuth();
+
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
     setValue
-  } = useForm();
+  } = useForm({
+    defaultValues: googleData ? {
+      firstName: googleData.given_name || '',
+      lastName: googleData.family_name || '',
+      email: googleData.email || '',
+      profilePicture: googleData.picture || ''
+    } : {}
+  });
 
   const password = watch('password');
 
@@ -92,30 +102,51 @@ const VendorRegisterPage = ({ embedded = false }) => {
     setIsSubmitting(true);
     
     try {
-      // Ensure all required fields are present
-      if (!data.firstName || !data.lastName || !data.email || !data.password || !data.phone) {
-        toast.error('Please fill in all required fields');
-        return;
-      }
+      if (googleData) {
+        // Google OAuth registration
+        const registrationData = {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          city: data.serviceArea || 'Singapore',
+          country: 'Singapore',
+          role: 'vendor',
+          skills: Array.isArray(data.services) ? data.services : [data.services].filter(Boolean),
+          experience: parseInt(data.teamSize?.split('-')[0]) || 0,
+          hourlyRate: 0
+        };
+        
 
-      const vendorData = {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        password: data.password,
-        phone: data.phone,
-        city: data.serviceArea || 'Singapore',
-        country: 'Singapore',
-        skills: Array.isArray(data.services) ? data.services : [data.services].filter(Boolean),
-        experience: parseInt(data.teamSize?.split('-')[0]) || 0,
-        hourlyRate: 0
-      };
-      
-      console.log('Submitting vendor data:', vendorData); // Debug log
-      
-      const result = await api.auth.registerTechnician(vendorData);
-      toast.success('Vendor registration successful! Your account is pending approval.');
-      navigate('/login');
+        await completeGoogleRegistration(registrationData);
+        toast.success('Vendor registration successful! Your account is pending approval.');
+        navigate('/dashboard');
+      } else {
+        // Regular registration
+        // Ensure all required fields are present
+        if (!data.firstName || !data.lastName || !data.email || !data.password || !data.phone) {
+          toast.error('Please fill in all required fields');
+          return;
+        }
+
+        const vendorData = {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          password: data.password,
+          phone: data.phone,
+          city: data.serviceArea || 'Singapore',
+          country: 'Singapore',
+          skills: Array.isArray(data.services) ? data.services : [data.services].filter(Boolean),
+          experience: parseInt(data.teamSize?.split('-')[0]) || 0,
+          hourlyRate: 0
+        };
+        
+
+        
+        const result = await api.auth.registerTechnician(vendorData);
+        toast.success('Vendor registration successful! Your account is pending approval.');
+        navigate('/login');
+      }
     } catch (error) {
       console.error('Registration error:', error); // Debug log
       toast.error(error.message || 'Registration failed, please try again');
@@ -257,6 +288,29 @@ const VendorRegisterPage = ({ embedded = false }) => {
                     Basic Information
                   </h2>
                   
+                  {/* Google Account Banner */}
+                  {googleData && (
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        {googleData.picture && (
+                          <img 
+                            src={googleData.picture} 
+                            alt="Google Profile" 
+                            className="w-10 h-10 rounded-full"
+                          />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-blue-800">
+                            Continuing with Google Account
+                          </p>
+                          <p className="text-sm text-blue-600">
+                            {googleData.email}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -302,8 +356,9 @@ const VendorRegisterPage = ({ embedded = false }) => {
                             message: 'Please enter a valid email address'
                           }
                         })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${googleData ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                         placeholder="Enter email address"
+                        readOnly={!!googleData}
                       />
                       {errors.email && (
                         <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>

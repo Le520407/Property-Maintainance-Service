@@ -602,4 +602,162 @@ router.post('/validate-cea', async (req, res) => {
   }
 });
 
+// Google OAuth Routes
+const googleAuthService = require('../services/googleAuthService');
+
+// Verify Google ID Token and handle login/registration
+router.post('/google/verify', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ message: 'ID token is required' });
+    }
+
+    // Verify the Google ID token
+    const googleUserInfo = await googleAuthService.verifyIdToken(idToken);
+    
+    if (!googleUserInfo) {
+      return res.status(401).json({ message: 'Invalid Google token' });
+    }
+
+    console.log('Google User Info:', googleUserInfo);
+
+    // Check if user exists in database
+    const existingUser = await User.findOne({ 
+      $or: [
+        { email: googleUserInfo.email },
+        { googleId: googleUserInfo.googleId }
+      ]
+    });
+
+    console.log('Existing user found:', existingUser ? existingUser.email : 'None');
+
+    if (existingUser) {
+      // User exists, complete login
+      const token = generateToken({ userId: existingUser._id, email: existingUser.email, role: existingUser.role });
+      const refreshToken = generateRefreshToken({ userId: existingUser._id, email: existingUser.email, role: existingUser.role });
+
+      res.json({
+        token,
+        refreshToken,
+        user: {
+          _id: existingUser._id,
+          fullName: existingUser.fullName,
+          firstName: existingUser.firstName,
+          lastName: existingUser.lastName,
+          email: existingUser.email,
+          role: existingUser.role,
+          status: existingUser.status,
+          profilePicture: existingUser.profilePicture,
+          phone: existingUser.phone,
+          address: existingUser.address,
+          city: existingUser.city,
+          state: existingUser.state,
+          zipCode: existingUser.zipCode,
+          country: existingUser.country,
+          authProvider: existingUser.authProvider,
+          googleId: existingUser.googleId
+        }
+      });
+    } else {
+      // New user, requires registration completion
+      res.json({
+        requiresRegistration: true,
+        googleData: {
+          googleId: googleUserInfo.googleId,
+          email: googleUserInfo.email,
+          firstName: googleUserInfo.firstName || '',
+          lastName: googleUserInfo.lastName || '',
+          fullName: googleUserInfo.name || '',
+          profilePicture: googleUserInfo.picture || ''
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Google OAuth verification error:', error);
+    res.status(500).json({ message: 'Internal server error during Google authentication' });
+  }
+});
+
+// Complete Google OAuth registration
+router.post('/google/complete-registration', async (req, res) => {
+  try {
+    const { phone, address, city, state, zipCode, country, googleData } = req.body;
+
+    if (!googleData || !googleData.email || !googleData.googleId) {
+      return res.status(400).json({ message: 'Google data is required' });
+    }
+
+    if (!phone) {
+      return res.status(400).json({ message: 'Phone number is required' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({
+      $or: [
+        { email: googleData.email },
+        { googleId: googleData.googleId }
+      ]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
+    // Create new user
+    const newUser = new User({
+      firstName: googleData.firstName || '',
+      lastName: googleData.lastName || '',
+      fullName: googleData.fullName || `${googleData.firstName} ${googleData.lastName}`.trim(),
+      email: googleData.email,
+      phone,
+      address: address || '',
+      city: city || '',
+      state: state || '',
+      zipCode: zipCode || '',
+      country: country || 'Singapore',
+      role: 'customer',
+      status: 'ACTIVE',
+      authProvider: 'google',
+      googleId: googleData.googleId,
+      profilePicture: googleData.profilePicture || '',
+      isEmailVerified: true // Google emails are already verified
+    });
+
+    await newUser.save();
+
+    // Generate tokens
+    const token = generateToken({ userId: newUser._id, email: newUser.email, role: newUser.role });
+    const refreshToken = generateRefreshToken({ userId: newUser._id, email: newUser.email, role: newUser.role });
+
+    res.status(201).json({
+      message: 'User registered successfully with Google',
+      token,
+      refreshToken,
+      user: {
+        _id: newUser._id,
+        fullName: newUser.fullName,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        email: newUser.email,
+        role: newUser.role,
+        status: newUser.status,
+        profilePicture: newUser.profilePicture,
+        phone: newUser.phone,
+        address: newUser.address,
+        city: newUser.city,
+        state: newUser.state,
+        zipCode: newUser.zipCode,
+        country: newUser.country,
+        authProvider: newUser.authProvider,
+        googleId: newUser.googleId
+      }
+    });
+  } catch (error) {
+    console.error('Google OAuth registration error:', error);
+    res.status(500).json({ message: 'Internal server error during registration' });
+  }
+});
+
 module.exports = router;
