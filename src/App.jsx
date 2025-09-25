@@ -2,6 +2,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Route, Routes } from 'react-router-dom';
 import SessionManager from './components/auth/SessionManager';
 import CookieConsent from './components/common/CookieConsent';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 import AboutPage from './pages/AboutPage.jsx';
 import AgentAgreementPage from './pages/legal/AgentAgreementPage.jsx';
@@ -23,6 +24,7 @@ import ContactPage from './pages/ContactPage.jsx';
 import CustomerDashboard from './pages/customer/CustomerDashboard.jsx';
 import CustomerFeedback from './pages/customer/CustomerFeedback.jsx';
 import CustomerRegisterPage from './pages/auth/CustomerRegisterPage.jsx';
+import GoogleRegistrationPage from './pages/auth/GoogleRegistrationPage.jsx';
 import FAQManagement from './pages/admin/FAQManagement.jsx';
 import FAQPage from './pages/FAQPage.jsx';
 import Footer from './components/layout/Footer.jsx';
@@ -122,11 +124,12 @@ import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
 
 function App() {
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <SessionManager />
-        <MessagesProvider>
-          <CartProvider>
+    <GoogleOAuthProvider clientId="599295659530-kn3jidg1d3bptfl2duig6nf4mft3gdob.apps.googleusercontent.com">
+      <LanguageProvider>
+        <AuthProvider>
+          <SessionManager />
+          <MessagesProvider>
+            <CartProvider>
           <AnimatePresence mode="wait">
             <Routes>
               {/* Dashboard and Admin routes (full-page layout) */}
@@ -226,6 +229,7 @@ function App() {
                       <Route path="/customer-register" element={<CustomerRegisterPage />} />
                       <Route path="/vendor-register" element={<VendorRegisterPage />} />
                       <Route path="/agent-register" element={<AgentRegisterPage />} />
+                      <Route path="/google-registration" element={<GoogleRegistrationPage />} />
                       {/* Legacy route redirects */}
                       <Route path="/register" element={<CustomerRegisterPage />} />
                       <Route path="/booking" element={<BookingPage />} />
@@ -366,11 +370,12 @@ function App() {
               } />
             </Routes>
           </AnimatePresence>
-          </CartProvider>
-        </MessagesProvider>
-        <CookieConsent />
-      </AuthProvider>
-    </LanguageProvider>
+            </CartProvider>
+          </MessagesProvider>
+          <CookieConsent />
+        </AuthProvider>
+      </LanguageProvider>
+    </GoogleOAuthProvider>
   );
 }
 

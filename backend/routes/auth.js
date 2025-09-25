@@ -5,6 +5,7 @@ const InviteCode = require('../models/InviteCode');
 const { generateToken, generateRefreshToken } = require('../utils/jwt');
 const { authenticateToken } = require('../middleware/auth');
 const ceaVerificationService = require('../services/ceaVerificationService');
+const googleAuthService = require('../services/googleAuthService');
 
 const router = express.Router();
 
@@ -575,6 +576,255 @@ router.post('/validate-cea', async (req, res) => {
     res.status(500).json({
       valid: false,
       message: 'Internal server error during validation'
+    });
+  }
+});
+
+// Google OAuth Routes
+
+// Get Google OAuth URL
+router.get('/google/url', (req, res) => {
+  try {
+    const authUrl = googleAuthService.getAuthUrl();
+    res.json({ authUrl });
+  } catch (error) {
+    console.error('Google OAuth URL generation error:', error);
+    res.status(500).json({ message: 'Failed to generate Google OAuth URL' });
+  }
+});
+
+// Handle Google OAuth callback
+router.post('/google/callback', async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ message: 'Authorization code is required' });
+    }
+
+    // Verify Google OAuth code and get user info
+    const googleUser = await googleAuthService.verifyCallback(code);
+
+    // Check if user exists
+    let user = await User.findOne({ email: googleUser.email });
+
+    if (!user) {
+      // Create new user with Google data
+      user = new User({
+        firstName: googleUser.firstName || googleUser.name.split(' ')[0],
+        lastName: googleUser.lastName || googleUser.name.split(' ').slice(1).join(' ') || '',
+        email: googleUser.email,
+        googleId: googleUser.googleId,
+        profilePicture: googleUser.picture,
+        isEmailVerified: googleUser.emailVerified,
+        role: 'customer',
+        status: 'ACTIVE',
+        // No password needed for Google OAuth users
+        authProvider: 'google'
+      });
+
+      await user.save();
+    } else {
+      // Update existing user with Google ID if not already set
+      if (!user.googleId) {
+        user.googleId = googleUser.googleId;
+        user.authProvider = user.authProvider || 'google';
+        if (googleUser.picture && !user.profilePicture) {
+          user.profilePicture = googleUser.picture;
+        }
+        await user.save();
+      }
+    }
+
+    // Generate JWT token
+    const token = generateToken({ userId: user._id, email: user.email, role: user.role });
+
+    res.json({
+      message: 'Google authentication successful',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        city: user.city,
+        country: user.country,
+        role: user.role,
+        status: user.status,
+        profilePicture: user.profilePicture,
+        authProvider: user.authProvider
+      }
+    });
+
+  } catch (error) {
+    console.error('Google OAuth callback error:', error);
+    res.status(500).json({ message: 'Google authentication failed' });
+  }
+});
+
+// Handle Google ID Token (for direct frontend integration)
+router.post('/google/verify', async (req, res) => {
+  try {
+    console.log('🔍 Google verify endpoint called');
+    console.log('Request body:', req.body);
+    
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      console.log('❌ No ID token provided');
+      return res.status(400).json({ message: 'Google ID token is required' });
+    }
+
+    console.log('🔑 Verifying Google ID token...');
+    // Verify Google ID token
+    const googleUser = await googleAuthService.verifyIdToken(idToken);
+
+    console.log('👤 Checking if user exists:', googleUser.email);
+    // Check if user exists
+    let user = await User.findOne({ email: googleUser.email });
+
+    if (!user) {
+      console.log('🆕 New Google user - needs to complete registration');
+      // New user needs to complete registration
+      // Return special response indicating registration completion needed
+      res.json({
+        requiresRegistration: true,
+        message: 'Please complete your registration',
+        googleData: {
+          email: googleUser.email,
+          firstName: googleUser.firstName || googleUser.name.split(' ')[0],
+          lastName: googleUser.lastName || googleUser.name.split(' ').slice(1).join(' ') || '',
+          fullName: googleUser.name,
+          profilePicture: googleUser.picture,
+          googleId: googleUser.googleId,
+          isEmailVerified: googleUser.emailVerified
+        }
+      });
+      return;
+    } else {
+      console.log('👤 Existing user found, updating Google info...');
+      // Update existing user with Google ID if not already set
+      if (!user.googleId) {
+        user.googleId = googleUser.googleId;
+        user.authProvider = user.authProvider || 'google';
+        if (googleUser.picture && !user.profilePicture) {
+          user.profilePicture = googleUser.picture;
+        }
+        await user.save();
+        console.log('✅ User updated with Google info');
+      }
+    }
+
+    // Generate JWT token for existing user
+    const token = generateToken({ userId: user._id, email: user.email, role: user.role });
+
+    res.json({
+      message: 'Google authentication successful',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        city: user.city,
+        country: user.country,
+        role: user.role,
+        status: user.status,
+        profilePicture: user.profilePicture,
+        authProvider: user.authProvider
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Google ID token verification error:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Google authentication failed',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Complete Google user registration
+router.post('/google/complete-registration', async (req, res) => {
+  try {
+    console.log('🆕 Completing Google user registration');
+    const { 
+      googleData, 
+      phone, 
+      address, 
+      city, 
+      state, 
+      zipCode, 
+      country 
+    } = req.body;
+
+    if (!googleData || !googleData.email || !googleData.googleId) {
+      return res.status(400).json({ message: 'Google data is required' });
+    }
+
+    // Check if user already exists (shouldn't happen, but safety check)
+    const existingUser = await User.findOne({ email: googleData.email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
+    // Create new user with Google data and additional info
+    const user = new User({
+      firstName: googleData.firstName,
+      lastName: googleData.lastName,
+      fullName: googleData.fullName,
+      email: googleData.email,
+      googleId: googleData.googleId,
+      profilePicture: googleData.profilePicture,
+      isEmailVerified: googleData.isEmailVerified,
+      phone: phone || '',
+      address: address || '',
+      city: city || '',
+      state: state || '',
+      zipCode: zipCode || '',
+      country: country || 'Singapore',
+      role: 'customer',
+      status: 'ACTIVE',
+      authProvider: 'google'
+    });
+
+    console.log('💾 Saving completed Google user registration...');
+    await user.save();
+    console.log('✅ Google user registration completed successfully');
+
+    // Generate JWT token
+    const token = generateToken({ userId: user._id, email: user.email, role: user.role });
+
+    res.json({
+      message: 'Registration completed successfully',
+      token,
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        address: user.address,
+        city: user.city,
+        state: user.state,
+        zipCode: user.zipCode,
+        country: user.country,
+        role: user.role,
+        status: user.status,
+        profilePicture: user.profilePicture,
+        authProvider: user.authProvider
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Google registration completion error:', error);
+    res.status(500).json({ 
+      message: 'Registration completion failed',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
