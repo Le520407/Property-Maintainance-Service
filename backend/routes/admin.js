@@ -480,6 +480,164 @@ router.get('/stats', auth, async (req, res) => {
   }
 });
 
+// @desc    Get admin dashboard statistics
+// @route   GET /api/admin/dashboard/stats
+// @access  Private (Admin)
+router.get('/dashboard/stats', auth, async (req, res) => {
+  try {
+    if (!req.user.isAdmin() && !req.user.hasPermission('view_analytics')) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Get current date for monthly calculations
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Get total users count
+    const totalUsers = await User.countDocuments({ role: { $ne: 'admin' } });
+
+    // Get user counts by role
+    const usersByRole = await User.aggregate([
+      { $match: { role: { $ne: 'admin' } } },
+      { $group: { _id: '$role', count: { $sum: 1 } } }
+    ]);
+
+    // Get total orders - check if Order model exists
+    let totalOrders = 0;
+    let monthlyRevenue = 0;
+    let todayRevenue = 0;
+    let revenueGrowth = 0;
+    let ordersByStatus = {};
+    let recentOrders = 0;
+
+    try {
+      const Order = require('../models/Order');
+      totalOrders = await Order.countDocuments();
+
+      // Get monthly revenue (current month)
+      const monthlyRevenueResult = await Order.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: firstDayOfMonth },
+            status: { $in: ['completed', 'paid'] }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$totalAmount' }
+          }
+        }
+      ]);
+
+      // Get last month revenue for comparison
+      const lastMonthRevenueResult = await Order.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: firstDayOfLastMonth, $lte: lastDayOfLastMonth },
+            status: { $in: ['completed', 'paid'] }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$totalAmount' }
+          }
+        }
+      ]);
+
+      // Get today's revenue
+      const todayRevenueResult = await Order.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: today },
+            status: { $in: ['completed', 'paid'] }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$totalAmount' }
+          }
+        }
+      ]);
+
+      // Get orders by status
+      const ordersByStatusResult = await Order.aggregate([
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+
+      // Get recent orders count
+      recentOrders = await Order.countDocuments({
+        createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+      });
+
+      monthlyRevenue = monthlyRevenueResult[0]?.total || 0;
+      todayRevenue = todayRevenueResult[0]?.total || 0;
+      const previousMonthRevenue = lastMonthRevenueResult[0]?.total || 0;
+
+      // Calculate growth percentages
+      revenueGrowth = previousMonthRevenue > 0
+        ? ((monthlyRevenue - previousMonthRevenue) / previousMonthRevenue * 100).toFixed(1)
+        : 0;
+
+      ordersByStatus = ordersByStatusResult.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {});
+
+    } catch (error) {
+      console.log('Order model not found or error fetching order data:', error.message);
+    }
+
+    // Get recent activity counts
+    const recentUsers = await User.countDocuments({
+      createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      role: { $ne: 'admin' }
+    });
+
+    // Format response
+    const stats = {
+      totalUsers,
+      totalOrders,
+      monthlyRevenue,
+      todayRevenue,
+      revenueGrowth: parseFloat(revenueGrowth),
+      activeServices: 6, // Static for now - could be dynamic based on your services
+      usersByRole: usersByRole.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {}),
+      ordersByStatus,
+      recentActivity: {
+        newUsers: recentUsers,
+        newOrders: recentOrders
+      }
+    };
+
+    res.json({
+      success: true,
+      data: stats
+    });
+
+  } catch (error) {
+    console.error('Error fetching admin dashboard stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
 // Delete user (Super admin permission required)
 router.delete('/users/:id', auth, async (req, res) => {
   try {

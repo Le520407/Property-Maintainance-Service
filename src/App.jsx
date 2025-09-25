@@ -62,6 +62,7 @@ import SubscriptionPage from './pages/SubscriptionPage.jsx';
 import TermsPage from './pages/legal/TermsPage.jsx';
 import UnifiedMessagesPage from './pages/UnifiedMessagesPage.jsx';
 import UserManagement from './pages/admin/UserManagement.jsx';
+import AdminDashboard from './pages/admin/AdminDashboard.jsx';
 import VendorAgreementPage from './pages/legal/VendorAgreementPage.jsx';
 import VendorDashboardPage from './pages/vendor/VendorDashboardPage.jsx';
 import VendorMembership from './components/vendor/VendorMembership.jsx';
@@ -164,6 +165,26 @@ function App() {
                     <Header />
                     <main className="pt-20">
                       <FAQManagement />
+                    </main>
+                  </div>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin" element={
+                <ProtectedRoute requiredRole="admin">
+                  <div className="min-h-screen bg-gray-50">
+                    <Header />
+                    <main className="pt-20">
+                      <AdminDashboard />
+                    </main>
+                  </div>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/dashboard" element={
+                <ProtectedRoute requiredRole="admin">
+                  <div className="min-h-screen bg-gray-50">
+                    <Header />
+                    <main className="pt-20">
+                      <AdminDashboard />
                     </main>
                   </div>
                 </ProtectedRoute>
