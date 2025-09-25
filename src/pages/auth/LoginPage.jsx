@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, Mail, Lock, User, Phone, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import TACLogin from '../../components/auth/TACLogin';
+import GoogleAuthButton from '../../components/auth/GoogleAuthButton';
 import toast from 'react-hot-toast';
 
 const LoginPage = () => {
@@ -167,6 +168,23 @@ const LoginPage = () => {
             </form>
 
             {/* Divider */}
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">Or continue with</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Google OAuth Button */}
+            <div className="mt-6">
+              <GoogleAuthButton disabled={isLoading} />
+            </div>
+
+            {/* Another Divider */}
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">

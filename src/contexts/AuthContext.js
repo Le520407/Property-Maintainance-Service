@@ -282,6 +282,159 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const googleLogin = async (idToken) => {
+    try {
+      const response = await api.post('/auth/google/verify', { idToken });
+
+      // Check if user needs to complete registration
+      if (response.requiresRegistration) {
+        return {
+          success: false,
+          requiresRegistration: true,
+          googleData: response.googleData,
+          message: response.message
+        };
+      }
+
+      // Save tokens for existing user
+      apiUtils.setToken(response.token);
+      if (cookieManager.consent.hasConsent('preferences')) {
+        cookieManager.auth.setToken(response.token, true); // Remember Google users
+        cookieManager.auth.setRememberMe(true);
+      }
+
+      if (response.refreshToken) {
+        apiUtils.setRefreshToken(response.refreshToken);
+      }
+
+      // Convert user data format to match frontend expectations
+      const userData = {
+        id: response.user._id || response.user.id,
+        name: `${response.user.firstName} ${response.user.lastName}`.trim(),
+        firstName: response.user.firstName,
+        lastName: response.user.lastName,
+        email: response.user.email,
+        role: response.user.role,
+        status: response.user.status,
+        avatar: response.user.profilePicture || response.user.avatar,
+        phone: response.user.phone,
+        address: response.user.address || '',
+        city: response.user.city || '',
+        state: response.user.state || '',
+        zipCode: response.user.zipCode || '',
+        country: response.user.country || 'Singapore',
+        tacEnabled: response.user.tacEnabled || false,
+        authProvider: response.user.authProvider || 'google',
+        wallet: {
+          balance: response.user.totalSpent || 0,
+          currency: 'SGD'
+        },
+        referralCode: `SF${String(response.user._id || response.user.id).slice(0, 8).toUpperCase()}`,
+        referralCount: 0,
+        referralEarnings: 0,
+        // Admin specific data
+        ...(response.user.role === 'admin' && {
+          permissions: response.user.permissions || [],
+          isSuper: response.user.isSuper || false
+        }),
+        // Technician/vendor specific data
+        ...((['technician', 'vendor'].includes(response.user.role)) && {
+          skills: response.user.skills || [],
+          experience: response.user.experience || 0,
+          hourlyRate: response.user.hourlyRate || 0,
+          rating: response.user.rating || 0,
+          totalReviews: response.user.totalReviews || 0,
+          completedJobs: response.user.completedJobs || 0,
+          subscriptionPlan: response.user.subscriptionPlan || 'basic'
+        }),
+        // Customer specific data
+        ...(response.user.role === 'customer' && {
+          totalSpent: response.user.totalSpent || 0,
+          totalBookings: response.user.totalBookings || 0
+        })
+      };
+
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      // Save user preferences to cookies if consent given
+      if (cookieManager.consent.hasConsent('preferences')) {
+        cookieManager.auth.setUserPreferences({
+          ...userData,
+          lastLogin: Date.now()
+        });
+      }
+
+      return { success: true, user: userData };
+    } catch (error) {
+      console.error('Google login error:', error);
+      return { success: false, error: apiUtils.handleError(error) };
+    }
+  };
+
+  const completeGoogleRegistration = async (googleData, additionalData) => {
+    try {
+      const response = await api.post('/auth/google/complete-registration', {
+        googleData,
+        ...additionalData
+      });
+
+      // Save tokens
+      apiUtils.setToken(response.token);
+      if (cookieManager.consent.hasConsent('preferences')) {
+        cookieManager.auth.setToken(response.token, true);
+        cookieManager.auth.setRememberMe(true);
+      }
+
+      if (response.refreshToken) {
+        apiUtils.setRefreshToken(response.refreshToken);
+      }
+
+      // Convert user data format
+      const userData = {
+        id: response.user._id || response.user.id,
+        name: `${response.user.firstName} ${response.user.lastName}`.trim(),
+        firstName: response.user.firstName,
+        lastName: response.user.lastName,
+        email: response.user.email,
+        role: response.user.role,
+        status: response.user.status,
+        avatar: response.user.profilePicture || response.user.avatar,
+        phone: response.user.phone,
+        address: response.user.address || '',
+        city: response.user.city || '',
+        state: response.user.state || '',
+        zipCode: response.user.zipCode || '',
+        country: response.user.country || 'Singapore',
+        tacEnabled: response.user.tacEnabled || false,
+        authProvider: response.user.authProvider || 'google',
+        wallet: {
+          balance: response.user.totalSpent || 0,
+          currency: 'SGD'
+        },
+        referralCode: `SF${String(response.user._id || response.user.id).slice(0, 8).toUpperCase()}`,
+        referralCount: 0,
+        referralEarnings: 0
+      };
+
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      // Save user preferences to cookies if consent given
+      if (cookieManager.consent.hasConsent('preferences')) {
+        cookieManager.auth.setUserPreferences({
+          ...userData,
+          lastLogin: Date.now()
+        });
+      }
+
+      return { success: true, user: userData };
+    } catch (error) {
+      console.error('Google registration completion error:', error);
+      return { success: false, error: apiUtils.handleError(error) };
+    }
+  };
+
   const logout = async () => {
     try {
       // 调用后端登出API

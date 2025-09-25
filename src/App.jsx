@@ -2,6 +2,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Route, Routes } from 'react-router-dom';
 import SessionManager from './components/auth/SessionManager';
 import CookieConsent from './components/common/CookieConsent';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 import AboutPage from './pages/AboutPage.jsx';
 import AgentAgreementPage from './pages/legal/AgentAgreementPage.jsx';
@@ -126,8 +127,9 @@ import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
 
 function App() {
   return (
-    <LanguageProvider>
-      <AuthProvider>
+    <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || "demo-client-id"}>
+      <LanguageProvider>
+        <AuthProvider>
         <SessionManager />
         <MessagesProvider>
           <CartProvider>
@@ -407,6 +409,7 @@ function App() {
         <CookieConsent />
       </AuthProvider>
     </LanguageProvider>
+    </GoogleOAuthProvider>
   );
 }
 
