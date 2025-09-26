@@ -128,21 +128,12 @@ import VendorRegisterPage from './pages/auth/VendorRegisterPage.jsx';
 
 function App() {
   return (
-<<<<<<< HEAD
     <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID || "demo-client-id"}>
-      <LanguageProvider>
-        <AuthProvider>
-        <SessionManager />
-        <MessagesProvider>
-          <CartProvider>
-=======
-    <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}>
       <LanguageProvider>
         <AuthProvider>
           <SessionManager />
           <MessagesProvider>
             <CartProvider>
->>>>>>> origin/Anas
           <AnimatePresence mode="wait">
             <Routes>
               {/* Dashboard and Admin routes (full-page layout) */}

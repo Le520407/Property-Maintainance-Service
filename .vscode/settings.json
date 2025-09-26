@@ -2,5 +2,21 @@
     "git.ignoreLimitWarning": true,
     "vscode-corda.isCordaProject": false,
     "python-envs.defaultEnvManager": "ms-python.python:system",
-    "python-envs.pythonProjects": []
+    "python-envs.pythonProjects": [],
+    "css.validate": false,
+    "less.validate": false,
+    "scss.validate": false,
+    "css.customData": [".vscode/css_custom_data.json"],
+    "emmet.includeLanguages": {
+        "javascript": "javascriptreact"
+    },
+    "tailwindCSS.includeLanguages": {
+        "html": "html",
+        "javascript": "javascript",
+        "javascriptreact": "javascriptreact",
+        "css": "css"
+    },
+    "files.associations": {
+        "*.css": "tailwindcss"
+    }
 }

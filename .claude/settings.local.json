@@ -68,7 +68,8 @@
       "Bash(git rm:*)",
       "Bash(git add:*)",
       "Bash(npm install:*)",
-      "Bash(npx kill-port:*)"
+      "Bash(npx kill-port:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": [],
