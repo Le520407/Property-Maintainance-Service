@@ -1,4 +1,4 @@
-import { Gift, Menu, MessageCircle, ShoppingCart, User, X } from 'lucide-react';
+import { Menu, MessageCircle, User, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 

@@ -1913,35 +1913,6 @@ const VendorJobAssignments = ({ status }) => {
   const [statusUpdateModal, setStatusUpdateModal] = useState({ isOpen: false, job: null });
   const navigate = useNavigate();
 
-  // Utility function to get status color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'ASSIGNED':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'ACCEPTED':
-      case 'IN_DISCUSSION':
-        return 'bg-blue-100 text-blue-800';
-      case 'QUOTE_SENT':
-        return 'bg-purple-100 text-purple-800';
-      case 'QUOTE_ACCEPTED':
-      case 'PAID':
-        return 'bg-green-100 text-green-800';
-      case 'QUOTE_REJECTED':
-        return 'bg-red-100 text-red-800';
-      case 'IN_PROGRESS':
-        return 'bg-indigo-100 text-indigo-800';
-      case 'PENDING_VERIFICATION':
-        return 'bg-orange-100 text-orange-800';
-      case 'COMPLETED':
-        return 'bg-green-100 text-green-800';
-      case 'CANCELLED':
-      case 'REJECTED':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const loadJobs = useCallback(async () => {
     try {
       setLoading(true);

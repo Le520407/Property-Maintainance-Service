@@ -8,14 +8,11 @@ import {
   EyeOff,
   Save,
   X,
-  DollarSign,
   Star,
   CheckCircle,
   XCircle,
   Tag,
-  TrendingUp,
-  Calendar,
-  Package
+  Calendar
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 

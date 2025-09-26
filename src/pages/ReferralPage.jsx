@@ -16,15 +16,12 @@ import {
   Heart,
   X,
   Award,
-  Clock,
   Wallet,
   Target,
-  Zap,
-  ArrowRight
+  Zap
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../services/api';
 import VoucherExchange from '../components/VoucherExchange';
 
 const ReferralPage = () => {
@@ -49,7 +46,6 @@ const ReferralPage = () => {
     nextTier: null
   });
   const [loading, setLoading] = useState(false);
-  const [walletData, setWalletData] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [recentActivity, setRecentActivity] = useState([]);
@@ -133,7 +129,8 @@ const ReferralPage = () => {
       
       if (response.ok) {
         const data = await response.json();
-        setWalletData(data);
+        // Wallet data loaded but not currently used
+        console.log('Wallet data:', data);
       }
     } catch (error) {
       console.error('Failed to load wallet data:', error);

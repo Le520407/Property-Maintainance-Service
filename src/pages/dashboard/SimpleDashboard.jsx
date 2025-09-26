@@ -1,6 +1,5 @@
 import {
   AlertCircle,
-  Bell,
   Calendar,
   Camera,
   CheckCircle,
@@ -21,7 +20,6 @@ import {
   Plus,
   Save,
   Settings,
-  TrendingUp,
   User,
   Video,
   X
@@ -109,55 +107,6 @@ const SimpleDashboard = () => {
         recentOrders: [] 
       });
     }
-  };
-
-  const loadSampleData = () => {
-    // Sample data - fallback
-    const orders = [
-      {
-        _id: '1',
-        jobNumber: 'JOB001',
-        title: 'Plumbing Repair',
-        status: 'IN_PROGRESS',
-        totalAmount: 150,
-        scheduledDate: '2024-12-20',
-        vendorId: { firstName: 'John', lastName: 'Doe' },
-        category: 'plumbing',
-        images: ['sample-image-1.jpg', 'sample-image-2.jpg'], // Sample images for testing
-        videos: ['sample-video-1.mp4'], // Sample video for testing
-        createdAt: new Date().toISOString()
-      },
-      {
-        _id: '2',
-        jobNumber: 'JOB002',
-        title: 'House Cleaning',
-        status: 'COMPLETED',
-        totalAmount: 120,
-        scheduledDate: '2024-12-15',
-        vendorId: { firstName: 'Jane', lastName: 'Smith' },
-        category: 'cleaning',
-        createdAt: new Date(Date.now() - 86400000).toISOString()
-      },
-      {
-        _id: '3',
-        jobNumber: 'JOB003',
-        title: 'Garden Maintenance',
-        status: 'PENDING',
-        estimatedBudget: 100,
-        scheduledDate: '2024-12-22',
-        vendorId: null,
-        category: 'gardening',
-        createdAt: new Date(Date.now() - 172800000).toISOString()
-      }
-    ];
-
-    const stats = {
-      activeOrders: orders.filter(o => ['PENDING', 'IN_PROGRESS', 'ASSIGNED'].includes(o.status)).length,
-      completedOrders: orders.filter(o => o.status === 'COMPLETED').length,
-      nextAppointment: orders.find(o => ['PENDING', 'ASSIGNED'].includes(o.status))
-    };
-
-    setDashboardData({ stats, recentOrders: orders });
   };
 
   const sidebarNavigation = [
@@ -265,7 +214,7 @@ const SimpleDashboard = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        await response.json();
         toast.success('Order cancelled successfully');
         
         // Refresh the dashboard data
@@ -1526,7 +1475,7 @@ const OrderDetailsModal = ({ order, onClose, onCancelOrder, getStatusIcon, getSt
     try {
       console.log('Responding to quote:', { jobId, response });
       
-      const result = await api.customer.respondToQuote(jobId, { response });
+      await api.customer.respondToQuote(jobId, { response });
       
       // Update the order status locally
       order.status = response;

@@ -32,7 +32,6 @@ router.post('/register', async (req, res) => {
       serviceCategories = [],
       serviceArea,
       teamSize,
-      experience,
       
       // Initial service packages and price lists
       servicePackages = [],

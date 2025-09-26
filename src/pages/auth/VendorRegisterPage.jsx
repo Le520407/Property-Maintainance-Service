@@ -1,13 +1,9 @@
 import {
-  AlertCircle,
   Building,
   CheckCircle,
   Eye,
   EyeOff,
   FileText,
-  Mail,
-  MapPin,
-  Phone,
   Shield,
   Upload,
   User
@@ -29,37 +25,7 @@ const VendorRegisterPage = ({ embedded = false, googleData = null }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const navigate = useNavigate();
 
-  // Singapore cities list
-  const singaporeCities = [
-    'Central Singapore',
-    'Ang Mo Kio',
-    'Bedok',
-    'Bishan',
-    'Boon Lay',
-    'Bukit Batok',
-    'Bukit Merah',
-    'Bukit Panjang',
-    'Bukit Timah',
-    'Choa Chu Kang',
-    'Clementi',
-    'Geylang',
-    'Hougang',
-    'Jurong East',
-    'Jurong West',
-    'Kallang',
-    'Marine Parade',
-    'Novena',
-    'Pasir Ris',
-    'Punggol',
-    'Queenstown',
-    'Sembawang',
-    'Sengkang',
-    'Serangoon',
-    'Tampines',
-    'Toa Payoh',
-    'Woodlands',
-    'Yishun'
-  ];
+
 
   const { completeGoogleRegistration } = useAuth();
 
@@ -67,8 +33,7 @@ const VendorRegisterPage = ({ embedded = false, googleData = null }) => {
     register,
     handleSubmit,
     watch,
-    formState: { errors },
-    setValue
+    formState: { errors }
   } = useForm({
     defaultValues: googleData ? {
       firstName: googleData.given_name || '',
@@ -141,9 +106,7 @@ const VendorRegisterPage = ({ embedded = false, googleData = null }) => {
           hourlyRate: 0
         };
         
-
-        
-        const result = await api.auth.registerTechnician(vendorData);
+        await api.auth.registerTechnician(vendorData);
         toast.success('Vendor registration successful! Your account is pending approval.');
         navigate('/login');
       }
@@ -374,7 +337,7 @@ const VendorRegisterPage = ({ embedded = false, googleData = null }) => {
                         {...register('phone', { 
                           required: 'Please enter phone number',
                           pattern: {
-                            value: /^[+]?[\d\s\-\(\)]+$/,
+                            value: /^[+]?[\d\s\-()]+$/,
                             message: 'Please enter a valid phone number'
                           }
                         })}

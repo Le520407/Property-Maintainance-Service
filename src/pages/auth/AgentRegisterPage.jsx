@@ -7,7 +7,6 @@ import {
   User, 
   Mail, 
   Phone, 
-  MapPin, 
   Lock, 
   Eye, 
   EyeOff, 

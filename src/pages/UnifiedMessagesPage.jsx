@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   MessageSquare,
@@ -70,14 +70,14 @@ const UnifiedMessagesPage = () => {
     if (user) {
       clearMessagesVisitedFlag(user.id);
     }
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     try {
       setLoading(true);
       console.log('Loading conversations for user:', user.role); // Debug log
@@ -164,10 +164,10 @@ const UnifiedMessagesPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Helper function to get conversation name based on user role
-  const getConversationName = (conversation) => {
+  const getConversationName = useCallback((conversation) => {
     console.log('getConversationName - user role:', user.role, 'conversation:', conversation);
     
     if (user.role === 'customer') {
@@ -194,7 +194,7 @@ const UnifiedMessagesPage = () => {
         : 'Vendor';
       return `${customerName} ↔ ${vendorName}`;
     }
-  };
+  }, [user.role]);
 
   const loadMessages = async (conversationId, forceRefresh = false) => {
     // Debounce multiple rapid calls to the same conversation (unless forced)

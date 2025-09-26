@@ -1,5 +1,5 @@
 import { ArrowRight, CheckCircle, Home, Loader2 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { api } from '../services/api';
@@ -20,6 +20,126 @@ const MembershipSuccess = () => {
   const isRecurringPayment = () => {
     const recurringBillingId = searchParams.get('recurring_billing_id');
     return !!(recurringBillingId || (membershipData?.autoRenew && membershipData?.hitpayRecurringBillingId));
+  };
+
+  const fetchMembershipData = useCallback(async () => {
+    try {
+      // Force cache invalidation to get fresh membership data
+      if (user?.id) {
+        cachedApi.invalidateMembershipCache(user.id);
+        console.log('🗑️ Cache invalidated for membership data refresh');
+      }
+      
+      const response = await api.get('/membership/my-membership');
+      if (response.membership) {
+        setMembershipData(response.membership);
+        if (response.membership.status === 'ACTIVE') {
+          toast.success('🎉 Welcome to your new membership plan!');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching membership data:', error);
+      // Check if it's an authentication error
+      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+        setError('Please log in to view your membership status. Your payment was processed successfully.');
+      } else {
+        setError('Unable to verify membership status. Please contact support if your payment was completed.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  const activateMembershipForUser = useCallback(async (userId, paymentData) => {
+    try {
+      console.log('🔄 Activating membership for user:', userId, 'with payment data:', paymentData);
+      
+      // Use our new HitPay success endpoint
+      const urlStatus = searchParams.get('status');
+      const response = await api.post('/membership/hitpay-success', {
+        userId: userId,
+        reference: paymentData.firstReference || paymentData.reference, // Use first reference as plan ID
+        hitpayRecurringBillingId: paymentData.reference, // Use last reference as billing ID
+        hitpay_payment_id: paymentData.paymentId || paymentData.recurringBillingId,
+        status: urlStatus // Pass the status from URL to force activation if status=active
+      });
+      
+      if (response.success) {
+        console.log('✅ Membership activated successfully via HitPay redirect');
+        toast.success('🎉 Payment successful! Your membership has been activated!');
+      } else {
+        console.warn('HitPay success response:', response);
+        toast.warning('Payment completed, but activation may be delayed. Please refresh the page.');
+      }
+    } catch (error) {
+      console.error('Failed to activate membership via HitPay redirect:', error);
+      toast.error('Payment completed, but there was an issue activating your membership. Please contact support.');
+    }
+  }, [searchParams]);
+
+  const activateMembershipByReference = useCallback(async (reference) => {
+    try {
+      console.log('🔄 Activating membership with reference:', reference);
+      
+      // Get all reference values from URL (in case there are multiple)
+      const allReferences = searchParams.getAll('reference');
+      console.log('🔍 All reference values from URL:', allReferences);
+      
+      // Use our new HitPay success endpoint which is more specific for HitPay payments
+      const hitpayPaymentId = searchParams.get('payment_id') || searchParams.get('payment_request_id');
+      const urlStatus = searchParams.get('status');
+      
+      // Try each reference value until one works
+      for (const ref of allReferences) {
+        try {
+          console.log('🔄 Trying reference:', ref);
+          const response = await api.post('/membership/hitpay-success', {
+            userId: user?.id,
+            reference: ref,
+            hitpay_payment_id: hitpayPaymentId,
+            status: urlStatus // Pass the status from URL to force activation if status=active
+          });
+          
+          if (response.success) {
+            console.log('✅ Membership activated successfully with reference:', ref);
+            toast.success('🎉 Your membership has been activated!');
+            return; // Success, exit the loop
+          }
+        } catch (refError) {
+          console.warn('❌ Failed with reference:', ref, refError.message);
+          // Continue to next reference
+        }
+      }
+      
+      // If we get here, none of the references worked
+      console.warn('⚠️ All reference values failed, falling back to original method');
+      await fallbackActivateByReference(reference);
+    } catch (error) {
+      console.error('Failed to activate membership via HitPay success:', error);
+      // Fallback to the original method
+      await fallbackActivateByReference(reference);
+    }
+  }, [searchParams, user?.id]);
+
+  const fallbackActivateByReference = async (reference) => {
+    try {
+      console.log('🔄 Fallback: Activating membership with reference:', reference);
+      
+      // Use our dedicated activation endpoint
+      const response = await api.post('/membership/activate-by-reference', {
+        reference: reference
+      });
+      
+      if (response.success) {
+        console.log('✅ Membership activated successfully');
+        toast.success('🎉 Your membership has been activated!');
+      } else {
+        console.warn('Activation response:', response);
+      }
+    } catch (error) {
+      console.error('Failed to activate membership:', error);
+      // Don't show error toast here, let the membership fetch handle it
+    }
   };
 
   useEffect(() => {
@@ -103,7 +223,7 @@ const MembershipSuccess = () => {
       // Check if we have the necessary parameters or just fetch membership data
       fetchMembershipData();
     }
-  }, [searchParams]);
+  }, [searchParams, activateMembershipByReference, activateMembershipForUser, fetchMembershipData]);
 
   const simulateDemoRecurring = async (recurringBillingId) => {
     try {
@@ -116,125 +236,7 @@ const MembershipSuccess = () => {
     }
   };
 
-  const activateMembershipForUser = async (userId, paymentData) => {
-    try {
-      console.log('🔄 Activating membership for user:', userId, 'with payment data:', paymentData);
-      
-      // Use our new HitPay success endpoint
-      const urlStatus = searchParams.get('status');
-      const response = await api.post('/membership/hitpay-success', {
-        userId: userId,
-        reference: paymentData.firstReference || paymentData.reference, // Use first reference as plan ID
-        hitpayRecurringBillingId: paymentData.reference, // Use last reference as billing ID
-        hitpay_payment_id: paymentData.paymentId || paymentData.recurringBillingId,
-        status: urlStatus // Pass the status from URL to force activation if status=active
-      });
-      
-      if (response.success) {
-        console.log('✅ Membership activated successfully via HitPay redirect');
-        toast.success('🎉 Payment successful! Your membership has been activated!');
-      } else {
-        console.warn('HitPay success response:', response);
-        toast.warning('Payment completed, but activation may be delayed. Please refresh the page.');
-      }
-    } catch (error) {
-      console.error('Failed to activate membership via HitPay redirect:', error);
-      toast.error('Payment completed, but there was an issue activating your membership. Please contact support.');
-    }
-  };
 
-  const activateMembershipByReference = async (reference) => {
-    try {
-      console.log('🔄 Activating membership with reference:', reference);
-      
-      // Get all reference values from URL (in case there are multiple)
-      const allReferences = searchParams.getAll('reference');
-      console.log('🔍 All reference values from URL:', allReferences);
-      
-      // Use our new HitPay success endpoint which is more specific for HitPay payments
-      const hitpayPaymentId = searchParams.get('payment_id') || searchParams.get('payment_request_id');
-      const urlStatus = searchParams.get('status');
-      
-      // Try each reference value until one works
-      for (const ref of allReferences) {
-        try {
-          console.log('🔄 Trying reference:', ref);
-          const response = await api.post('/membership/hitpay-success', {
-            userId: user?.id,
-            reference: ref,
-            hitpay_payment_id: hitpayPaymentId,
-            status: urlStatus // Pass the status from URL to force activation if status=active
-          });
-          
-          if (response.success) {
-            console.log('✅ Membership activated successfully with reference:', ref);
-            toast.success('🎉 Your membership has been activated!');
-            return; // Success, exit the loop
-          }
-        } catch (refError) {
-          console.warn('❌ Failed with reference:', ref, refError.message);
-          // Continue to next reference
-        }
-      }
-      
-      // If we get here, none of the references worked
-      console.warn('⚠️ All reference values failed, falling back to original method');
-      await fallbackActivateByReference(reference);
-    } catch (error) {
-      console.error('Failed to activate membership via HitPay success:', error);
-      // Fallback to the original method
-      await fallbackActivateByReference(reference);
-    }
-  };
-
-  const fallbackActivateByReference = async (reference) => {
-    try {
-      console.log('🔄 Fallback: Activating membership with reference:', reference);
-      
-      // Use our dedicated activation endpoint
-      const response = await api.post('/membership/activate-by-reference', {
-        reference: reference
-      });
-      
-      if (response.success) {
-        console.log('✅ Membership activated successfully');
-        toast.success('🎉 Your membership has been activated!');
-      } else {
-        console.warn('Activation response:', response);
-      }
-    } catch (error) {
-      console.error('Failed to activate membership:', error);
-      // Don't show error toast here, let the membership fetch handle it
-    }
-  };
-
-  const fetchMembershipData = async () => {
-    try {
-      // Force cache invalidation to get fresh membership data
-      if (user?.id) {
-        cachedApi.invalidateMembershipCache(user.id);
-        console.log('🗑️ Cache invalidated for membership data refresh');
-      }
-      
-      const response = await api.get('/membership/my-membership');
-      if (response.membership) {
-        setMembershipData(response.membership);
-        if (response.membership.status === 'ACTIVE') {
-          toast.success('🎉 Welcome to your new membership plan!');
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching membership data:', error);
-      // Check if it's an authentication error
-      if (error.message.includes('401') || error.message.includes('Unauthorized')) {
-        setError('Please log in to view your membership status. Your payment was processed successfully.');
-      } else {
-        setError('Unable to verify membership status. Please contact support if your payment was completed.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleReturnHome = () => {
     navigate('/customer/dashboard');

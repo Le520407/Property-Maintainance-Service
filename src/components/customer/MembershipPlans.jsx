@@ -379,23 +379,6 @@ const MembershipPlans = () => {
     }
   };
 
-  const handleChangePlan = async (newTier) => {
-    try {
-      const response = await api.put('/membership/change-plan', {
-        newTierId: newTier._id,
-        immediate: true
-      });
-
-      if (response.success) {
-        toast.success('Membership plan updated successfully!');
-        setCurrentMembership(response.membership);
-      }
-    } catch (error) {
-      console.error('Plan change failed:', error);
-      toast.error(error.message || 'Failed to update plan');
-    }
-  };
-
   const handleCancelMembership = async () => {
     if (!window.confirm('Are you sure you want to cancel your membership? This action cannot be undone.')) {
       return;
@@ -423,16 +406,6 @@ const MembershipPlans = () => {
       case 'LANDED': return <Building2 className="h-8 w-8" />;
       case 'COMMERCIAL': return <Briefcase className="h-8 w-8" />;
       default: return <Shield className="h-8 w-8" />;
-    }
-  };
-
-  const getTierColor = (tierName) => {
-    switch (tierName) {
-      case 'HDB': return 'green';
-      case 'CONDOMINIUM': return 'blue';
-      case 'LANDED': return 'purple';
-      case 'COMMERCIAL': return 'orange';
-      default: return 'gray';
     }
   };
 

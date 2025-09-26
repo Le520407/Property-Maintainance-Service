@@ -1,7 +1,6 @@
 const express = require('express');
 const User = require('../models/User');
 const { Referral } = require('../models/Referral');
-const InviteCode = require('../models/InviteCode');
 const { generateToken, generateRefreshToken } = require('../utils/jwt');
 const { authenticateToken } = require('../middleware/auth');
 const ceaVerificationService = require('../services/ceaVerificationService');

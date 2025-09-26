@@ -10,8 +10,7 @@ import {
   Building2, 
   Briefcase,
   TrendingUp,
-  X,
-  AlertTriangle
+  X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cachedApi } from '../../utils/globalCache';
