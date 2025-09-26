@@ -15,6 +15,11 @@ const GoogleAuthButton = ({ className = "", disabled = false }) => {
       // Extract the ID token from the credential response
       const idToken = credentialResponse.credential;
       
+      if (!idToken) {
+        toast.error('Failed to get authentication token from Google');
+        return;
+      }
+      
       // Call the googleLogin method from AuthContext with the ID token
       const result = await googleLogin(idToken);
       console.log('Google login result:', result);
