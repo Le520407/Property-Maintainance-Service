@@ -372,69 +372,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const completeGoogleRegistration = async (googleData, additionalData) => {
-    try {
-      const response = await api.post('/auth/google/complete-registration', {
-        googleData,
-        ...additionalData
-      });
-
-      // Save tokens
-      apiUtils.setToken(response.token);
-      if (cookieManager.consent.hasConsent('preferences')) {
-        cookieManager.auth.setToken(response.token, true);
-        cookieManager.auth.setRememberMe(true);
-      }
-
-      if (response.refreshToken) {
-        apiUtils.setRefreshToken(response.refreshToken);
-      }
-
-      // Convert user data format
-      const userData = {
-        id: response.user._id || response.user.id,
-        name: `${response.user.firstName} ${response.user.lastName}`.trim(),
-        firstName: response.user.firstName,
-        lastName: response.user.lastName,
-        email: response.user.email,
-        role: response.user.role,
-        status: response.user.status,
-        avatar: response.user.profilePicture || response.user.avatar,
-        phone: response.user.phone,
-        address: response.user.address || '',
-        city: response.user.city || '',
-        state: response.user.state || '',
-        zipCode: response.user.zipCode || '',
-        country: response.user.country || 'Singapore',
-        tacEnabled: response.user.tacEnabled || false,
-        authProvider: response.user.authProvider || 'google',
-        wallet: {
-          balance: response.user.totalSpent || 0,
-          currency: 'SGD'
-        },
-        referralCode: `SF${String(response.user._id || response.user.id).slice(0, 8).toUpperCase()}`,
-        referralCount: 0,
-        referralEarnings: 0
-      };
-
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-
-      // Save user preferences to cookies if consent given
-      if (cookieManager.consent.hasConsent('preferences')) {
-        cookieManager.auth.setUserPreferences({
-          ...userData,
-          lastLogin: Date.now()
-        });
-      }
-
-      return { success: true, user: userData };
-    } catch (error) {
-      console.error('Google registration completion error:', error);
-      return { success: false, error: apiUtils.handleError(error) };
-    }
-  };
-
   const logout = async () => {
     try {
       // 调用后端登出API
@@ -520,66 +457,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Google OAuth functions
-  const googleLogin = async (idToken) => {
-    try {
-      const response = await api.post('/auth/google/verify', {
-        idToken: idToken
-      });
-
-
-
-      if (response.requiresRegistration) {
-        // Store Google data temporarily for registration completion
-        sessionStorage.setItem('googleUserData', JSON.stringify(response.googleData));
-        return { 
-          success: false, 
-          requiresRegistration: true, 
-          googleData: response.googleData 
-        };
-      }
-
-      // User exists, complete login
-      apiUtils.setToken(response.token);
-      if (response.refreshToken) {
-        apiUtils.setRefreshToken(response.refreshToken);
-      }
-
-      // Format user data
-      const userData = {
-        id: response.user._id || response.user.id,
-        name: response.user.fullName || response.user.name,
-        firstName: response.user.firstName,
-        lastName: response.user.lastName,
-        email: response.user.email,
-        role: response.user.role,
-        status: response.user.status,
-        avatar: response.user.profilePicture || response.user.avatar,
-        phone: response.user.phone,
-        address: response.user.address || '',
-        city: response.user.city || '',
-        state: response.user.state || '',
-        zipCode: response.user.zipCode || '',
-        country: response.user.country || 'Singapore',
-        authProvider: 'google',
-        googleId: response.user.googleId,
-        wallet: {
-          balance: response.user.totalSpent || 0,
-          currency: 'SGD'
-        },
-        referralCode: `SF${String(response.user._id || response.user.id).slice(0, 8).toUpperCase()}`,
-        referralCount: 0,
-        referralEarnings: 0
-      };
-
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-
-      return { success: true, user: userData };
-    } catch (error) {
-      return { success: false, error: apiUtils.handleError(error) };
-    }
-  };
 
   const completeGoogleRegistration = async (registrationData) => {
     try {

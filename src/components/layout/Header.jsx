@@ -42,11 +42,7 @@ const Header = () => {
     { name: t('home'), href: '/' },
     { name: t('services'), href: '/services' },
     { name: 'Events', href: '/events' },
-    // Only show membership link for non-admin users
-    ...(user?.role !== 'admin' ? [{
-      name: 'Membership',
-      href: user?.role === 'customer' ? '/membership/plans' : user?.role === 'vendor' ? '/vendor/membership' : '/membership/plans'
-    }] : []),
+    { name: 'Membership', href: user?.role === 'customer' ? '/membership/plans' : user?.role === 'vendor' ? '/vendor/membership' : '/membership/plans' },
     { name: 'FAQ', href: '/faq' },
     { name: 'About Us', href: '/about' },
     { name: 'Contact Us', href: '/contact' },
@@ -54,12 +50,13 @@ const Header = () => {
 
   // Admin navigation items (only show for admin users)
   const adminNavigation = user?.role === 'admin' ? [
-    { name: 'Admin Panel', href: '/admin/dashboard', isDropdown: true, items: [
-      { name: 'User Management', href: '/admin/users' },
+    { name: 'Admin Panel', href: '/dashboard', isDropdown: true, items: [
+      { name: 'Homepage Management', href: '/admin/homepage' },
       { name: 'Order Management', href: '/admin/orders' },
+      { name: 'User Management', href: '/admin/users' },
       { name: 'Event Management', href: '/admin/events' },
       { name: 'CEA Verification', href: '/admin/cea-verification' },
-      { name: 'Homepage Settings', href: '/admin/homepage' },
+      // { name: 'Announcement Management', href: '/admin/announcements' }, // Hidden temporarily
       { name: 'FAQ Management', href: '/admin/faqs' },
     ]}
   ] : [];
@@ -298,17 +295,13 @@ const Header = () => {
                     </div>
                     
                     <Link
-                      to={
-                        user.role === 'admin' ? '/admin/dashboard' :
-                        (user.role === 'vendor' || user.role === 'technician') ? '/vendor-dashboard' :
-                        '/dashboard'
-                      }
+                      to={(user.role === 'vendor' || user.role === 'technician') ? '/vendor-dashboard' : '/dashboard'}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => {
                         setIsUserMenuOpen(false);
                       }}
                     >
-                      {t('dashboard')} {user.role === 'admin' && '(Admin)'} {(user.role === 'vendor' || user.role === 'technician') && '(Vendor)'} {user.role === 'referral' && '(Agent)'}
+                      {t('dashboard')} {(user.role === 'vendor' || user.role === 'technician') && '(Vendor)'} {user.role === 'referral' && '(Agent)'}
                     </Link>
                     
                     {/* Customer-specific menu items */}
@@ -347,23 +340,7 @@ const Header = () => {
                       </>
                     )}
                     
-                    {/* Admin-specific menu items */}
-                    {user.role === 'admin' && (
-                      <>
-                        <Link
-                          to="/profile"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          onClick={() => {
-                            setIsUserMenuOpen(false);
-                          }}
-                        >
-                          {t('profile')}
-                        </Link>
-                      </>
-                    )}
-
-                    {/* Non-admin, non-vendor, non-customer menu items (like referral agents) */}
-                    {user.role !== 'vendor' && user.role !== 'customer' && user.role !== 'admin' && (
+                    {user.role !== 'vendor' && user.role !== 'customer' && (
                       <>
                         <Link
                           to="/profile"
